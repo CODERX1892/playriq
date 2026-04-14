@@ -5,338 +5,253 @@ import { MATCHES, OPP } from '../lib/utils'
 const POSITIONS = ['Forward', 'Defender', 'Midfield', 'Goalkeeper']
 const POS_COLORS = { Forward: '#f0b429', Defender: '#4a9eff', Midfield: '#3ecf8e', Goalkeeper: '#a78bfa' }
 
-const EMPTY_STATS = {
-  total_minutes: '',
-  // Defence
-  duels_contested: '', defensive_duels_won: '', duels_neutral: '', duels_lost: '', breach_1v1: '',
-  dne: '', forced_to_win: '', kickaway_to_received: '', tackles: '',
-  free_conceded: '', shot_free_conceded: '', two_pt_free_conceded: '',
-  yellow: '', black: '', red: '',
-  // Shooting from play
-  one_pointer_attempts: '', one_pointer_scored: '', one_pointer_wide: '', one_pointer_drop_short_block: '',
-  two_pointer_attempts: '', two_pointer_scored: '', two_pointer_wide: '', two_pointer_drop_short_block: '',
-  goal_attempts: '', goals_scored: '', goals_wide: '', goal_drop_short_block: '',
-  // Shooting from frees
-  one_pointer_attempts_f: '', one_pointer_scored_f: '',
-  two_pointer_attempts_f: '', two_pointer_scored_f: '',
-  goal_attempts_f: '', goals_scored_f: '',
-  // Turnovers
-  turnovers_in_contact: '', turnover_skill_error: '', turnovers_kicked_away: '',
-  drop_shorts: '', acceptable_turnovers: '',
-  // Assists
-  assists_shots: '', assists_goals: '', assists_2pt: '', pts: '',
-  // Kickouts ours
-  won_clean_p1_our: '', won_clean_p2_our: '', won_clean_p3_our: '', won_break_our: '',
-  our_ko_contest_opp: '', our_ko_contest_us: '',
-  ko_target_won_clean: '', ko_target_won_break: '', ko_target_lost_clean: '', ko_target_lost_contest: '',
-  // Kickouts opp
-  won_clean_p1_opp: '', won_clean_p2_opp: '', won_clean_p3_opp: '', won_break_opp: '',
-  their_ko_contest_opp: '', their_ko_contest_us: '',
-  // Possession
-  simple_pass: '', simple_receive: '', advance_pass: '', advance_receive: '', carries: '',
-  // GK
-  shots_saved: '', shots_conceded: '',
-  // Impact
-  attack_impact: '', transition_impact: '', defensive_impact: '', total_impact: '',
-}
-
-const SECTIONS = [
-  {
-    title: 'Gametime', color: '#8ba8c8',
-    fields: [['total_minutes', 'Minutes Played']],
-  },
-  {
-    title: 'Shooting — From Play', color: '#f0b429',
-    fields: [
-      ['one_pointer_attempts', '1pt Attempts'], ['one_pointer_scored', '1pt Scored'],
-      ['one_pointer_wide', '1pt Wide'], ['one_pointer_drop_short_block', '1pt Drop Short/Block'],
-      ['two_pointer_attempts', '2pt Attempts'], ['two_pointer_scored', '2pt Scored'],
-      ['two_pointer_wide', '2pt Wide'], ['two_pointer_drop_short_block', '2pt Drop Short/Block'],
-      ['goal_attempts', 'Goal Attempts'], ['goals_scored', 'Goals Scored'],
-      ['goals_wide', 'Goals Wide'], ['goal_drop_short_block', 'Goal Drop Short/Block'],
-    ],
-  },
-  {
-    title: 'Shooting — From Frees', color: '#a78bfa',
-    fields: [
-      ['one_pointer_attempts_f', '1pt Free Attempts'], ['one_pointer_scored_f', '1pt Frees Scored'],
-      ['two_pointer_attempts_f', '2pt Free Attempts'], ['two_pointer_scored_f', '2pt Frees Scored'],
-      ['goal_attempts_f', 'Goal Free Attempts'], ['goals_scored_f', 'Goals from Frees'],
-    ],
-  },
-  {
-    title: 'Playmaking', color: '#3ecf8e',
-    fields: [
-      ['assists_shots', 'Shot Assists'], ['assists_goals', 'Goal Assists'],
-      ['assists_2pt', '2pt Assists'], ['pts', 'Total Points'],
-    ],
-  },
-  {
-    title: 'Turnovers', color: '#f06060',
-    fields: [
-      ['turnovers_in_contact', 'TOs in Contact'], ['turnover_skill_error', 'TO Skill Error'],
-      ['turnovers_kicked_away', 'TOs Kicked/HP Away'], ['drop_shorts', 'Drop Shorts (Total)'],
-      ['acceptable_turnovers', 'Acceptable TOs'],
-    ],
-  },
-  {
-    title: 'Defence — Duels', color: '#4a9eff',
-    fields: [
-      ['duels_contested', 'Duels Contested'], ['defensive_duels_won', 'Duels Won'],
-      ['duels_neutral', 'Duels Neutral'], ['duels_lost', 'Duels Lost'], ['breach_1v1', 'Breach 1v1'],
-    ],
-  },
-  {
-    title: 'Defence — Actions', color: '#3ecf8e',
-    fields: [
-      ['tackles', 'Tackles (no TO)'], ['forced_to_win', 'Forced TO Won'],
-      ['kickaway_to_received', 'Kickaway TO Won'], ['dne', 'DNE'],
-    ],
-  },
-  {
-    title: 'Fouls & Discipline', color: '#f06060',
-    fields: [
-      ['free_conceded', 'Free Conceded'], ['shot_free_conceded', 'Shot Free Conceded'],
-      ['two_pt_free_conceded', '2pt Free Conceded'],
-      ['yellow', 'Yellow Card'], ['black', 'Black Card'], ['red', 'Red Card'],
-    ],
-  },
-  {
-    title: 'Kickouts — Ours', color: '#3ecf8e',
-    fields: [
-      ['won_clean_p1_our', 'Won Clean P1'], ['won_clean_p2_our', 'Won Clean P2'],
-      ['won_clean_p3_our', 'Won Clean P3'], ['won_break_our', 'Won Break'],
-      ['our_ko_contest_opp', 'KO Contest (Opp)'], ['our_ko_contest_us', 'KO Contest (Us)'],
-      ['ko_target_won_clean', 'KO Target Won Clean'], ['ko_target_won_break', 'KO Target Won Break'],
-      ['ko_target_lost_clean', 'KO Target Lost Clean'], ['ko_target_lost_contest', 'KO Target Lost Contest'],
-    ],
-  },
-  {
-    title: 'Kickouts — Opposition', color: '#a78bfa',
-    fields: [
-      ['won_clean_p1_opp', 'Won Clean P1 (Opp)'], ['won_clean_p2_opp', 'Won Clean P2 (Opp)'],
-      ['won_clean_p3_opp', 'Won Clean P3 (Opp)'], ['won_break_opp', 'Won Break (Opp)'],
-      ['their_ko_contest_opp', 'Their KO Contest (Opp)'], ['their_ko_contest_us', 'Their KO Contest (Us)'],
-    ],
-  },
-  {
-    title: 'Possession', color: '#4a9eff',
-    fields: [
-      ['simple_pass', 'Simple Passes'], ['simple_receive', 'Simple Receives'],
-      ['advance_pass', 'Advance Passes'], ['advance_receive', 'Advance Receives'],
-      ['carries', 'Carries'],
-    ],
-  },
-  {
-    title: 'Goalkeeping', color: '#a78bfa',
-    fields: [['shots_saved', 'Shots Saved'], ['shots_conceded', 'Shots Conceded']],
-  },
-  {
-    title: 'Impact Scores', color: '#f0b429',
-    fields: [
-      ['attack_impact', 'Attack Impact'], ['transition_impact', 'Transition Impact'],
-      ['defensive_impact', 'Defensive Impact'], ['total_impact', 'Total Impact'],
-    ],
-  },
+const CATEGORIES = [
+  { key: 'minutes', label: 'Minutes Played', color: '#8ba8c8', fields: [{ key: 'total_minutes', label: 'Minutes' }] },
+  { key: 'shooting_play', label: 'Shooting — Play', color: '#f0b429', fields: [
+    { key: 'one_pointer_attempts', label: '1pt Att' }, { key: 'one_pointer_scored', label: '1pt Scr' },
+    { key: 'one_pointer_wide', label: '1pt Wide' }, { key: 'one_pointer_drop_short_block', label: '1pt DS' },
+    { key: 'two_pointer_attempts', label: '2pt Att' }, { key: 'two_pointer_scored', label: '2pt Scr' },
+    { key: 'two_pointer_wide', label: '2pt Wide' }, { key: 'two_pointer_drop_short_block', label: '2pt DS' },
+    { key: 'goal_attempts', label: 'G Att' }, { key: 'goals_scored', label: 'Goals' },
+    { key: 'goals_wide', label: 'G Wide' }, { key: 'goal_drop_short_block', label: 'G DS' },
+  ]},
+  { key: 'shooting_frees', label: 'Shooting — Frees', color: '#a78bfa', fields: [
+    { key: 'one_pointer_attempts_f', label: '1pt Att' }, { key: 'one_pointer_scored_f', label: '1pt Scr' },
+    { key: 'two_pointer_attempts_f', label: '2pt Att' }, { key: 'two_pointer_scored_f', label: '2pt Scr' },
+    { key: 'goal_attempts_f', label: 'G Att' }, { key: 'goals_scored_f', label: 'Goals' },
+  ]},
+  { key: 'playmaking', label: 'Playmaking', color: '#3ecf8e', fields: [
+    { key: 'assists_shots', label: 'Shot Ast' }, { key: 'assists_goals', label: 'Goal Ast' },
+    { key: 'assists_2pt', label: '2pt Ast' }, { key: 'pts', label: 'Pts' },
+  ]},
+  { key: 'duels', label: 'Duels', color: '#4a9eff', fields: [
+    { key: 'duels_contested', label: 'Contested' }, { key: 'defensive_duels_won', label: 'Won' },
+    { key: 'duels_neutral', label: 'Neutral' }, { key: 'duels_lost', label: 'Lost' },
+    { key: 'breach_1v1', label: 'Breach' },
+  ]},
+  { key: 'def_actions', label: 'Def Actions', color: '#3ecf8e', fields: [
+    { key: 'tackles', label: 'Tackles' }, { key: 'forced_to_win', label: 'Forced TO' },
+    { key: 'kickaway_to_received', label: 'Kickaway TO' }, { key: 'dne', label: 'DNE' },
+  ]},
+  { key: 'fouls', label: 'Fouls', color: '#f06060', fields: [
+    { key: 'free_conceded', label: 'Free' }, { key: 'shot_free_conceded', label: 'Shot Free' },
+    { key: 'two_pt_free_conceded', label: '2pt Free' },
+    { key: 'yellow', label: 'Yellow' }, { key: 'black', label: 'Black' }, { key: 'red', label: 'Red' },
+  ]},
+  { key: 'turnovers', label: 'Turnovers', color: '#f06060', fields: [
+    { key: 'turnovers_in_contact', label: 'Contact' }, { key: 'turnover_skill_error', label: 'Skill Err' },
+    { key: 'turnovers_kicked_away', label: 'Kicked Away' }, { key: 'drop_shorts', label: 'Drop Shorts' },
+    { key: 'acceptable_turnovers', label: 'Acceptable' },
+  ]},
+  { key: 'possession', label: 'Possession', color: '#4a9eff', fields: [
+    { key: 'simple_pass', label: 'Sim Pass' }, { key: 'simple_receive', label: 'Sim Rec' },
+    { key: 'advance_pass', label: 'Adv Pass' }, { key: 'advance_receive', label: 'Adv Rec' },
+    { key: 'carries', label: 'Carries' },
+  ]},
+  { key: 'ko_ours', label: 'KO — Ours', color: '#3ecf8e', fields: [
+    { key: 'won_clean_p1_our', label: 'Clean P1' }, { key: 'won_clean_p2_our', label: 'Clean P2' },
+    { key: 'won_clean_p3_our', label: 'Clean P3' }, { key: 'won_break_our', label: 'Break' },
+    { key: 'our_ko_contest_opp', label: 'Cont Opp' }, { key: 'our_ko_contest_us', label: 'Cont Us' },
+    { key: 'ko_target_won_clean', label: 'Tgt Won Cl' }, { key: 'ko_target_won_break', label: 'Tgt Won Br' },
+    { key: 'ko_target_lost_clean', label: 'Tgt Lost Cl' }, { key: 'ko_target_lost_contest', label: 'Tgt Lost Co' },
+  ]},
+  { key: 'ko_opp', label: 'KO — Opp', color: '#a78bfa', fields: [
+    { key: 'won_clean_p1_opp', label: 'Clean P1' }, { key: 'won_clean_p2_opp', label: 'Clean P2' },
+    { key: 'won_clean_p3_opp', label: 'Clean P3' }, { key: 'won_break_opp', label: 'Break' },
+    { key: 'their_ko_contest_opp', label: 'Cont Opp' }, { key: 'their_ko_contest_us', label: 'Cont Us' },
+  ]},
+  { key: 'goalkeeping', label: 'Goalkeeping', color: '#a78bfa', fields: [
+    { key: 'shots_saved', label: 'Saved' }, { key: 'shots_conceded', label: 'Conceded' },
+  ]},
+  { key: 'impact', label: 'Impact', color: '#f0b429', decimal: true, fields: [
+    { key: 'attack_impact', label: 'Attack' }, { key: 'transition_impact', label: 'Trans' },
+    { key: 'defensive_impact', label: 'Defence' }, { key: 'total_impact', label: 'Total' },
+  ]},
 ]
 
 export default function DataEntry() {
   const [players, setPlayers] = useState([])
-  const [selectedMatch, setSelectedMatch] = useState('')
-  const [selectedPlayer, setSelectedPlayer] = useState('')
-  const [stats, setStats] = useState({ ...EMPTY_STATS })
-  const [loading, setLoading] = useState(false)
+  const [match, setMatch] = useState('')
+  const [catKey, setCatKey] = useState('minutes')
+  const [data, setData] = useState({})
   const [saving, setSaving] = useState(false)
-  const [status, setStatus] = useState(null) // {type: 'success'|'error', message}
-  const [existingData, setExistingData] = useState(null)
+  const [status, setStatus] = useState(null)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     supabase.from('players').select('name,position').order('name')
-      .then(({ data }) => setPlayers(data || []))
+      .then(({ data: d }) => setPlayers(d || []))
   }, [])
 
-  // Load existing data when player+match selected
   useEffect(() => {
-    if (!selectedMatch || !selectedPlayer) return
+    if (!match) return
     setLoading(true)
-    supabase.from('player_stats')
-      .select('*')
-      .eq('match_id', selectedMatch)
-      .eq('player_name', selectedPlayer)
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          const mapped = {}
-          Object.keys(EMPTY_STATS).forEach(k => {
-            mapped[k] = data[k] !== null && data[k] !== undefined ? String(data[k]) : ''
-          })
-          setStats(mapped)
-          setExistingData(data)
-        } else {
-          setStats({ ...EMPTY_STATS })
-          setExistingData(null)
-        }
+    supabase.from('player_stats').select('*').eq('match_id', match)
+      .then(({ data: rows }) => {
+        const mapped = {}
+        if (rows) rows.forEach(r => { mapped[r.player_name] = r })
+        setData(mapped)
         setLoading(false)
       })
-  }, [selectedMatch, selectedPlayer])
+  }, [match])
 
-  const handleChange = (field, value) => {
-    setStats(prev => ({ ...prev, [field]: value }))
+  const get = (name, field) => {
+    const v = data[name]?.[field]
+    return (v === null || v === undefined) ? '' : String(v)
   }
 
-  const handleSave = async () => {
-    if (!selectedMatch || !selectedPlayer) {
-      setStatus({ type: 'error', message: 'Please select a match and player first' })
-      return
+  const set = (name, field, val) => {
+    setData(prev => ({ ...prev, [name]: { ...prev[name], [field]: val } }))
+  }
+
+  const save = async () => {
+    if (!match) { setStatus({ type: 'error', message: 'Select a match first' }); return }
+    setSaving(true); setStatus(null)
+    const cat = CATEGORIES.find(c => c.key === catKey)
+    const upserts = []
+    for (const p of players) {
+      const hasData = cat.fields.some(f => get(p.name, f.key) !== '') || get(p.name, 'total_minutes') !== ''
+      if (!hasData) continue
+      const row = { match_id: match, player_name: p.name }
+      cat.fields.forEach(f => {
+        const v = get(p.name, f.key)
+        row[f.key] = v === '' ? null : parseFloat(v)
+      })
+      const mins = get(p.name, 'total_minutes')
+      if (mins !== '') row.total_minutes = parseInt(mins)
+      upserts.push(row)
     }
-    setSaving(true)
-    setStatus(null)
-
-    // Convert to numbers
-    const payload = { match_id: selectedMatch, player_name: selectedPlayer }
-    Object.keys(EMPTY_STATS).forEach(k => {
-      const v = stats[k]
-      payload[k] = v === '' || v === null ? null : parseFloat(v)
-    })
-
-    const { error } = await supabase
-      .from('player_stats')
-      .upsert(payload, { onConflict: 'match_id,player_name' })
-
+    if (!upserts.length) { setSaving(false); setStatus({ type: 'error', message: 'No data to save' }); return }
+    const { error } = await supabase.from('player_stats').upsert(upserts, { onConflict: 'match_id,player_name' })
     setSaving(false)
-    if (error) {
-      setStatus({ type: 'error', message: 'Error saving: ' + error.message })
-    } else {
-      setStatus({ type: 'success', message: `✓ Saved ${selectedPlayer} — ${selectedMatch}` })
-      setExistingData(payload)
-    }
+    if (error) setStatus({ type: 'error', message: 'Error: ' + error.message })
+    else setStatus({ type: 'success', message: `✓ Saved ${cat.label} for ${upserts.length} players` })
   }
 
-  const posColor = players.find(p => p.name === selectedPlayer)?.position
-    ? POS_COLORS[players.find(p => p.name === selectedPlayer).position]
-    : 'var(--text2)'
+  const cat = CATEGORIES.find(c => c.key === catKey)
+  const sorted = [...players].sort((a, b) => {
+    const o = { Goalkeeper: 0, Defender: 1, Midfield: 2, Forward: 3 }
+    return (o[a.position] || 0) - (o[b.position] || 0)
+  })
+
+  const colW = `140px 52px ${cat.fields.map(() => '62px').join(' ')}`
 
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto' }}>
-      {/* Match + Player selectors */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-        {/* Match selector */}
-        <div>
-          <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Match</div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {MATCHES.map(m => (
-              <button key={m} onClick={() => setSelectedMatch(m)}
-                style={{
-                  padding: '8px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                  border: `1px solid ${m === selectedMatch ? 'var(--blue)' : 'var(--border)'}`,
-                  background: m === selectedMatch ? 'rgba(74,158,255,0.12)' : 'var(--bg2)',
-                  color: m === selectedMatch ? 'var(--blue)' : 'var(--text3)',
-                  fontFamily: 'Barlow, sans-serif',
-                }}>
-                <div>{m}</div>
-                <div style={{ fontSize: 9, fontWeight: 400, opacity: 0.7 }}>{OPP[m]}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Player selector */}
-        <div>
-          <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Player</div>
-          <select
-            value={selectedPlayer}
-            onChange={e => setSelectedPlayer(e.target.value)}
-            style={{
-              width: '100%', padding: '10px 12px',
-              background: 'var(--bg3)', border: '1px solid var(--border)',
-              borderRadius: 8, color: selectedPlayer ? posColor : 'var(--text3)',
-              fontSize: 14, fontFamily: 'Barlow, sans-serif', outline: 'none', cursor: 'pointer',
+    <div>
+      {/* Match */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 7 }}>Match</div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {MATCHES.map(m => (
+            <button key={m} onClick={() => setMatch(m)} style={{
+              padding: '7px 13px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              border: `1px solid ${m === match ? 'var(--blue)' : 'var(--border)'}`,
+              background: m === match ? 'rgba(74,158,255,0.12)' : 'var(--bg2)',
+              color: m === match ? 'var(--blue)' : 'var(--text3)', fontFamily: 'Barlow, sans-serif',
             }}>
-            <option value="">Select player...</option>
-            {POSITIONS.map(pos => (
-              <optgroup key={pos} label={pos}>
-                {players.filter(p => p.position === pos).map(p => (
-                  <option key={p.name} value={p.name}>{p.name}</option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
+              <div>{m}</div><div style={{ fontSize: 9, opacity: 0.7 }}>{OPP[m]}</div>
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Status */}
+      {/* Category */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 7 }}>Category</div>
+        <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 5, scrollbarWidth: 'none' }}>
+          {CATEGORIES.map(c => (
+            <button key={c.key} onClick={() => setCatKey(c.key)} style={{
+              padding: '5px 11px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              border: `1px solid ${c.key === catKey ? c.color : 'var(--border)'}`,
+              background: c.key === catKey ? 'rgba(255,255,255,0.05)' : 'var(--bg2)',
+              color: c.key === catKey ? c.color : 'var(--text3)',
+              whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'Barlow, sans-serif',
+            }}>{c.label}</button>
+          ))}
+        </div>
+      </div>
+
       {status && (
         <div style={{
-          padding: '10px 14px', borderRadius: 8, marginBottom: 14,
+          padding: '9px 13px', borderRadius: 8, marginBottom: 11,
           background: status.type === 'success' ? 'rgba(62,207,142,0.1)' : 'rgba(240,96,96,0.1)',
           border: `1px solid ${status.type === 'success' ? 'var(--teal)' : 'var(--red)'}`,
-          color: status.type === 'success' ? 'var(--teal)' : 'var(--red)',
-          fontSize: 13,
-        }}>
-          {status.message}
-        </div>
+          color: status.type === 'success' ? 'var(--teal)' : 'var(--red)', fontSize: 13,
+        }}>{status.message}</div>
       )}
 
-      {/* Existing data badge */}
-      {existingData && selectedMatch && selectedPlayer && (
-        <div style={{ padding: '8px 12px', background: 'rgba(74,158,255,0.08)', border: '1px solid var(--blue)', borderRadius: 8, marginBottom: 14, fontSize: 12, color: 'var(--blue)' }}>
-          ℹ️ Editing existing record for {selectedPlayer} — {selectedMatch}
+      {!match ? (
+        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text3)', fontSize: 13 }}>
+          Select a match to begin
         </div>
-      )}
-
-      {loading ? (
+      ) : loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><div className="spinner" /></div>
       ) : (
-        <>
-          {/* Stat sections */}
-          {SECTIONS.map(section => (
-            <div key={section.title} className="card" style={{ overflow: 'hidden', marginBottom: 12 }}>
-              <div className="card-header">
-                <span style={{ color: section.color }}>{section.title}</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 1, background: 'var(--border)' }}>
-                {section.fields.map(([field, label]) => (
-                  <div key={field} style={{ background: 'var(--bg2)', padding: '10px 14px' }}>
-                    <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 5 }}>{label}</div>
-                    <input
-                      type="number"
-                      value={stats[field]}
-                      onChange={e => handleChange(field, e.target.value)}
-                      placeholder="0"
-                      step={field.includes('impact') ? '0.01' : '1'}
-                      style={{
-                        width: '100%', padding: '7px 10px',
-                        background: 'var(--bg3)', border: `1px solid ${stats[field] !== '' && stats[field] !== '0' ? section.color : 'var(--border)'}`,
-                        borderRadius: 6, color: stats[field] !== '' && stats[field] !== '0' ? section.color : 'var(--text3)',
-                        fontSize: 16, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700,
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
+        <div style={{ overflowX: 'auto', paddingBottom: 80 }}>
+          <div style={{ minWidth: 'max-content' }}>
+            {/* Header */}
+            <div style={{ display: 'grid', gridTemplateColumns: colW, gap: 4, padding: '8px 12px', background: 'var(--bg3)', borderRadius: '10px 10px 0 0', border: '1px solid var(--border)', borderBottom: 'none' }}>
+              <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase' }}>Player</div>
+              <div style={{ fontSize: 10, color: '#8ba8c8', textAlign: 'center' }}>Mins</div>
+              {cat.fields.map(f => (
+                <div key={f.key} style={{ fontSize: 9, color: cat.color, textAlign: 'center', letterSpacing: 0.5 }}>{f.label}</div>
+              ))}
             </div>
-          ))}
 
-          {/* Save button */}
-          <div style={{ position: 'sticky', bottom: 0, background: 'var(--bg)', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
-            <button
-              onClick={handleSave}
-              disabled={saving || !selectedMatch || !selectedPlayer}
-              style={{
-                width: '100%', padding: '14px',
-                background: saving ? 'var(--bg3)' : 'rgba(62,207,142,0.12)',
-                border: `1px solid ${saving ? 'var(--border)' : 'var(--teal)'}`,
-                borderRadius: 10, color: saving ? 'var(--text3)' : 'var(--teal)',
-                fontSize: 15, fontWeight: 700, fontFamily: 'Barlow, sans-serif',
-                cursor: saving || !selectedMatch || !selectedPlayer ? 'not-allowed' : 'pointer',
-                letterSpacing: 1,
-              }}>
-              {saving ? 'Saving...' : existingData ? '↑ Update Record' : '+ Save New Record'}
-            </button>
+            {/* Rows */}
+            <div style={{ border: '1px solid var(--border)', borderRadius: '0 0 10px 10px', overflow: 'hidden' }}>
+              {sorted.map((p, i) => {
+                const pc = POS_COLORS[p.position] || 'var(--text2)'
+                return (
+                  <div key={p.name} style={{
+                    display: 'grid', gridTemplateColumns: colW, gap: 4,
+                    padding: '7px 12px', alignItems: 'center',
+                    background: i % 2 === 0 ? 'var(--bg2)' : 'var(--bg3)',
+                    borderTop: i === 0 ? 'none' : '1px solid rgba(26,51,86,0.25)',
+                  }}>
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>{p.name}</div>
+                      <div style={{ fontSize: 9, color: pc }}>{p.position}</div>
+                    </div>
+                    <SI value={get(p.name, 'total_minutes')} onChange={v => set(p.name, 'total_minutes', v)} color="#8ba8c8" />
+                    {cat.fields.map(f => (
+                      <SI key={f.key} value={get(p.name, f.key)} onChange={v => set(p.name, f.key, v)} color={cat.color} decimal={cat.decimal} />
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        </>
+        </div>
+      )}
+
+      {/* Save bar */}
+      {match && (
+        <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--bg)', borderTop: '1px solid var(--border)', padding: '10px 14px', zIndex: 50 }}>
+          <button onClick={save} disabled={saving} style={{
+            width: '100%', maxWidth: 480, display: 'block', margin: '0 auto',
+            padding: '13px', borderRadius: 10,
+            background: saving ? 'var(--bg3)' : 'rgba(62,207,142,0.12)',
+            border: `1px solid ${saving ? 'var(--border)' : 'var(--teal)'}`,
+            color: saving ? 'var(--text3)' : 'var(--teal)',
+            fontSize: 14, fontWeight: 700, fontFamily: 'Barlow, sans-serif', cursor: 'pointer', letterSpacing: 1,
+          }}>{saving ? 'Saving...' : `Save ${cat.label}`}</button>
+        </div>
       )}
     </div>
+  )
+}
+
+function SI({ value, onChange, color, decimal }) {
+  return (
+    <input type="number" value={value} onChange={e => onChange(e.target.value)}
+      placeholder="" step={decimal ? '0.01' : '1'} min="0"
+      style={{
+        width: '100%', padding: '5px 3px', textAlign: 'center',
+        background: value && value !== '0' ? 'rgba(255,255,255,0.06)' : 'transparent',
+        border: `1px solid ${value && value !== '0' ? color : 'rgba(26,51,86,0.4)'}`,
+        borderRadius: 5, color: value && value !== '0' ? color : 'var(--text3)',
+        fontSize: 13, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, outline: 'none',
+      }} />
   )
 }
