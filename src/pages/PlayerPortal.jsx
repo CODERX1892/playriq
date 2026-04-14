@@ -74,8 +74,8 @@ export default function PlayerPortal() {
       <div style={{ padding: 14 }}>
         {tab === 'home' && <HomeTab rows={rows} stats={stats} player={player} mc={mc} allMc={allMc} posColor={posColor} />}
         {tab === 'attack' && <AttackTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} />}
-        {tab === 'transition' && <TransitionTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} />}
-        {tab === 'defence' && <DefenceTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} />}
+        {tab === 'transition' && <TransitionTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} />}
+        {tab === 'defence' && <DefenceTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} />}
         {tab === 'matches' && <MatchesTab stats={stats} />}
       </div>
     </div>
@@ -325,9 +325,12 @@ function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
 }
 
 // ─── TRANSITION TAB ──────────────────────────────────────────────────────────
-function TransitionTab({ rows, mc, matchFilter, setMatchFilter }) {
+function TransitionTab({ rows, mc, matchFilter, setMatchFilter, stats }) {
   const ti = r1(rows.reduce((s, r) => s + n(r.transition_impact), 0))
   const matchCount = [...new Set(rows.map(r => r.match_id))].length
+
+  // Get all stats for this player across all matches (for breakdown)
+  const allMatchRows = stats  // full stats array passed down
 
   const passRows = buildStatRows(rows, [
     ['simple_pass', 'Simple Passes'], ['simple_receive', 'Simple Receives'],
@@ -354,16 +357,16 @@ function TransitionTab({ rows, mc, matchFilter, setMatchFilter }) {
     <div className="fade-in">
       <MatchFilterPills matchFilter={matchFilter} setMatchFilter={setMatchFilter} />
       <ImpactBanner label="Transition Impact" value={ti} color="var(--blue)" mc={matchCount} bg="linear-gradient(135deg,#071828,#0a2038)" border="#0f3560" />
-      <StatGroup title="Passing" badge="distribution" color="var(--blue)" rows={passRows.map(r => ({ label: r.label, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} />
-      <StatGroup title="Kickouts — Ours" badge="restart" color="var(--teal)" rows={koRows.map(r => ({ label: r.label, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} />
-      <StatGroup title="Turnovers" badge="possession losses" color="var(--red)" rows={toRows.map(r => ({ label: r.label, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} />
-      {gkRows.some(r => r.total > 0) && <StatGroup title="Goalkeeping" badge="shot stopping" color="var(--purple)" rows={gkRows.map(r => ({ label: r.label, avg: r.avg, teamAvg: null, total: r.total }))} />}
+      <StatGroup title="Passing" badge="distribution" color="var(--blue)" rows={passRows.map(r => ({ label: r.label, field: r.field, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} matchRows={stats} />
+      <StatGroup title="Kickouts — Ours" badge="restart" color="var(--teal)" rows={koRows.map(r => ({ label: r.label, field: r.field, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} matchRows={stats} />
+      <StatGroup title="Turnovers" badge="possession losses" color="var(--red)" rows={toRows.map(r => ({ label: r.label, field: r.field, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} matchRows={stats} />
+      {gkRows.some(r => r.total > 0) && <StatGroup title="Goalkeeping" badge="shot stopping" color="var(--purple)" rows={gkRows.map(r => ({ label: r.label, field: r.field, avg: r.avg, teamAvg: null, total: r.total }))} matchRows={stats} />}
     </div>
   )
 }
 
 // ─── DEFENCE TAB ─────────────────────────────────────────────────────────────
-function DefenceTab({ rows, mc, matchFilter, setMatchFilter }) {
+function DefenceTab({ rows, mc, matchFilter, setMatchFilter, stats }) {
   const di = r1(rows.reduce((s, r) => s + n(r.defensive_impact), 0))
   const matchCount = [...new Set(rows.map(r => r.match_id))].length
   const y = sf(rows, 'yellow'), b = sf(rows, 'black'), rd = sf(rows, 'red')
@@ -405,10 +408,10 @@ function DefenceTab({ rows, mc, matchFilter, setMatchFilter }) {
         ))}
       </div>
 
-      <StatGroup title="Duels" badge="1v1 contests" color="var(--blue)" rows={duelRows.map(r => ({ label: r.label, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} />
-      <StatGroup title="Defensive Actions" badge="turnovers & tackles" color="var(--teal)" rows={defRows.map(r => ({ label: r.label, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} />
-      <StatGroup title="Fouls Conceded" badge="free kicks against" color="var(--red)" rows={foulRows.map(r => ({ label: r.label, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} />
-      <StatGroup title="Opposition Kickouts" badge="restart defence" color="var(--purple)" rows={koOppRows.map(r => ({ label: r.label, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} />
+      <StatGroup title="Duels" badge="1v1 contests" color="var(--blue)" rows={duelRows.map(r => ({ label: r.label, field: r.field, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} matchRows={stats} />
+      <StatGroup title="Defensive Actions" badge="turnovers & tackles" color="var(--teal)" rows={defRows.map(r => ({ label: r.label, field: r.field, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} matchRows={stats} />
+      <StatGroup title="Fouls Conceded" badge="free kicks against" color="var(--red)" rows={foulRows.map(r => ({ label: r.label, field: r.field, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} matchRows={stats} />
+      <StatGroup title="Opposition Kickouts" badge="restart defence" color="var(--purple)" rows={koOppRows.map(r => ({ label: r.label, field: r.field, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} matchRows={stats} />
     </div>
   )
 }
