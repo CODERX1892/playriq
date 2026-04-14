@@ -60,11 +60,16 @@ export default function Login() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
       {/* Logo */}
       <div style={{ marginBottom: 4, textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 32, fontWeight: 800, letterSpacing: 2, color: 'var(--gold)' }}>
+        <img src={CREST_URL} alt="Ballyboden St Enda's" 
+          style={{ width: 90, height: 90, objectFit: 'contain', marginBottom: 10, filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.4))' }} />
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', letterSpacing: 1, marginBottom: 4 }}>
+          Ballyboden St Enda's
+        </div>
+        <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 700, letterSpacing: 3, color: 'var(--gold)', textTransform: 'uppercase' }}>
           PlayrIQ
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text3)', letterSpacing: 3, textTransform: 'uppercase', marginTop: 2 }}>
-          Ballyboden St Enda's · 2026
+        <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase', marginTop: 3 }}>
+          Player Portal · 2026
         </div>
       </div>
 

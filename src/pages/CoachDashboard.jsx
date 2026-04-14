@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import Avatar from '../components/Avatar'
 import { MATCHES, OPP, POS_COLORS, n, r1, pct, sf, impactColor, normalise } from '../lib/utils'
+import DataEntry from './DataEntry'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts'
 
 const METRICS = {
@@ -93,9 +94,9 @@ export default function CoachDashboard() {
 
       {/* Tabs */}
       <div className="tabs" style={{ top: 61 }}>
-        {['squad', 'compare', 'match'].map(t => (
+        {['squad', 'compare', 'match', 'entry'].map(t => (
           <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'entry' ? 'Enter Data' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -113,6 +114,7 @@ export default function CoachDashboard() {
         {tab === 'match' && (
           <MatchViewTab allStats={allStats} players={players} matchView={matchView} setMatchView={setMatchView} />
         )}
+        {tab === 'entry' && <DataEntry />}
       </div>
     </div>
   )
