@@ -98,13 +98,9 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
   const di = r1(rows.reduce((s, r) => s + n(r.defensive_impact), 0))
   const mins = rows.reduce((s, r) => s + n(r.total_minutes), 0)
 
-  // Attempts = scored + wide + drop shorts (for accuracy)
-  const totalAtt = (sf(rows,'one_pointer_scored')+sf(rows,'one_pointer_wide')+sf(rows,'one_pointer_drop_short_block')) +
-    (sf(rows,'one_pointer_scored_f')+sf(rows,'one_pointer_wide_f')||0) +
-    (sf(rows,'two_pointer_scored')+sf(rows,'two_pointer_wide')+sf(rows,'two_pointer_drop_short_block')) +
-    (sf(rows,'two_pointer_scored_f')+sf(rows,'two_pointer_wide_f')||0) +
-    (sf(rows,'goals_scored')+sf(rows,'goals_wide')+sf(rows,'goal_drop_short_block')) +
-    (sf(rows,'goals_scored_f')||0)
+  const totalAtt = sf(rows, 'one_pointer_attempts') + sf(rows, 'one_pointer_attempts_f') +
+    sf(rows, 'two_pointer_attempts') + sf(rows, 'two_pointer_attempts_f') +
+    sf(rows, 'goal_attempts') + sf(rows, 'goal_attempts_f')
   const totalScored = p1s + f1s + p2s + f2s + gs + fgs
   const shootPct = pct(totalScored, totalAtt)
   const pctColor = shootPct >= 60 ? 'var(--teal)' : shootPct >= 45 ? 'var(--gold)' : 'var(--red)'
@@ -253,12 +249,9 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
 
 // ─── ATTACK TAB ──────────────────────────────────────────────────────────────
 function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
-  const p1s = sf(rows, 'one_pointer_scored'), p1w = sf(rows, 'one_pointer_wide'), p1ds = sf(rows, 'one_pointer_drop_short_block')
-  const p1a = p1s + p1w + p1ds  // attempts = scored + wide + drop shorts
-  const p2s = sf(rows, 'two_pointer_scored'), p2w = sf(rows, 'two_pointer_wide'), p2ds = sf(rows, 'two_pointer_drop_short_block')
-  const p2a = p2s + p2w + p2ds
-  const gs = sf(rows, 'goals_scored'), gw = sf(rows, 'goals_wide'), gds = sf(rows, 'goal_drop_short_block')
-  const ga = gs + gw + gds
+  const p1a = sf(rows, 'one_pointer_attempts'), p1s = sf(rows, 'one_pointer_scored'), p1w = sf(rows, 'one_pointer_wide'), p1ds = sf(rows, 'one_pointer_drop_short_block')
+  const p2a = sf(rows, 'two_pointer_attempts'), p2s = sf(rows, 'two_pointer_scored'), p2w = sf(rows, 'two_pointer_wide'), p2ds = sf(rows, 'two_pointer_drop_short_block')
+  const ga = sf(rows, 'goal_attempts'), gs = sf(rows, 'goals_scored'), gw = sf(rows, 'goals_wide'), gds = sf(rows, 'goal_drop_short_block')
   const f1a = sf(rows, 'one_pointer_attempts_f'), f1s = sf(rows, 'one_pointer_scored_f')
   const f2a = sf(rows, 'two_pointer_attempts_f'), f2s = sf(rows, 'two_pointer_scored_f')
   const fga = sf(rows, 'goal_attempts_f'), fgs = sf(rows, 'goals_scored_f')
@@ -271,19 +264,11 @@ function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
 
   const as1 = sf(rows, 'assists_shots'), ag2 = sf(rows, 'assists_goals'), a2pt = sf(rows, 'assists_2pt')
 
-  // Separate rings for play and frees
-  const playRings = [
-    { label: '1-Point', sublabel: 'From Play', scored: p1s, att: p1a, color: '#f0b429' },
-    { label: '2-Point', sublabel: 'From Play', scored: p2s, att: p2a, color: '#a78bfa' },
-    { label: 'Goals', sublabel: 'From Play', scored: gs, att: ga, color: '#3ecf8e' },
+  const rings = [
+    { label: '1-Point', scored: p1s + f1s, att: p1a + f1a, color: '#f0b429' },
+    { label: '2-Point', scored: p2s + f2s, att: p2a + f2a, color: '#a78bfa' },
+    { label: 'Goals', scored: gs + fgs, att: ga + fga, color: '#3ecf8e' },
   ]
-  const freeRings = [
-    { label: '1-Point', sublabel: 'Frees', scored: f1s, att: f1a, color: '#f0b429' },
-    { label: '2-Point', sublabel: 'Frees', scored: f2s, att: f2a, color: '#a78bfa' },
-    { label: 'Goals', sublabel: 'Frees', scored: fgs, att: fga, color: '#3ecf8e' },
-  ].filter(r => r.att > 0)
-  const rings = playRings // keep rings as play only for backward compat
-  const hasFrees = f1a + f2a + fga > 0
 
   return (
     <div className="fade-in">
@@ -313,30 +298,6 @@ function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
           )
         })}
       </div>
-
-      {/* Rings - From Frees (only if player takes frees) */}
-      {hasFrees && (
-        <>
-          <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>From Frees</div>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${freeRings.length},1fr)`, gap: 9, marginBottom: 13 }}>
-            {freeRings.map((r, i) => {
-              const p2 = r.att > 0 ? Math.round((r.scored / r.att) * 100) : 0
-              const canvasId = `free-ring-${i}`
-              const pctColor = r.label === '1-Point' ? (p2 >= 70 ? 'var(--teal)' : p2 >= 55 ? 'var(--gold)' : 'var(--red)') :
-                               r.label === '2-Point' ? (p2 >= 45 ? 'var(--teal)' : p2 >= 30 ? 'var(--gold)' : 'var(--red)') :
-                               (p2 >= 75 ? 'var(--teal)' : p2 >= 60 ? 'var(--gold)' : 'var(--red)')
-              return (
-                <div key={i} style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 11, padding: '14px 8px', textAlign: 'center' }}>
-                  <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 6 }}>{r.label}</div>
-                  <RingChart value={p2} color={pctColor} id={canvasId} />
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 20, fontWeight: 800, color: pctColor, marginTop: 4 }}>{p2}%</div>
-                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{r.scored}/{r.att}</div>
-                </div>
-              )
-            })}
-          </div>
-        </>
-      )}
 
       {/* Shooting table from play */}
       <ShootTable title="Shooting — From Play" badge={`${mc} games`}
@@ -480,12 +441,7 @@ function MatchesTab({ stats }) {
         const gs = n(r.goals_scored) + n(r.goals_scored_f)
         const pts = p1s + p2s * 2 + gs * 3
         const ai = r1(n(r.attack_impact)), ti = r1(n(r.transition_impact)), di = r1(n(r.defensive_impact))
-        const totalAtt = (n(r.one_pointer_scored)+n(r.one_pointer_wide)+n(r.one_pointer_drop_short_block)) + 
-          (n(r.one_pointer_scored_f)||0) +
-          (n(r.two_pointer_scored)+n(r.two_pointer_wide)+n(r.two_pointer_drop_short_block)) +
-          (n(r.two_pointer_scored_f)||0) +
-          (n(r.goals_scored)+n(r.goals_wide)+n(r.goal_drop_short_block)) +
-          (n(r.goals_scored_f)||0)
+        const totalAtt = n(r.one_pointer_attempts) + n(r.one_pointer_attempts_f) + n(r.two_pointer_attempts) + n(r.two_pointer_attempts_f) + n(r.goal_attempts) + n(r.goal_attempts_f)
         const totScr = p1s + p2s + gs
         const sp = pct(totScr, totalAtt)
         return (
