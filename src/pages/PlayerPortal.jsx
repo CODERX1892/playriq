@@ -249,9 +249,9 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
 
 // ─── ATTACK TAB ──────────────────────────────────────────────────────────────
 function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
-  const p1a = sf(rows, 'one_pointer_attempts'), p1s = sf(rows, 'one_pointer_scored'), p1w = sf(rows, 'one_pointer_wide'), p1ds = sf(rows, 'one_pointer_drop_short_block')
-  const p2a = sf(rows, 'two_pointer_attempts'), p2s = sf(rows, 'two_pointer_scored'), p2w = sf(rows, 'two_pointer_wide'), p2ds = sf(rows, 'two_pointer_drop_short_block')
-  const ga = sf(rows, 'goal_attempts'), gs = sf(rows, 'goals_scored'), gw = sf(rows, 'goals_wide'), gds = sf(rows, 'goal_drop_short_block')
+  const p1s = sf(rows, 'one_pointer_scored'), p1w = sf(rows, 'one_pointer_wide'), p1ds = sf(rows, 'one_pointer_drop_short_block'); const p1a = p1s + p1w + p1ds
+  const p2s = sf(rows, 'two_pointer_scored'), p2w = sf(rows, 'two_pointer_wide'), p2ds = sf(rows, 'two_pointer_drop_short_block'); const p2a = p2s + p2w + p2ds
+  const gs = sf(rows, 'goals_scored'), gw = sf(rows, 'goals_wide'), gds = sf(rows, 'goal_drop_short_block'); const ga = gs + gw + gds
   const f1a = sf(rows, 'one_pointer_attempts_f'), f1s = sf(rows, 'one_pointer_scored_f')
   const f2a = sf(rows, 'two_pointer_attempts_f'), f2s = sf(rows, 'two_pointer_scored_f')
   const fga = sf(rows, 'goal_attempts_f'), fgs = sf(rows, 'goals_scored_f')
