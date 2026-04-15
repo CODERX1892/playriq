@@ -2,11 +2,15 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import Login from './pages/Login'
 import PlayerPortal from './pages/PlayerPortal'
 import CoachDashboard from './pages/CoachDashboard'
+import AnalystDashboard from './pages/AnalystDashboard'
 
 function AppInner() {
-  const { player, isCoach } = useAuth()
-  if (isCoach) return <CoachDashboard />
+  const { player, appUser, isAdmin, isCoach, isAnalyst } = useAuth()
   if (player) return <PlayerPortal />
+  if (appUser) {
+    if (isCoach || isAdmin) return <CoachDashboard />
+    if (isAnalyst) return <AnalystDashboard />
+  }
   return <Login />
 }
 
