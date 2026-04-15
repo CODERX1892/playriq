@@ -353,7 +353,7 @@ Keep it under 350 words. Be direct. This is a performance review not a pep talk.
           return (
             <div key={metric} style={{ padding: '9px 14px', borderTop: i === 0 ? 'none' : '1px solid rgba(26,51,86,0.25)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                <div style={{ fontSize: 12, color: 'var(--text2)' }}>{data.bench.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)' }}>{benchmarks?.key_metrics?.[metric]?.label || data.bench.label}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 10, color: statusColor }}>{statusLabel}</span>
                   <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, color: statusColor }}>{data.avg}</span>
