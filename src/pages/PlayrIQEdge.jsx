@@ -1,6 +1,67 @@
 import { useState } from 'react'
 import { n, r1, pct, sf, MATCHES } from '../lib/utils'
 
+const DYNAMIC_BENCHMARKS = {
+  "Inside Forward": {
+    one_pointer_attempts: { min: 2.0, good: 3.0, p90: 3.0, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 3.0+ per game" },
+    pts: { min: 2.0, good: 2.5, p90: 3.0, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 2.5+ per game" },
+    duels_contested: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.0+ per game" },
+    tackles: { min: 3.0, good: 3.0, p90: 5.0, lower_is_better: false, zero_target: false, warning: 3.0, label: "Target 3.0+ per game" },
+    forced_to_win: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.0+ per game" },
+    drop_shorts: { min: 1.0, good: 1.5, p90: 1.8, lower_is_better: true, zero_target: true, warning: 0.5, label: "Drop shorts per game — target zero" },
+    turnovers_in_contact: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: true, zero_target: true, warning: 0.5, label: "TOs in contact — target zero" },
+    turnovers_kicked_away: { min: 1.0, good: 1.25, p90: 1.7, lower_is_better: true, zero_target: true, warning: 0.3, label: "Kickaway TOs — target zero" },
+  },
+  "Half Forward": {
+    simple_pass: { min: 6.0, good: 10.0, p90: 10.6, lower_is_better: false, zero_target: false, warning: 6.0, label: "Target 10.0+ per game" },
+    advance_pass: { min: 2.0, good: 3.0, p90: 3.6, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 3.0+ per game" },
+    assists_shots: { min: 2.0, good: 2.5, p90: 3.8, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 2.5+ per game" },
+    tackles: { min: 1.5, good: 2.25, p90: 3.3, lower_is_better: false, zero_target: false, warning: 1.5, label: "Target 2.25+ per game" },
+    carries: { min: 1.0, good: 1.5, p90: 1.8, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.5+ per game" },
+    turnovers_kicked_away: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: true, zero_target: true, warning: 0.3, label: "Kickaway TOs — target zero" },
+    turnover_skill_error: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: true, zero_target: true, warning: 0.3, label: "Skill errors — target zero" },
+    drop_shorts: { min: 1.0, good: 1.5, p90: 1.8, lower_is_better: true, zero_target: true, warning: 0.5, label: "Drop shorts per game — target zero" },
+  },
+  "Midfielder": {
+    simple_pass: { min: 16.5, good: 20.0, p90: 23.0, lower_is_better: false, zero_target: false, warning: 16.5, label: "Target 20.0+ per game" },
+    advance_pass: { min: 1.5, good: 3.5, p90: 4.5, lower_is_better: false, zero_target: false, warning: 1.5, label: "Target 3.5+ per game" },
+    carries: { min: 1.0, good: 1.25, p90: 1.7, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.25+ per game" },
+    tackles: { min: 2.5, good: 3.0, p90: 4.1, lower_is_better: false, zero_target: false, warning: 2.5, label: "Target 3.0+ per game" },
+    forced_to_win: { min: 2.0, good: 2.0, p90: 2.0, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 2.0+ per game" },
+    duels_contested: { min: 1.0, good: 1.25, p90: 1.7, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.25+ per game" },
+    turnovers_in_contact: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: true, zero_target: true, warning: 0.5, label: "TOs in contact — target zero" },
+    dne: { min: 1.0, good: 1.5, p90: 1.8, lower_is_better: true, zero_target: true, warning: 0.3, label: "DNE — must engage every contest" },
+    won_clean_p1_our: { min: 1.5, good: 1.75, p90: 1.9, lower_is_better: false, zero_target: false, warning: 1.5, label: "Target 1.75+ per game" },
+    won_clean_p2_our: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.0+ per game" },
+  },
+  "Half Back": {
+    simple_pass: { min: 8.0, good: 10.0, p90: 14.6, lower_is_better: false, zero_target: false, warning: 8.0, label: "Target 10.0+ per game" },
+    advance_pass: { min: 2.0, good: 2.0, p90: 2.6, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 2.0+ per game" },
+    tackles: { min: 3.0, good: 5.0, p90: 8.1, lower_is_better: false, zero_target: false, warning: 3.0, label: "Target 5.0+ per game" },
+    forced_to_win: { min: 1.0, good: 1.5, p90: 1.8, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.5+ per game" },
+    kickaway_to_received: { min: 1.0, good: 1.25, p90: 1.7, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.25+ per game" },
+    duels_contested: { min: 1.0, good: 2.0, p90: 2.6, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 2.0+ per game" },
+    defensive_duels_won: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.0+ per game" },
+    turnovers_kicked_away: { min: 1.5, good: 1.75, p90: 1.9, lower_is_better: true, zero_target: true, warning: 0.3, label: "Kickaway TOs — target zero" },
+    dne: { min: 1.0, good: 2.0, p90: 2.6, lower_is_better: true, zero_target: true, warning: 0.3, label: "DNE — must engage every contest" },
+    breach_1v1: { min: 2.0, good: 2.0, p90: 2.0, lower_is_better: true, zero_target: true, warning: 0.5, label: "Breach 1v1 — target zero" },
+  },
+  "Full Back": {
+    duels_contested: { min: 2.0, good: 2.5, p90: 2.8, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 2.5+ per game" },
+    defensive_duels_won: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.0+ per game" },
+    tackles: { min: 3.0, good: 3.5, p90: 4.4, lower_is_better: false, zero_target: false, warning: 3.0, label: "Target 3.5+ per game" },
+    forced_to_win: { min: 2.5, good: 3.25, p90: 3.7, lower_is_better: false, zero_target: false, warning: 2.5, label: "Target 3.25+ per game" },
+    breach_1v1: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: true, zero_target: true, warning: 0.5, label: "Breach 1v1 — target zero" },
+    dne: { min: 1.5, good: 2.0, p90: 2.0, lower_is_better: true, zero_target: true, warning: 0.3, label: "DNE — must engage every contest" },
+    simple_pass: { min: 20.0, good: 25.25, p90: 27.5, lower_is_better: false, zero_target: false, warning: 20.0, label: "Target 25.25+ per game" },
+    turnovers_kicked_away: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: true, zero_target: true, warning: 0.3, label: "Kickaway TOs — target zero" },
+  },
+  "Goalkeeper": {
+    shots_saved: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.0+ per game" },
+    ko_target_lost_clean: { min: 2.0, good: 3.5, p90: 4.4, lower_is_better: true, zero_target: true, warning: 1, label: "Kickout losses — target zero" },
+  },
+}
+
 const ROLE_BENCHMARKS = {
   "Inside Forward": {
     description: "Primary scoring threat. Expected to shoot, win possession in scoring zones, work hard on turnovers.",
@@ -122,7 +183,11 @@ export default function PlayrIQEdge({ stats, player }) {
   const [error, setError] = useState(null)
 
   const role = player.role
-  const benchmarks = ROLE_BENCHMARKS[role]
+  // Use dynamic benchmarks (from squad data) if available, fall back to static
+  const dynamicBench = DYNAMIC_BENCHMARKS[role]
+  const staticBench = ROLE_BENCHMARKS[role]
+  const benchmarks = staticBench  // keep static for descriptions
+  const activeBenchmarks = dynamicBench || staticBench?.key_metrics
 
   if (!role || !benchmarks) {
     return (
@@ -156,17 +221,27 @@ export default function PlayrIQEdge({ stats, player }) {
 
   // Score each metric
   const metricScores = {}
-  Object.entries(benchmarks.key_metrics).forEach(([metric, bench]) => {
+  Object.entries(activeBenchmarks || {}).forEach(([metric, bench]) => {
     const avg = playerAvgs[metric] || 0
     let status, gap
-    if (bench.higher_better) {
-      if (avg >= (bench.good || bench.min)) { status = 'strong'; gap = null }
-      else if (avg >= bench.min) { status = 'ok'; gap = `${r1(bench.good - avg)} below target` }
-      else { status = 'work_on'; gap = `${r1(bench.min - avg)} below minimum` }
+    const lowerIsBetter = bench.lower_is_better !== undefined ? bench.lower_is_better : !bench.higher_better
+    const isZeroTarget = bench.zero_target === true
+    if (!lowerIsBetter) {
+      if (avg >= (bench.p90 || bench.good)) { status = 'strong'; gap = null }
+      else if (avg >= (bench.good || bench.min)) { status = 'ok'; gap = `${r1((bench.p90||bench.good) - avg)} below target` }
+      else { status = 'work_on'; gap = `${r1((bench.good||bench.min) - avg)} below squad benchmark` }
+    } else if (isZeroTarget) {
+      // Zero is always the target for these metrics
+      const warn = bench.warning || 0.5
+      if (avg === 0) { status = 'strong'; gap = null }
+      else if (avg <= warn) { status = 'ok'; gap = `Target is zero` }
+      else { status = 'work_on'; gap = `${avg} per game — target zero` }
     } else {
-      if (avg <= (bench.max * 0.5)) { status = 'strong'; gap = null }
-      else if (avg <= bench.max) { status = 'ok'; gap = `At limit` }
-      else { status = 'work_on'; gap = `${r1(avg - bench.max)} above target` }
+      const limit = bench.min || bench.max || 1
+      if (avg === 0) { status = 'strong'; gap = null }
+      else if (avg <= (limit * 0.5)) { status = 'strong'; gap = null }
+      else if (avg <= limit) { status = 'ok'; gap = `Getting close to limit` }
+      else { status = 'work_on'; gap: `${r1(avg - limit)} above squad average` }
     }
     metricScores[metric] = { avg, status, gap, bench }
   })
@@ -287,10 +362,10 @@ Keep it under 350 words. Be direct. This is a performance review not a pep talk.
               <div style={{ height: 4, background: 'var(--bg3)', borderRadius: 2, overflow: 'hidden' }}>
                 <div style={{ width: `${Math.min(100, barPct)}%`, height: '100%', background: statusColor, borderRadius: 2, transition: 'width 0.5s' }} />
               </div>
-              {data.status === 'work_on' && (
+              {(data.status === 'work_on' || data.status === 'ok') && (
                 <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 3 }}>
-                  Target: {data.bench.higher_better ? `${data.bench.good || data.bench.min}+` : `≤${data.bench.max}`} per game
-                  {data.gap && <span style={{ color: 'var(--red)', marginLeft: 6 }}>({data.gap})</span>}
+                  {data.bench.zero_target ? 'Target: 0 per game' : data.bench.lower_is_better ? `Target ≤${data.bench.warning || data.bench.min} per game` : `Target: ${data.bench.p90 || data.bench.good}+ per game`}
+                  {data.gap && <span style={{ color: data.status === 'work_on' ? 'var(--red)' : 'var(--gold)', marginLeft: 6 }}>({data.gap})</span>}
                 </div>
               )}
             </div>

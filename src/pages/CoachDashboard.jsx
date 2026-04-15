@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext'
 import Avatar from '../components/Avatar'
 import { MATCHES, OPP, POS_COLORS, n, r1, pct, sf, impactColor, normalise } from '../lib/utils'
 import DataEntry from './DataEntry'
+import AdminPanel from './AdminPanel'
+import Glossary from './Glossary'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts'
 
 const METRICS = {
@@ -33,14 +35,21 @@ export default function CoachDashboard() {
   const [compareP1, setCompareP1] = useState(null)
   const [compareP2, setCompareP2] = useState(null)
   const [matchView, setMatchView] = useState('AFL 1')
+  const [matchStatuses, setMatchStatuses] = useState({})
+  const [publishing, setPublishing] = useState(false)
+  const [pubStatus, setPubStatus] = useState(null)
 
   useEffect(() => {
     Promise.all([
       supabase.from('player_stats').select('*'),
-      supabase.from('players').select('name,position,irish_name,dob'),
-    ]).then(([{ data: stats }, { data: pls }]) => {
+      supabase.from('players').select('name,position,irish_name,dob,role'),
+      supabase.from('match_status').select('*'),
+    ]).then(([{ data: stats }, { data: pls }, { data: ms }]) => {
       setAllStats(stats || [])
       setPlayers(pls || [])
+      const msMap = {}
+      if (ms) ms.forEach(m => { msMap[m.match_id] = m })
+      setMatchStatuses(msMap)
       setLoading(false)
     })
   }, [])
@@ -94,9 +103,9 @@ export default function CoachDashboard() {
 
       {/* Tabs */}
       <div className="tabs" style={{ top: 61 }}>
-        {['squad', 'compare', 'match', 'kickouts', 'turnovers', 'entry'].map(t => (
+        {['squad', 'compare', 'match', 'kickouts', 'turnovers', 'entry', 'publish', 'admin', 'glossary'].map(t => (
           <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'entry' ? 'Enter Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'Turnovers' : t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'entry' ? 'Enter Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'Turnovers' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? '📖 Guide' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -117,6 +126,9 @@ export default function CoachDashboard() {
         {tab === 'kickouts' && <KickoutsTab allStats={allStats} players={players} />}
         {tab === 'turnovers' && <TurnoversTab allStats={allStats} players={players} />}
         {tab === 'entry' && <DataEntry />}
+        {tab === 'publish' && <PublishTab matchStatuses={matchStatuses} setMatchStatuses={setMatchStatuses} appUser={appUser} allStats={allStats} />}
+        {tab === 'admin' && <AdminPanel />}
+        {tab === 'glossary' && <Glossary />}
       </div>
     </div>
   )
@@ -406,6 +418,9 @@ function MatchViewTab({ allStats, players, matchView, setMatchView }) {
 // ─── KICKOUTS TAB ─────────────────────────────────────────────────────────────
 function KickoutsTab({ allStats, players }) {
   const [matchView, setMatchView] = useState('AFL 1')
+  const [matchStatuses, setMatchStatuses] = useState({})
+  const [publishing, setPublishing] = useState(false)
+  const [pubStatus, setPubStatus] = useState(null)
   const matchRows = allStats.filter(r => r.match_id === matchView && n(r.total_minutes) > 0)
     .sort((a, b) => n(b.total_minutes) - n(a.total_minutes))
   const getPos = (name) => players.find(p => p.name === name)?.position || ''
@@ -470,6 +485,9 @@ function KickoutsTab({ allStats, players }) {
 // ─── TURNOVERS TAB ────────────────────────────────────────────────────────────
 function TurnoversTab({ allStats, players }) {
   const [matchView, setMatchView] = useState('AFL 1')
+  const [matchStatuses, setMatchStatuses] = useState({})
+  const [publishing, setPublishing] = useState(false)
+  const [pubStatus, setPubStatus] = useState(null)
   const matchRows = allStats.filter(r => r.match_id === matchView && n(r.total_minutes) > 0)
     .sort((a, b) => n(b.total_minutes) - n(a.total_minutes))
   const getPos = (name) => players.find(p => p.name === name)?.position || ''
@@ -529,3 +547,92 @@ function TurnoversTab({ allStats, players }) {
 
 const kth = { padding: '7px 8px', fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--text3)', textAlign: 'center', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
 const ktd = { padding: '8px 6px', verticalAlign: 'middle' }
+
+// ─── PUBLISH TAB ──────────────────────────────────────────────────────────────
+function PublishTab({ matchStatuses, setMatchStatuses, appUser, allStats }) {
+  const { isAdmin } = useAuth()
+  const [publishing, setPublishing] = useState(false)
+  const [status, setStatus] = useState(null)
+
+  const handlePublish = async (matchId) => {
+    setPublishing(matchId)
+    const { error } = await supabase.from('match_status').upsert(
+      { match_id: matchId, status: 'published', published_at: new Date().toISOString(), published_by: appUser?.name || 'coach' },
+      { onConflict: 'match_id' }
+    )
+    if (!error) {
+      setMatchStatuses(prev => ({ ...prev, [matchId]: { ...prev[matchId], status: 'published' } }))
+      setStatus({ type: 'success', message: `✓ ${matchId} published — notifying players...` })
+      try { await fetch('/api/notify-publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId }) }) } catch(e) {}
+    } else setStatus({ type: 'error', message: error.message })
+    setPublishing(null)
+  }
+
+  const handleUnpublish = async (matchId) => {
+    if (!isAdmin) { setStatus({ type: 'error', message: 'Only admin can unpublish' }); return }
+    const { error } = await supabase.from('match_status').upsert(
+      { match_id: matchId, status: 'draft', unpublished_at: new Date().toISOString(), unpublished_by: appUser?.name || 'admin' },
+      { onConflict: 'match_id' }
+    )
+    if (!error) {
+      setMatchStatuses(prev => ({ ...prev, [matchId]: { ...prev[matchId], status: 'draft' } }))
+      setStatus({ type: 'success', message: `${matchId} moved back to draft` })
+    }
+    setPublishing(null)
+  }
+
+  return (
+    <div className="fade-in">
+      <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>Match Publication Status</div>
+
+      {status && (
+        <div style={{ padding: '9px 13px', borderRadius: 8, marginBottom: 12, background: status.type === 'success' ? 'rgba(62,207,142,0.1)' : 'rgba(240,96,96,0.1)', border: `1px solid ${status.type === 'success' ? 'var(--teal)' : 'var(--red)'}`, color: status.type === 'success' ? 'var(--teal)' : 'var(--red)', fontSize: 13 }}>
+          {status.message}
+        </div>
+      )}
+
+      {MATCHES.map(m => {
+        const ms = matchStatuses[m]
+        const isPublished = ms?.status === 'published'
+        const playerCount = allStats.filter(r => r.match_id === m).length
+        return (
+          <div key={m} className="card" style={{ padding: 14, marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{m}</div>
+                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>{OPP[m]} · {playerCount} players</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: isPublished ? 'var(--teal)' : 'var(--gold)' }}>
+                  {isPublished ? '● Published' : '○ Draft'}
+                </div>
+                {isPublished && ms?.published_at && (
+                  <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>
+                    {new Date(ms.published_at).toLocaleDateString('en-IE', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {!isPublished && (
+                <button onClick={() => handlePublish(m)} disabled={publishing === m}
+                  style={{ flex: 1, padding: '10px', background: 'rgba(62,207,142,0.12)', border: '1px solid var(--teal)', borderRadius: 8, color: 'var(--teal)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
+                  {publishing === m ? 'Publishing...' : '↑ Publish & Notify Players'}
+                </button>
+              )}
+              {isPublished && isAdmin && (
+                <button onClick={() => handleUnpublish(m)} disabled={publishing === m}
+                  style={{ padding: '8px 16px', background: 'rgba(240,96,96,0.08)', border: '1px solid var(--red)', borderRadius: 8, color: 'var(--red)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
+                  Unpublish
+                </button>
+              )}
+              {isPublished && !isAdmin && (
+                <div style={{ fontSize: 11, color: 'var(--text3)', padding: '8px 0', fontStyle: 'italic' }}>Only admin can unpublish</div>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
