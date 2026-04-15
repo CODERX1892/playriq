@@ -94,9 +94,9 @@ export default function CoachDashboard() {
 
       {/* Tabs */}
       <div className="tabs" style={{ top: 61 }}>
-        {['squad', 'compare', 'match', 'entry'].map(t => (
+        {['squad', 'compare', 'match', 'kickouts', 'turnovers', 'entry'].map(t => (
           <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'entry' ? 'Enter Data' : t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'entry' ? 'Enter Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'Turnovers' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -114,6 +114,8 @@ export default function CoachDashboard() {
         {tab === 'match' && (
           <MatchViewTab allStats={allStats} players={players} matchView={matchView} setMatchView={setMatchView} />
         )}
+        {tab === 'kickouts' && <KickoutsTab allStats={allStats} players={players} />}
+        {tab === 'turnovers' && <TurnoversTab allStats={allStats} players={players} />}
         {tab === 'entry' && <DataEntry />}
       </div>
     </div>
@@ -400,3 +402,130 @@ function MatchViewTab({ allStats, players, matchView, setMatchView }) {
     </div>
   )
 }
+
+// ─── KICKOUTS TAB ─────────────────────────────────────────────────────────────
+function KickoutsTab({ allStats, players }) {
+  const [matchView, setMatchView] = useState('AFL 1')
+  const matchRows = allStats.filter(r => r.match_id === matchView && n(r.total_minutes) > 0)
+    .sort((a, b) => n(b.total_minutes) - n(a.total_minutes))
+  const getPos = (name) => players.find(p => p.name === name)?.position || ''
+  const sumRow = (field) => matchRows.reduce((s, r) => s + n(r[field]), 0)
+
+  return (
+    <div className="fade-in">
+      <div style={{ display: 'flex', gap: 7, marginBottom: 14, flexWrap: 'wrap' }}>
+        {MATCHES.map(m => (
+          <button key={m} onClick={() => setMatchView(m)} style={{ padding: '7px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${m === matchView ? 'var(--blue)' : 'var(--border)'}`, background: m === matchView ? 'rgba(74,158,255,0.12)' : 'var(--bg2)', color: m === matchView ? 'var(--blue)' : 'var(--text3)', fontFamily: 'Barlow, sans-serif' }}>
+            <div>{m}</div><div style={{ fontSize: 9, opacity: 0.7 }}>{OPP[m]}</div>
+          </button>
+        ))}
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 580 }}>
+          <thead>
+            <tr style={{ background: 'var(--bg3)' }}>
+              <th style={kth}>Player</th>
+              <th style={{ ...kth, color: 'var(--teal)', borderLeft: '2px solid var(--border)' }} colSpan={6}>Our Kickouts</th>
+              <th style={{ ...kth, color: 'var(--purple)', borderLeft: '2px solid var(--border)' }} colSpan={6}>Their Kickouts</th>
+            </tr>
+            <tr style={{ background: 'var(--bg3)' }}>
+              <th style={kth}></th>
+              {['P1','P2','P3','Break','C.Opp','C.Us'].map(l => (
+                <th key={l} style={{ ...kth, color: 'var(--teal)', borderLeft: '1px solid rgba(26,51,86,0.4)', fontWeight: 400 }}>{l}</th>
+              ))}
+              {['P1','P2','P3','Break','C.Opp','C.Us'].map(l => (
+                <th key={'t'+l} style={{ ...kth, color: 'var(--purple)', borderLeft: '1px solid rgba(26,51,86,0.4)', fontWeight: 400 }}>{l}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {matchRows.map((r, i) => {
+              const pos = getPos(r.player_name)
+              const pc = POS_COLORS[pos] || 'var(--text2)'
+              const ourF = ['won_clean_p1_our','won_clean_p2_our','won_clean_p3_our','won_break_our','our_ko_contest_opp','our_ko_contest_us']
+              const theirF = ['won_clean_p1_opp','won_clean_p2_opp','won_clean_p3_opp','won_break_opp','their_ko_contest_opp','their_ko_contest_us']
+              return (
+                <tr key={r.player_name} style={{ background: i % 2 === 0 ? 'var(--bg2)' : 'var(--bg3)', borderBottom: '1px solid rgba(26,51,86,0.2)' }}>
+                  <td style={{ ...ktd, minWidth: 130 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600 }}>{r.player_name}</div>
+                    <div style={{ fontSize: 9, color: pc }}>{pos} · {n(r.total_minutes)}min</div>
+                  </td>
+                  {ourF.map((f, j) => <td key={f} style={{ ...ktd, borderLeft: j===0?'2px solid var(--border)':'1px solid rgba(26,51,86,0.2)', color: n(r[f])>0?'var(--teal)':'var(--text3)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, textAlign: 'center' }}>{n(r[f])>0?n(r[f]):'—'}</td>)}
+                  {theirF.map((f, j) => <td key={f} style={{ ...ktd, borderLeft: j===0?'2px solid var(--border)':'1px solid rgba(26,51,86,0.2)', color: n(r[f])>0?'var(--purple)':'var(--text3)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, textAlign: 'center' }}>{n(r[f])>0?n(r[f]):'—'}</td>)}
+                </tr>
+              )
+            })}
+            <tr style={{ background: 'var(--bg4)', borderTop: '2px solid var(--border)' }}>
+              <td style={{ ...ktd, fontWeight: 700, color: 'var(--text2)', fontSize: 11 }}>TOTAL</td>
+              {['won_clean_p1_our','won_clean_p2_our','won_clean_p3_our','won_break_our','our_ko_contest_opp','our_ko_contest_us'].map((f,j) => <td key={f} style={{ ...ktd, borderLeft: j===0?'2px solid var(--border)':'1px solid rgba(26,51,86,0.2)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 800, textAlign: 'center', color: 'var(--teal)' }}>{sumRow(f)||'—'}</td>)}
+              {['won_clean_p1_opp','won_clean_p2_opp','won_clean_p3_opp','won_break_opp','their_ko_contest_opp','their_ko_contest_us'].map((f,j) => <td key={f} style={{ ...ktd, borderLeft: j===0?'2px solid var(--border)':'1px solid rgba(26,51,86,0.2)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 800, textAlign: 'center', color: 'var(--purple)' }}>{sumRow(f)||'—'}</td>)}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ─── TURNOVERS TAB ────────────────────────────────────────────────────────────
+function TurnoversTab({ allStats, players }) {
+  const [matchView, setMatchView] = useState('AFL 1')
+  const matchRows = allStats.filter(r => r.match_id === matchView && n(r.total_minutes) > 0)
+    .sort((a, b) => n(b.total_minutes) - n(a.total_minutes))
+  const getPos = (name) => players.find(p => p.name === name)?.position || ''
+  const sumRow = (field) => matchRows.reduce((s, r) => s + n(r[field]), 0)
+
+  return (
+    <div className="fade-in">
+      <div style={{ display: 'flex', gap: 7, marginBottom: 14, flexWrap: 'wrap' }}>
+        {MATCHES.map(m => (
+          <button key={m} onClick={() => setMatchView(m)} style={{ padding: '7px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${m === matchView ? 'var(--blue)' : 'var(--border)'}`, background: m === matchView ? 'rgba(74,158,255,0.12)' : 'var(--bg2)', color: m === matchView ? 'var(--blue)' : 'var(--text3)', fontFamily: 'Barlow, sans-serif' }}>
+            <div>{m}</div><div style={{ fontSize: 9, opacity: 0.7 }}>{OPP[m]}</div>
+          </button>
+        ))}
+      </div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 640 }}>
+          <thead>
+            <tr style={{ background: 'var(--bg3)' }}>
+              <th style={kth}>Player</th>
+              <th style={{ ...kth, color: 'var(--teal)', borderLeft: '2px solid var(--border)' }} colSpan={3}>Turnovers Won</th>
+              <th style={{ ...kth, color: 'var(--red)', borderLeft: '2px solid var(--border)' }} colSpan={7}>Turnovers Lost</th>
+            </tr>
+            <tr style={{ background: 'var(--bg3)' }}>
+              <th style={kth}></th>
+              {['Tackles','Forced TO','Kickaway TO'].map(l => <th key={l} style={{ ...kth, color: 'var(--teal)', borderLeft: '1px solid rgba(26,51,86,0.4)', fontWeight: 400 }}>{l}</th>)}
+              {['Contact','Skill Err','Kicked Away','Drop Shts','1pt DS','2pt DS','Goal DS'].map(l => <th key={l} style={{ ...kth, color: 'var(--red)', borderLeft: '1px solid rgba(26,51,86,0.4)', fontWeight: 400 }}>{l}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {matchRows.map((r, i) => {
+              const pos = getPos(r.player_name)
+              const pc = POS_COLORS[pos] || 'var(--text2)'
+              const wonF = ['tackles','forced_to_win','kickaway_to_received']
+              const lostF = ['turnovers_in_contact','turnover_skill_error','turnovers_kicked_away','drop_shorts','one_pointer_drop_short_block','two_pointer_drop_short_block','goal_drop_short_block']
+              return (
+                <tr key={r.player_name} style={{ background: i % 2 === 0 ? 'var(--bg2)' : 'var(--bg3)', borderBottom: '1px solid rgba(26,51,86,0.2)' }}>
+                  <td style={{ ...ktd, minWidth: 130 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600 }}>{r.player_name}</div>
+                    <div style={{ fontSize: 9, color: pc }}>{pos} · {n(r.total_minutes)}min</div>
+                  </td>
+                  {wonF.map((f, j) => <td key={f} style={{ ...ktd, borderLeft: j===0?'2px solid var(--border)':'1px solid rgba(26,51,86,0.2)', color: n(r[f])>0?'var(--teal)':'var(--text3)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, textAlign: 'center' }}>{n(r[f])>0?n(r[f]):'—'}</td>)}
+                  {lostF.map((f, j) => <td key={f} style={{ ...ktd, borderLeft: j===0?'2px solid var(--border)':'1px solid rgba(26,51,86,0.2)', color: n(r[f])>0?'var(--red)':'var(--text3)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, textAlign: 'center' }}>{n(r[f])>0?n(r[f]):'—'}</td>)}
+                </tr>
+              )
+            })}
+            <tr style={{ background: 'var(--bg4)', borderTop: '2px solid var(--border)' }}>
+              <td style={{ ...ktd, fontWeight: 700, color: 'var(--text2)', fontSize: 11 }}>TOTAL</td>
+              {['tackles','forced_to_win','kickaway_to_received'].map((f,j) => <td key={f} style={{ ...ktd, borderLeft: j===0?'2px solid var(--border)':'1px solid rgba(26,51,86,0.2)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 800, textAlign: 'center', color: 'var(--teal)' }}>{sumRow(f)||'—'}</td>)}
+              {['turnovers_in_contact','turnover_skill_error','turnovers_kicked_away','drop_shorts','one_pointer_drop_short_block','two_pointer_drop_short_block','goal_drop_short_block'].map((f,j) => <td key={f} style={{ ...ktd, borderLeft: j===0?'2px solid var(--border)':'1px solid rgba(26,51,86,0.2)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 800, textAlign: 'center', color: 'var(--red)' }}>{sumRow(f)||'—'}</td>)}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+const kth = { padding: '7px 8px', fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--text3)', textAlign: 'center', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
+const ktd = { padding: '8px 6px', verticalAlign: 'middle' }
