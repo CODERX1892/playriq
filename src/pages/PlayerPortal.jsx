@@ -265,10 +265,16 @@ function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
   const as1 = sf(rows, 'assists_shots'), ag2 = sf(rows, 'assists_goals'), a2pt = sf(rows, 'assists_2pt')
 
   const rings = [
-    { label: '1-Point', scored: p1s + f1s, att: p1a + f1a, color: '#f0b429' },
-    { label: '2-Point', scored: p2s + f2s, att: p2a + f2a, color: '#a78bfa' },
-    { label: 'Goals', scored: gs + fgs, att: ga + fga, color: '#3ecf8e' },
+    { label: '1-Point', scored: p1s, att: p1a, color: '#f0b429', target: 70 },
+    { label: '2-Point', scored: p2s, att: p2a, color: '#a78bfa', target: 45 },
+    { label: 'Goals', scored: gs, att: ga, color: '#3ecf8e', target: 75 },
   ]
+  const freeRings = [
+    { label: '1-Point Free', scored: f1s, att: f1a, color: '#f0b429', target: 70 },
+    { label: '2-Point Free', scored: f2s, att: f2a, color: '#a78bfa', target: 45 },
+    { label: 'Goal Free', scored: fgs, att: fga, color: '#3ecf8e', target: 75 },
+  ].filter(r => r.att > 0)
+  const hasFrees = f1a + f2a + fga > 0
 
   return (
     <div className="fade-in">
@@ -299,6 +305,25 @@ function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
         })}
       </div>
 
+      {hasFrees && (
+        <div style={{marginBottom:13}}>
+          <div style={{fontSize:10,color:'var(--text3)',letterSpacing:1.5,textTransform:'uppercase',marginBottom:6}}>From Frees</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat('+freeRings.length+',1fr)',gap:9}}>
+            {freeRings.map((r,i) => {
+              const p2 = r.att > 0 ? Math.round((r.scored/r.att)*100) : 0
+              const rc = p2 >= r.target ? 'var(--teal)' : p2 >= r.target*0.8 ? r.color : 'var(--red)'
+              return (
+                <div key={i} style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:11,padding:'14px 8px',textAlign:'center'}}>
+                  <div style={{fontSize:10,color:'var(--text3)',marginBottom:6}}>{r.label}</div>
+                  <RingChart value={p2} color={rc} id={"fr"+i} />
+                  <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:20,fontWeight:800,color:rc,marginTop:4}}>{p2}%</div>
+                  <div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>{r.scored}/{r.att}</div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
       {/* Shooting table from play */}
       <ShootTable title="Shooting — From Play" badge={`${mc} games`}
         rows={[['1-Pointer', p1a, p1s, p1w, p1ds], ['2-Pointer', p2a, p2s, p2w, p2ds], ['Goal', ga, gs, gw, gds]]} />
