@@ -481,6 +481,37 @@ function MatchesTab({ stats }) {
 }
 
 // ─── SHARED COMPONENTS ───────────────────────────────────────────────────────
+function buildMatchGrid(title, color, fields, allStats) {
+  const hasAny = fields.some(([field]) => allStats.some(r => n(r[field]) > 0))
+  if (!hasAny) return ''
+  const MATCH_LABELS = ['AFL 1','AFL 2','AFL 3','AFL 4']
+  let h = '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:11px">'
+  h += '<div style="background:var(--bg3);padding:8px 14px;border-bottom:1px solid var(--border);font-family:Barlow Condensed,sans-serif;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:' + color + '">' + title + '</div>'
+  // Header row
+  h += '<div style="display:grid;grid-template-columns:1fr 44px 44px 44px 44px 52px;gap:3px;padding:5px 14px 3px;border-bottom:1px solid rgba(26,51,86,0.3)">'
+  h += '<div style="font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">Metric</div>'
+  MATCH_LABELS.forEach(function(m) { h += '<div style="font-size:10px;color:var(--text2);text-align:center;font-weight:700">' + m.replace('AFL ','G') + '</div>' })
+  h += '<div style="font-size:9px;color:var(--text3);text-align:center;letter-spacing:1px;text-transform:uppercase">Total</div>'
+  h += '</div>'
+  // Data rows
+  fields.forEach(function(pair) {
+    var field = pair[0], label = pair[1]
+    var vals = MATCH_LABELS.map(function(m) { var r = allStats.find(function(s) { return s.match_id === m }); return r ? n(r[field]) : null })
+    var total = vals.reduce(function(s, v) { return s + (v || 0) }, 0)
+    if (total === 0) return
+    h += '<div style="display:grid;grid-template-columns:1fr 44px 44px 44px 44px 52px;gap:3px;padding:6px 14px;border-top:1px solid rgba(26,51,86,0.2);align-items:center">'
+    h += '<div style="font-size:12px;color:var(--text2)">' + label + '</div>'
+    vals.forEach(function(v) {
+      var c = v > 0 ? color : v === null ? 'rgba(26,51,86,0.3)' : 'var(--text3)'
+      h += '<div style="font-family:Barlow Condensed,sans-serif;font-size:16px;font-weight:700;text-align:center;color:' + c + '">' + (v === null ? '·' : v > 0 ? v : '—') + '</div>'
+    })
+    h += '<div style="font-family:Barlow Condensed,sans-serif;font-size:17px;font-weight:800;text-align:center;color:' + (total > 0 ? color : 'var(--text3)') + '">' + (total > 0 ? total : '—') + '</div>'
+    h += '</div>'
+  })
+  h += '</div>'
+  return h
+}
+
 function MatchFilterPills({ matchFilter, setMatchFilter }) {
   return (
     <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 5, marginBottom: 12, scrollbarWidth: 'none' }}>
