@@ -476,16 +476,33 @@ Keep it under 350 words. Be direct. This is a performance review not a pep talk.
     </div>
   )
 }    // Calculate shooting stats - from play only for volume, separate free accuracy
-    const fromPlayAtt = stats.reduce((s,r) => s + n(r.one_pointer_attempts) + n(r.two_pointer_attempts) + n(r.goal_attempts), 0)
-    const fromPlayScored = stats.reduce((s,r) => s + n(r.one_pointer_scored) + n(r.two_pointer_scored) + n(r.goals_scored), 0)
+    // Shot type breakdowns — from play only
+    const onePtScored = stats.reduce((s,r) => s + n(r.one_pointer_scored), 0)
+    const onePtAtt = stats.reduce((s,r) => s + n(r.one_pointer_scored) + n(r.one_pointer_wide) + n(r.one_pointer_drop_short_block), 0)
+    const onePtPct = onePtAtt > 0 ? Math.round((onePtScored / onePtAtt) * 100) : 0
+    const onePtTarget = 70 // team target %
+
+    const twoPtScored = stats.reduce((s,r) => s + n(r.two_pointer_scored), 0)
+    const twoPtAtt = stats.reduce((s,r) => s + n(r.two_pointer_scored) + n(r.two_pointer_wide) + n(r.two_pointer_drop_short_block), 0)
+    const twoPtPct = twoPtAtt > 0 ? Math.round((twoPtScored / twoPtAtt) * 100) : 0
+    const twoPtTarget = 45 // team target %
+
+    const goalScored = stats.reduce((s,r) => s + n(r.goals_scored), 0)
+    const goalAtt = stats.reduce((s,r) => s + n(r.goals_scored) + n(r.goals_wide) + n(r.goal_drop_short_block), 0)
+    const goalPct = goalAtt > 0 ? Math.round((goalScored / goalAtt) * 100) : 0
+    const goalTarget = 75 // team target %
+
+    const fromPlayAtt = onePtAtt + twoPtAtt + goalAtt
+    const fromPlayScored = onePtScored + twoPtScored + goalScored
     const fromPlayPct = fromPlayAtt > 0 ? Math.round((fromPlayScored / fromPlayAtt) * 100) : 0
     const fromPlayAttPerGame = r1(fromPlayAtt / mc)
+
     const fromFreeAtt = stats.reduce((s,r) => s + n(r.one_pointer_attempts_f) + n(r.two_pointer_attempts_f) + n(r.goal_attempts_f), 0)
     const fromFreeScored = stats.reduce((s,r) => s + n(r.one_pointer_scored_f) + n(r.two_pointer_scored_f) + n(r.goals_scored_f), 0)
     const fromFreePct = fromFreeAtt > 0 ? Math.round((fromFreeScored / fromFreeAtt) * 100) : 0
-    const goalsPerGame = r1(stats.reduce((s,r) => s + n(r.goals_scored), 0) / mc)
-    const twosPtPerGame = r1(stats.reduce((s,r) => s + n(r.two_pointer_scored), 0) / mc)
-    const onePtPerGame = r1(stats.reduce((s,r) => s + n(r.one_pointer_scored), 0) / mc)
+    const goalsPerGame = r1(goalScored / mc)
+    const twosPtPerGame = r1(twoPtScored / mc)
+    const onePtPerGame = r1(onePtScored / mc)
     const assistsPerGame = r1(stats.reduce((s,r) => s + n(r.assists_shots) + n(r.assists_goals), 0) / mc)
     const carriesPerGame = r1(stats.reduce((s,r) => s + n(r.carries), 0) / mc)
     const simplePassPerGame = r1(stats.reduce((s,r) => s + n(r.simple_pass), 0) / mc)
@@ -500,21 +517,25 @@ Keep it under 350 words. Be direct. This is a performance review not a pep talk.
 
     const prompt = \`You are PlayrIQ Edge, a performance analyst for GAA football. Write a constructive, player-facing performance analysis based on data from \${mc} games. 
 
-Your tone must be:
-- Specific and data-driven — reference actual numbers
-- Constructive — frame everything as actionable improvements, never as failures or criticism
-- Balanced — acknowledge what is working before addressing what needs work
-- Professional — never describe any game as a disaster, never use words like "unacceptable", "passenger", "poor"
-- Realistic — \${mc} games is a small sample, acknowledge this where relevant
+CRITICAL TONE RULES — you must follow these exactly:
+- NEVER use words like: unacceptable, passenger, poor, disaster, concerning, worrying, critically, nowhere near
+- ALWAYS lead with what the player does well — if their accuracy is high, say that first and positively
+- If a player has high accuracy but lower volume, frame it as: "When you get shots away you convert well — the opportunity is to get more attempts"
+- DO NOT hammer a player on volume if their accuracy is elite — high accuracy is a strength, not a footnote
+- Frame ALL work-ons as: "To develop X, focus on Y" — never as failure statements  
+- Small sample size (\${mc} games) — acknowledge uncertainty, avoid sweeping conclusions
+- This analysis is read directly by the player — it must motivate and direct, not discourage
 
 PLAYER: \${player.name}
 ROLE: \${role}
 GAMES: \${mc} (\${matchData.map(m=>m.match).join(', ')})
 
-ATTACK (from play only — do not use frees for shot volume):
-- Shot attempts from play: \${fromPlayAttPerGame}/game | 1-pointers: \${onePtPerGame}/game | 2-pointers: \${twosPtPerGame}/game | Goals: \${goalsPerGame}/game
-- Shot accuracy from play: \${fromPlayPct}%
-\${fromFreeAtt > 0 ? \`- Free taking: \${fromFreeScored} from \${fromFreeAtt} attempts (\${fromFreePct}% accuracy)\` : '- No frees taken'}
+ATTACK (from play only — frees excluded from volume):
+- Total shot attempts from play: \${fromPlayAttPerGame}/game
+- 1-point shots: \${onePtAtt} attempts, \${onePtScored} scored, \${onePtPct}% accuracy (team target: \${onePtTarget}%) — \${onePtAtt > 0 ? (onePtPct >= onePtTarget ? 'ABOVE TARGET' : 'below target') : 'no attempts'}
+- 2-point shots: \${twoPtAtt} attempts, \${twoPtScored} scored, \${twoPtPct}% accuracy (team target: \${twoPtTarget}%) — \${twoPtAtt > 0 ? (twoPtPct >= twoPtTarget ? 'ABOVE TARGET' : 'below target') : 'no attempts'}
+- Goal attempts: \${goalAtt} attempts, \${goalScored} scored, \${goalPct}% accuracy (team target: \${goalTarget}%) — \${goalAtt > 0 ? (goalPct >= goalTarget ? 'ABOVE TARGET' : 'below target') : 'no attempts'}
+\${fromFreeAtt > 0 ? \`- Free taking: \${fromFreeScored} from \${fromFreeAtt} attempts (\${fromFreePct}%)\` : '- No frees taken'}
 - Assists per game: \${assistsPerGame}
 
 POSSESSION & TRANSITION:
@@ -539,7 +560,7 @@ DEFENSIVE WORKRATE:
 Write the analysis in these THREE sections with plain headers (no ## markdown):
 
 ATTACK
-\${isBack ? 'Focus on ball-winning, distribution and any scoring contribution. Shooting stats are less relevant for this role.' : 'Cover shot volume from play (include 1pt, 2pt AND goals), accuracy, free taking separately, assists. If accuracy is strong but volume is low, frame the opportunity positively.'}
+\${isBack ? 'Focus on ball-winning, distribution and any scoring contribution. Do not analyse shot volume for backs.' : \`Cover shooting from play (1pt, 2pt AND goals combined). IMPORTANT: Check accuracy per shot type against targets (1pt target=\${onePtTarget}%, 2pt target=\${twoPtTarget}%, goal target=\${goalTarget}%). If ANY shot type is above its target, open with that as a genuine strength. Never criticise accuracy that is at or above target. Only then mention volume as an opportunity. Free taking accuracy reported separately. Include assists.\`}
 
 TRANSITION
 Cover possession skills (passes, carries, receives) and turnover patterns. If turnovers occurred, name the type (drop short/kickaway/contact) and which games. Frame as specific technique areas to sharpen. Acknowledge what is clean.
