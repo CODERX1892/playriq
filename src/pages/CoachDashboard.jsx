@@ -630,122 +630,182 @@ function fmt(val, key) {
   return typeof val === 'number' && val < 2 && val > 0 ? Math.round(val * 100) + '%' : val
 }
 
+// Trend table KPIs — rows shown across all games
+const TREND_ROWS = [
+  { key: 'possessions',          label: 'Possessions',      format: v => v,                          target: 40,    higher: true  },
+  { key: 'possession_pct',       label: 'Poss → Atk %',     format: v => Math.round(v*100)+'%',      target: 0.9,   higher: true  },
+  { key: 'attack_pct',           label: 'Atk → Shot %',     format: v => Math.round(v*100)+'%',      target: 0.75,  higher: true  },
+  { key: 'shot_pct',             label: 'Shot → Score %',   format: v => Math.round(v*100)+'%',      target: 0.65,  higher: true  },
+  { key: 'overall_shot_pct',     label: 'Overall Shot %',   format: v => Math.round(v*100)+'%',      target: 0.543, higher: true  },
+  { key: 'shots_from_play',      label: 'Play Shots',       format: v => v,                          target: null              },
+  { key: 'pct_from_play',        label: 'Play Conv %',      format: v => Math.round(v*100)+'%',      target: null              },
+  { key: 'shots_from_frees',     label: 'Free Shots',       format: v => v,                          target: null              },
+  { key: 'pct_from_frees',       label: 'Free Conv %',      format: v => Math.round(v*100)+'%',      target: null              },
+  { key: 'ko_overall_win_pct',   label: 'KO Win %',         format: v => Math.round(v*100)+'%',      target: 0.66,  higher: true  },
+  { key: 'ko_won',               label: 'KOs Won',          format: v => v,                          target: null              },
+  { key: 'ko_lost',              label: 'KOs Lost',         format: v => v,                          target: null              },
+  { key: 'turnovers_forced',     label: 'TOs Won (F)',      format: v => v,                          target: null              },
+  { key: 'turnovers_unforced',   label: 'TOs Won (U)',      format: v => v,                          target: null              },
+  { key: 'turnovers_lost_forced',   label: 'TOs Lost (F)', format: v => v,                          target: null,  higher: false },
+  { key: 'turnovers_lost_unforced', label: 'TOs Lost (U)', format: v => v,                          target: null,  higher: false },
+  { key: 'tackles',              label: 'Tackles',          format: v => v,                          target: 50,    higher: true  },
+]
+
+function trendColor(row, val) {
+  if (val == null || row.target == null) return null
+  return row.higher ? (val >= row.target ? 'var(--teal)' : 'var(--red)') : (val <= row.target ? 'var(--teal)' : 'var(--red)')
+}
+
 function TeamStatsTab({ teamStats }) {
-  const [matchView, setMatchView] = useState(MATCHES[0])
+  const [view, setView] = useState('trend') // 'trend' | match_id
+  const gamesWithData = MATCHES.filter(m => teamStats.some(r => r.match_id === m && r.team === 'us'))
 
-  const us = teamStats.find(r => r.match_id === matchView && r.team === 'us')
-  const them = teamStats.find(r => r.match_id === matchView && r.team === 'them')
-  const hasData = !!us
+  // ── GAME DETAIL VIEW ──────────────────────────────────────────────────────
+  if (view !== 'trend') {
+    const matchId = view
+    const us = teamStats.find(r => r.match_id === matchId && r.team === 'us')
+    const them = teamStats.find(r => r.match_id === matchId && r.team === 'them')
+    return (
+      <div className="fade-in">
+        <button onClick={() => setView('trend')}
+          style={{ background: 'none', border: 'none', color: 'var(--blue)', fontSize: 12, cursor: 'pointer', fontFamily: 'Barlow, sans-serif', marginBottom: 14, padding: 0 }}>
+          ← Back to Trends
+        </button>
 
-  return (
-    <div className="fade-in">
-      {/* Match selector */}
-      <div style={{ display: 'flex', gap: 7, marginBottom: 14, flexWrap: 'wrap' }}>
-        {MATCHES.map(m => {
-          const hasMatchData = teamStats.some(r => r.match_id === m)
-          return (
-            <button key={m} onClick={() => setMatchView(m)}
-              style={{ padding: '7px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                border: `1px solid ${m === matchView ? 'var(--blue)' : 'var(--border)'}`,
-                background: m === matchView ? 'rgba(74,158,255,0.12)' : 'var(--bg2)',
-                color: m === matchView ? 'var(--blue)' : hasMatchData ? 'var(--text2)' : 'var(--text3)',
-                fontFamily: 'Barlow, sans-serif', opacity: hasMatchData ? 1 : 0.5 }}>
-              <div>{m}</div>
-              <div style={{ fontSize: 9, opacity: 0.7 }}>{OPP[m]}</div>
-            </button>
-          )
-        })}
-      </div>
-
-      {!hasData ? (
-        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text3)' }}>
-          <div style={{ fontSize: 24, marginBottom: 8 }}>📊</div>
-          <div style={{ fontSize: 14 }}>No team data for {matchView} yet</div>
-          <div style={{ fontSize: 12, marginTop: 6 }}>Add data via the Excel upload process</div>
-        </div>
-      ) : (
-        <>
-          {/* Score header */}
-          <div style={{ background: 'linear-gradient(135deg,#0a1628,#0d1f3c)', border: '1px solid var(--border)', borderRadius: 13, padding: '14px 16px', marginBottom: 14 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 10 }}>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--teal)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Ballyboden</div>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 32, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>
-                  {us?.scores != null ? us.scores : '—'}
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{us?.possessions} poss · {us?.shots} shots</div>
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 700 }}>v</div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 11, color: 'var(--red)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>{OPP[matchView]}</div>
-                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 32, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>
-                  {them?.scores != null ? them.scores : '—'}
-                </div>
-                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{them?.possessions} poss · {them?.shots} shots</div>
-              </div>
+        {/* Score header */}
+        <div style={{ background: 'linear-gradient(135deg,#0a1628,#0d1f3c)', border: '1px solid var(--border)', borderRadius: 13, padding: '14px 16px', marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 10 }}>
+            <div>
+              <div style={{ fontSize: 11, color: 'var(--teal)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Ballyboden</div>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 32, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{us?.scores ?? '—'}</div>
+              <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{us?.possessions} poss · {us?.shots} shots</div>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 700 }}>v</div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: 11, color: 'var(--red)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>{OPP[matchId]}</div>
+              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 32, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{them?.scores ?? '—'}</div>
+              <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{them?.possessions} poss · {them?.shots} shots</div>
             </div>
           </div>
+        </div>
 
-          {/* KPI target summary */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
-            {Object.entries(TARGETS).filter(([k]) => us?.[k] != null).slice(0, 6).map(([key, info]) => {
-              const val = us[key]
-              const color = trafficLight(key, val, info)
-              return (
-                <div key={key} style={{ background: 'var(--bg2)', border: `1px solid ${color || 'var(--border)'}`, borderRadius: 10, padding: '10px 12px' }}>
-                  <div style={{ fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{info.label}</div>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color: color || 'var(--text)' }}>
-                    {info.format(val)}
-                  </div>
-                  {info.target != null && (
-                    <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2 }}>
-                      Target: {info.format(info.target)}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Section tables */}
-          {SECTIONS.map(section => {
-            const rows = section.rows.filter(r => us?.[r.key] != null || them?.[r.key] != null)
-            if (!rows.length) return null
+        {/* KPI tiles */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+          {Object.entries(TARGETS).filter(([k]) => us?.[k] != null).map(([key, info]) => {
+            const val = us[key]
+            const color = trafficLight(key, val, info)
             return (
-              <div key={section.label} className="card" style={{ overflow: 'hidden', marginBottom: 12 }}>
-                <div className="card-header">
-                  <span style={{ color: section.color }}>{section.label}</span>
-                  <div style={{ display: 'grid', gridTemplateColumns: '60px 60px', gap: 4, textAlign: 'center' }}>
-                    <span style={{ fontSize: 9, color: 'var(--teal)' }}>BODEN</span>
-                    <span style={{ fontSize: 9, color: 'var(--red)' }}>{OPP[matchView]?.split(' ')[0]?.toUpperCase()}</span>
-                  </div>
-                </div>
-                {rows.map((row, i) => {
-                  const usVal = us?.[row.key]
-                  const themVal = them?.[row.key]
-                  const targetInfo = TARGETS[row.key]
-                  const usColor = trafficLight(row.key, usVal, targetInfo) || section.color
-                  const displayFn = row.format || (v => v != null ? v : '—')
-                  return (
-                    <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '1fr 60px 60px', alignItems: 'center', padding: '8px 14px', borderTop: i === 0 ? 'none' : '1px solid rgba(26,51,86,0.25)' }}>
-                      <div style={{ fontSize: 12, color: 'var(--text2)' }}>{row.label}</div>
-                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, textAlign: 'center', color: usColor }}>
-                        {usVal != null ? displayFn(usVal) : '—'}
-                      </div>
-                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, textAlign: 'center', color: 'var(--text3)' }}>
-                        {themVal != null ? displayFn(themVal) : '—'}
-                      </div>
-                    </div>
-                  )
-                })}
+              <div key={key} style={{ background: 'var(--bg2)', border: `1px solid ${color || 'var(--border)'}`, borderRadius: 10, padding: '10px 12px' }}>
+                <div style={{ fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{info.label}</div>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color: color || 'var(--text)' }}>{info.format(val)}</div>
+                {info.target != null && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2 }}>Target: {info.format(info.target)}</div>}
               </div>
             )
           })}
-        </>
+        </div>
+
+        {/* Section tables */}
+        {SECTIONS.map(section => {
+          const rows = section.rows.filter(r => us?.[r.key] != null || them?.[r.key] != null)
+          if (!rows.length) return null
+          return (
+            <div key={section.label} className="card" style={{ overflow: 'hidden', marginBottom: 12 }}>
+              <div className="card-header">
+                <span style={{ color: section.color }}>{section.label}</span>
+                <div style={{ display: 'grid', gridTemplateColumns: '60px 60px', gap: 4, textAlign: 'center' }}>
+                  <span style={{ fontSize: 9, color: 'var(--teal)' }}>BODEN</span>
+                  <span style={{ fontSize: 9, color: 'var(--red)' }}>{OPP[matchId]?.split(' ')[0]?.toUpperCase()}</span>
+                </div>
+              </div>
+              {rows.map((row, i) => {
+                const usVal = us?.[row.key]
+                const themVal = them?.[row.key]
+                const targetInfo = TARGETS[row.key]
+                const usColor = trafficLight(row.key, usVal, targetInfo) || section.color
+                const displayFn = row.format || (v => v != null ? v : '—')
+                return (
+                  <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '1fr 60px 60px', alignItems: 'center', padding: '8px 14px', borderTop: i === 0 ? 'none' : '1px solid rgba(26,51,86,0.25)' }}>
+                    <div style={{ fontSize: 12, color: 'var(--text2)' }}>{row.label}</div>
+                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, textAlign: 'center', color: usColor }}>{usVal != null ? displayFn(usVal) : '—'}</div>
+                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, textAlign: 'center', color: 'var(--text3)' }}>{themVal != null ? displayFn(themVal) : '—'}</div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // ── TREND TABLE VIEW ──────────────────────────────────────────────────────
+  return (
+    <div className="fade-in">
+      <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>
+        Season Trends — tap a game for full detail
+      </div>
+
+      {gamesWithData.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text3)' }}>
+          <div style={{ fontSize: 24, marginBottom: 8 }}>📊</div>
+          <div style={{ fontSize: 14 }}>No team data yet</div>
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ borderCollapse: 'collapse', minWidth: 'max-content', width: '100%' }}>
+            <thead>
+              <tr style={{ background: 'var(--bg3)' }}>
+                <th style={{ ...tth, minWidth: 130, position: 'sticky', left: 0, background: 'var(--bg3)', zIndex: 2, textAlign: 'left' }}>KPI</th>
+                <th style={{ ...tth, color: 'var(--text3)', borderLeft: '1px solid var(--border)', minWidth: 55 }}>Target</th>
+                {gamesWithData.map(m => (
+                  <th key={m} style={{ ...tth, borderLeft: '1px solid var(--border)', minWidth: 60, cursor: 'pointer', color: 'var(--blue)' }}
+                    onClick={() => setView(m)}>
+                    <div>{m.replace('AFL ', 'G')}</div>
+                    <div style={{ fontSize: 8, fontWeight: 400, color: 'var(--text3)', marginTop: 2 }}>{OPP[m]?.split(' ')[0]}</div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {TREND_ROWS.map((row, ri) => {
+                const vals = gamesWithData.map(m => {
+                  const us = teamStats.find(r => r.match_id === m && r.team === 'us')
+                  return us?.[row.key] ?? null
+                })
+                const hasAny = vals.some(v => v != null)
+                if (!hasAny) return null
+                return (
+                  <tr key={row.key} style={{ background: ri % 2 === 0 ? 'var(--bg2)' : 'var(--bg3)', borderBottom: '1px solid rgba(26,51,86,0.2)' }}>
+                    <td style={{ ...ttd, position: 'sticky', left: 0, background: ri % 2 === 0 ? 'var(--bg2)' : 'var(--bg3)', zIndex: 1, fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>
+                      {row.label}
+                    </td>
+                    <td style={{ ...ttd, borderLeft: '1px solid var(--border)', textAlign: 'center', fontSize: 11, color: 'var(--text3)' }}>
+                      {row.target != null ? row.format(row.target) : '—'}
+                    </td>
+                    {vals.map((val, vi) => {
+                      const color = trendColor(row, val)
+                      return (
+                        <td key={vi} style={{ ...ttd, borderLeft: '1px solid rgba(26,51,86,0.3)', textAlign: 'center',
+                          fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700,
+                          color: color || 'var(--text2)',
+                          background: color === 'var(--teal)' ? 'rgba(62,207,142,0.07)' : color === 'var(--red)' ? 'rgba(240,96,96,0.07)' : '' }}>
+                          {val != null ? row.format(val) : '—'}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   )
 }
+
+const tth = { padding: '7px 10px', fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--text2)', textAlign: 'center', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
+const ttd = { padding: '7px 10px', verticalAlign: 'middle', whiteSpace: 'nowrap' }
 
 const kth = { padding: '7px 8px', fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--text3)', textAlign: 'center', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' }
 const ktd = { padding: '8px 6px', verticalAlign: 'middle' }
