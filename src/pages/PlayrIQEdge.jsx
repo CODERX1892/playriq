@@ -62,6 +62,35 @@ const DYNAMIC_BENCHMARKS = {
   },
 }
 
+
+const METRIC_LABELS = {
+  one_pointer_attempts: '1pt Attempts per game',
+  two_pointer_attempts: '2pt Attempts per game',
+  pts: 'Points per game',
+  drop_shorts: 'Drop Shorts per game',
+  duels_contested: 'Duels Contested per game',
+  defensive_duels_won: 'Duels Won per game',
+  tackles: 'Tackles per game',
+  forced_to_win: 'Forced TOs Won per game',
+  kickaway_to_received: 'Kickaway TOs Won per game',
+  turnovers_in_contact: 'TOs in Contact per game',
+  turnovers_kicked_away: 'Kickaway TOs Lost per game',
+  turnover_skill_error: 'Skill Errors per game',
+  simple_pass: 'Simple Passes per game',
+  advance_pass: 'Advance Passes per game',
+  carries: 'Carries per game',
+  assists_shots: 'Shot Assists per game',
+  dne: 'DNE per game',
+  breach_1v1: 'Breach 1v1 per game',
+  shot_free_conceded: 'Shot Frees Conceded per game',
+  won_clean_p1_our: 'Kickout Wins P1 per game',
+  won_clean_p2_our: 'Kickout Wins P2 per game',
+  won_clean_p3_our: 'Kickout Wins P3 per game',
+  won_break_our: 'Kickout Breaks Won per game',
+  shots_saved: 'Shots Saved per game',
+  ko_target_lost_clean: 'Kickout Losses per game',
+}
+
 const ROLE_BENCHMARKS = {
   "Inside Forward": {
     description: "Primary scoring threat. Expected to shoot, win possession in scoring zones, work hard on turnovers.",
@@ -275,7 +304,7 @@ GAMES ANALYSED: ${mc} (${matchData.map(m=>m.match).join(', ')})
 
 PERFORMANCE AVERAGES PER GAME:
 ${Object.entries(metricScores).map(([metric, data]) => 
-  `${data.bench.label}: ${data.avg} [${data.status.toUpperCase()}${data.gap ? ' — ' + data.gap : ''}]`
+  `${metric.replace(/_/g,' ')}: ${data.avg}/game [${data.status.toUpperCase()}${data.gap ? ' — ' + data.gap : ''}] (${data.bench.zero_target ? 'target zero' : data.bench.lower_is_better ? 'target ≤'+data.bench.warning : 'target '+data.bench.good+'+'})`
 ).join('\n')}
 
 MATCH-BY-MATCH TURNOVER/DROP SHORT PATTERNS:
@@ -296,9 +325,14 @@ Keep it under 350 words. Be direct. This is a performance review not a pep talk.
     try {
       const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+            'Content-Type': 'application/json',
+            'x-api-key': import.meta.env.VITE_ANTHROPIC_KEY || '',
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true',
+          },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-5',
           max_tokens: 1000,
           messages: [{ role: 'user', content: prompt }]
         })
@@ -353,7 +387,10 @@ Keep it under 350 words. Be direct. This is a performance review not a pep talk.
           return (
             <div key={metric} style={{ padding: '9px 14px', borderTop: i === 0 ? 'none' : '1px solid rgba(26,51,86,0.25)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                <div style={{ fontSize: 12, color: 'var(--text2)' }}>{data.bench.label}</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{benchmarks.key_metrics?.[metric]?.label || metric.replace(/_/g,' ').replace(/\w/g,l=>l.toUpperCase())}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>{data.bench.zero_target ? '🎯 Target: zero' : data.bench.lower_is_better ? `🎯 Keep ≤${data.bench.warning || data.bench.min}/game` : `🎯 Target: ${data.bench.p90 || data.bench.good}+/game`}</div>
+                </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 10, color: statusColor }}>{statusLabel}</span>
                   <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, color: statusColor }}>{data.avg}</span>
