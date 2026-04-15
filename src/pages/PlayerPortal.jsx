@@ -98,7 +98,7 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
   const di = r1(rows.reduce((s, r) => s + n(r.defensive_impact), 0))
   const mins = rows.reduce((s, r) => s + n(r.total_minutes), 0)
 
-  const totalAtt = sf(rows, 'one_pointer_attempts') + sf(rows, 'one_pointer_attempts_f') +
+  const totalAtt = (sf(rows,'one_pointer_scored')+sf(rows,'one_pointer_wide')+sf(rows,'one_pointer_drop_short_block')) + sf(rows, 'one_pointer_attempts_f') +
     sf(rows, 'two_pointer_attempts') + sf(rows, 'two_pointer_attempts_f') +
     sf(rows, 'goal_attempts') + sf(rows, 'goal_attempts_f')
   const totalScored = p1s + f1s + p2s + f2s + gs + fgs
@@ -441,7 +441,7 @@ function MatchesTab({ stats }) {
         const gs = n(r.goals_scored) + n(r.goals_scored_f)
         const pts = p1s + p2s * 2 + gs * 3
         const ai = r1(n(r.attack_impact)), ti = r1(n(r.transition_impact)), di = r1(n(r.defensive_impact))
-        const totalAtt = n(r.one_pointer_attempts) + n(r.one_pointer_attempts_f) + n(r.two_pointer_attempts) + n(r.two_pointer_attempts_f) + n(r.goal_attempts) + n(r.goal_attempts_f)
+        const totalAtt = (n(r.one_pointer_scored)+n(r.one_pointer_wide)+n(r.one_pointer_drop_short_block)) + n(r.one_pointer_attempts_f) + (n(r.two_pointer_scored)+n(r.two_pointer_wide)+n(r.two_pointer_drop_short_block)) + n(r.two_pointer_attempts_f) + (n(r.goals_scored)+n(r.goals_wide)+n(r.goal_drop_short_block)) + n(r.goal_attempts_f)
         const totScr = p1s + p2s + gs
         const sp = pct(totScr, totalAtt)
         return (
