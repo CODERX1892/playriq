@@ -38,18 +38,21 @@ export default function CoachDashboard() {
   const [matchStatuses, setMatchStatuses] = useState({})
   const [publishing, setPublishing] = useState(false)
   const [pubStatus, setPubStatus] = useState(null)
+  const [teamStats, setTeamStats] = useState([])
 
   useEffect(() => {
     Promise.all([
       supabase.from('player_stats').select('*'),
       supabase.from('players').select('name,position,irish_name,dob,role'),
       supabase.from('match_status').select('*'),
-    ]).then(([{ data: stats }, { data: pls }, { data: ms }]) => {
+      supabase.from('team_stats').select('*'),
+    ]).then(([{ data: stats }, { data: pls }, { data: ms }, { data: ts }]) => {
       setAllStats(stats || [])
       setPlayers(pls || [])
       const msMap = {}
       if (ms) ms.forEach(m => { msMap[m.match_id] = m })
       setMatchStatuses(msMap)
+      setTeamStats(ts || [])
       setLoading(false)
     })
   }, [])
@@ -103,9 +106,9 @@ export default function CoachDashboard() {
 
       {/* Tabs */}
       <div className="tabs" style={{ top: 61 }}>
-        {['squad', 'compare', 'match', 'kickouts', 'turnovers', 'entry', 'publish', 'admin', 'glossary'].map(t => (
+        {['squad', 'compare', 'match', 'team', 'kickouts', 'turnovers', 'entry', 'publish', 'admin', 'glossary'].map(t => (
           <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'entry' ? 'Enter Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'Turnovers' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? '📖 Guide' : t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'entry' ? 'Enter Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'Turnovers' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? '📖 Guide' : t === 'team' ? 'Team' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -123,6 +126,7 @@ export default function CoachDashboard() {
         {tab === 'match' && (
           <MatchViewTab allStats={allStats} players={players} matchView={matchView} setMatchView={setMatchView} />
         )}
+        {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
         {tab === 'kickouts' && <KickoutsTab allStats={allStats} players={players} />}
         {tab === 'turnovers' && <TurnoversTab allStats={allStats} players={players} />}
         {tab === 'entry' && <DataEntry />}
@@ -541,6 +545,204 @@ function TurnoversTab({ allStats, players }) {
           </tbody>
         </table>
       </div>
+    </div>
+  )
+}
+
+// ─── TEAM STATS TAB ───────────────────────────────────────────────────────────
+const TARGETS = {
+  possessions:        { label: 'Possessions',       target: 40,    higher: true,  format: v => v },
+  possession_pct:     { label: 'Poss → Attack %',   target: 0.9,   higher: true,  format: v => Math.round(v*100)+'%' },
+  attack_pct:         { label: 'Attack → Shot %',   target: 0.75,  higher: true,  format: v => Math.round(v*100)+'%' },
+  shot_pct:           { label: 'Shot → Score %',    target: 0.65,  higher: true,  format: v => Math.round(v*100)+'%' },
+  overall_shot_pct:   { label: 'Overall Shot %',    target: 0.543, higher: true,  format: v => Math.round(v*100)+'%' },
+  pct_from_play:      { label: 'Play Conv %',       target: null,  higher: true,  format: v => Math.round(v*100)+'%' },
+  pct_from_frees:     { label: 'Free Conv %',       target: null,  higher: true,  format: v => Math.round(v*100)+'%' },
+  ko_overall_win_pct: { label: 'KO Win %',          target: 0.66,  higher: true,  format: v => Math.round(v*100)+'%' },
+  turnover_ratio:     { label: 'TO Ratio',          target: 0.3,   higher: false, format: v => Math.round(v*100)+'%' },
+  intensity_index:    { label: 'Intensity Index',   target: 1.14,  higher: true,  format: v => v?.toFixed(2) },
+}
+
+const SECTIONS = [
+  {
+    label: 'Possession & Scoring', color: '#f0b429',
+    rows: [
+      { key: 'possessions',    label: 'Possessions' },
+      { key: 'attacks',        label: 'Attacks',       format: v => v },
+      { key: 'shots',          label: 'Shots',         format: v => v },
+      { key: 'scores',         label: 'Scores',        format: v => v },
+      { key: 'possession_pct', label: 'Poss → Atk %',  format: v => Math.round(v*100)+'%' },
+      { key: 'attack_pct',     label: 'Atk → Shot %',  format: v => Math.round(v*100)+'%' },
+      { key: 'shot_pct',       label: 'Shot → Score %',format: v => Math.round(v*100)+'%' },
+    ]
+  },
+  {
+    label: 'Shooting', color: '#3ecf8e',
+    rows: [
+      { key: 'shots_from_play',  label: 'Play Shots' },
+      { key: 'scores_from_play', label: 'Play Scores' },
+      { key: 'pct_from_play',    label: 'Play Conv %',  format: v => v != null ? Math.round(v*100)+'%' : '—' },
+      { key: 'shots_from_frees', label: 'Free Shots' },
+      { key: 'scores_from_frees',label: 'Free Scores' },
+      { key: 'pct_from_frees',   label: 'Free Conv %',  format: v => v != null ? Math.round(v*100)+'%' : '—' },
+      { key: 'overall_shot_pct', label: 'Overall %',    format: v => v != null ? Math.round(v*100)+'%' : '—' },
+    ]
+  },
+  {
+    label: 'Kickouts', color: '#4a9eff',
+    rows: [
+      { key: 'ko_total',          label: 'Total KOs' },
+      { key: 'ko_won',            label: 'Won' },
+      { key: 'ko_lost',           label: 'Lost' },
+      { key: 'ko_won_pct',        label: 'Won %',   format: v => v != null ? Math.round(v*100)+'%' : '—' },
+      { key: 'ko_overall_win_pct',label: 'Win % (Overall)', format: v => v != null ? Math.round(v*100)+'%' : '—' },
+    ]
+  },
+  {
+    label: 'Turnovers Won', color: '#3ecf8e',
+    rows: [
+      { key: 'turnovers_forced',   label: 'Forced Won' },
+      { key: 'turnovers_unforced', label: 'Unforced Won' },
+      { key: 'turnover_total',     label: 'Total Won' },
+    ]
+  },
+  {
+    label: 'Turnovers Lost', color: '#f06060',
+    rows: [
+      { key: 'turnovers_lost_forced',   label: 'Forced Lost' },
+      { key: 'turnovers_lost_unforced', label: 'Unforced Lost' },
+      { key: 'turnovers_lost_total',    label: 'Total Lost' },
+      { key: 'turnover_ratio',          label: 'TO Ratio', format: v => v != null ? Math.round(v*100)+'%' : '—' },
+    ]
+  },
+]
+
+function trafficLight(key, usVal, targetInfo) {
+  if (!targetInfo || targetInfo.target == null || usVal == null) return null
+  const met = targetInfo.higher ? usVal >= targetInfo.target : usVal <= targetInfo.target
+  return met ? 'var(--teal)' : 'var(--red)'
+}
+
+function fmt(val, key) {
+  const section = SECTIONS.flatMap(s => s.rows).find(r => r.key === key)
+  if (section?.format) return section.format(val)
+  if (val == null) return '—'
+  return typeof val === 'number' && val < 2 && val > 0 ? Math.round(val * 100) + '%' : val
+}
+
+function TeamStatsTab({ teamStats }) {
+  const [matchView, setMatchView] = useState(MATCHES[0])
+
+  const us = teamStats.find(r => r.match_id === matchView && r.team === 'us')
+  const them = teamStats.find(r => r.match_id === matchView && r.team === 'them')
+  const hasData = !!us
+
+  return (
+    <div className="fade-in">
+      {/* Match selector */}
+      <div style={{ display: 'flex', gap: 7, marginBottom: 14, flexWrap: 'wrap' }}>
+        {MATCHES.map(m => {
+          const hasMatchData = teamStats.some(r => r.match_id === m)
+          return (
+            <button key={m} onClick={() => setMatchView(m)}
+              style={{ padding: '7px 14px', borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                border: `1px solid ${m === matchView ? 'var(--blue)' : 'var(--border)'}`,
+                background: m === matchView ? 'rgba(74,158,255,0.12)' : 'var(--bg2)',
+                color: m === matchView ? 'var(--blue)' : hasMatchData ? 'var(--text2)' : 'var(--text3)',
+                fontFamily: 'Barlow, sans-serif', opacity: hasMatchData ? 1 : 0.5 }}>
+              <div>{m}</div>
+              <div style={{ fontSize: 9, opacity: 0.7 }}>{OPP[m]}</div>
+            </button>
+          )
+        })}
+      </div>
+
+      {!hasData ? (
+        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text3)' }}>
+          <div style={{ fontSize: 24, marginBottom: 8 }}>📊</div>
+          <div style={{ fontSize: 14 }}>No team data for {matchView} yet</div>
+          <div style={{ fontSize: 12, marginTop: 6 }}>Add data via the Excel upload process</div>
+        </div>
+      ) : (
+        <>
+          {/* Score header */}
+          <div style={{ background: 'linear-gradient(135deg,#0a1628,#0d1f3c)', border: '1px solid var(--border)', borderRadius: 13, padding: '14px 16px', marginBottom: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--teal)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>Ballyboden</div>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 32, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>
+                  {us?.scores != null ? us.scores : '—'}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{us?.possessions} poss · {us?.shots} shots</div>
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 700 }}>v</div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 11, color: 'var(--red)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>{OPP[matchView]}</div>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 32, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>
+                  {them?.scores != null ? them.scores : '—'}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{them?.possessions} poss · {them?.shots} shots</div>
+              </div>
+            </div>
+          </div>
+
+          {/* KPI target summary */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 14 }}>
+            {Object.entries(TARGETS).filter(([k]) => us?.[k] != null).slice(0, 6).map(([key, info]) => {
+              const val = us[key]
+              const color = trafficLight(key, val, info)
+              return (
+                <div key={key} style={{ background: 'var(--bg2)', border: `1px solid ${color || 'var(--border)'}`, borderRadius: 10, padding: '10px 12px' }}>
+                  <div style={{ fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 }}>{info.label}</div>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color: color || 'var(--text)' }}>
+                    {info.format(val)}
+                  </div>
+                  {info.target != null && (
+                    <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2 }}>
+                      Target: {info.format(info.target)}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Section tables */}
+          {SECTIONS.map(section => {
+            const rows = section.rows.filter(r => us?.[r.key] != null || them?.[r.key] != null)
+            if (!rows.length) return null
+            return (
+              <div key={section.label} className="card" style={{ overflow: 'hidden', marginBottom: 12 }}>
+                <div className="card-header">
+                  <span style={{ color: section.color }}>{section.label}</span>
+                  <div style={{ display: 'grid', gridTemplateColumns: '60px 60px', gap: 4, textAlign: 'center' }}>
+                    <span style={{ fontSize: 9, color: 'var(--teal)' }}>BODEN</span>
+                    <span style={{ fontSize: 9, color: 'var(--red)' }}>{OPP[matchView]?.split(' ')[0]?.toUpperCase()}</span>
+                  </div>
+                </div>
+                {rows.map((row, i) => {
+                  const usVal = us?.[row.key]
+                  const themVal = them?.[row.key]
+                  const targetInfo = TARGETS[row.key]
+                  const usColor = trafficLight(row.key, usVal, targetInfo) || section.color
+                  const displayFn = row.format || (v => v != null ? v : '—')
+                  return (
+                    <div key={row.key} style={{ display: 'grid', gridTemplateColumns: '1fr 60px 60px', alignItems: 'center', padding: '8px 14px', borderTop: i === 0 ? 'none' : '1px solid rgba(26,51,86,0.25)' }}>
+                      <div style={{ fontSize: 12, color: 'var(--text2)' }}>{row.label}</div>
+                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, textAlign: 'center', color: usColor }}>
+                        {usVal != null ? displayFn(usVal) : '—'}
+                      </div>
+                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, textAlign: 'center', color: 'var(--text3)' }}>
+                        {themVal != null ? displayFn(themVal) : '—'}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </>
+      )}
     </div>
   )
 }
