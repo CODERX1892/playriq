@@ -669,6 +669,9 @@ function trendColor(row, val) {
 }
 
 function TeamStatsTab({ teamStats }) {
+  const [view, setView] = useState('trend')
+  const [trendTeam, setTrendTeam] = useState('us')
+  const gamesWithData = MATCHES.filter(m => teamStats.some(r => r.match_id === m && r.team === 'us'))
   const [view, setView] = useState('trend') // 'trend' | match_id
   const gamesWithData = MATCHES.filter(m => teamStats.some(r => r.match_id === m && r.team === 'us'))
 
@@ -753,8 +756,22 @@ function TeamStatsTab({ teamStats }) {
   // ── TREND TABLE VIEW ──────────────────────────────────────────────────────
   return (
     <div className="fade-in">
-      <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>
-        Season Trends — tap a game for full detail
+      {/* Header + Boden/Opposition toggle */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase' }}>
+          Season Trends
+        </div>
+        <div style={{ display: 'flex', background: 'var(--bg3)', borderRadius: 8, padding: 3, gap: 3 }}>
+          {[{ val: 'us', label: 'Boden', color: 'var(--teal)' }, { val: 'them', label: 'Opposition', color: 'var(--red)' }].map(opt => (
+            <button key={opt.val} onClick={() => setTrendTeam(opt.val)}
+              style={{ padding: '5px 12px', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                fontFamily: 'Barlow, sans-serif', border: 'none',
+                background: trendTeam === opt.val ? 'var(--bg4)' : 'transparent',
+                color: trendTeam === opt.val ? opt.color : 'var(--text3)' }}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {gamesWithData.length === 0 ? (
@@ -768,10 +785,14 @@ function TeamStatsTab({ teamStats }) {
             <thead>
               <tr style={{ background: 'var(--bg3)' }}>
                 <th style={{ ...tth, minWidth: 130, position: 'sticky', left: 0, background: 'var(--bg3)', zIndex: 2, textAlign: 'left' }}>KPI</th>
-                <th style={{ ...tth, color: 'var(--text3)', borderLeft: '1px solid var(--border)', minWidth: 55 }}>Target</th>
+                <th style={{ ...tth, color: 'var(--text3)', borderLeft: '1px solid var(--border)', minWidth: 55 }}>
+                  {trendTeam === 'us' ? 'Target' : 'Boden'}
+                </th>
                 {gamesWithData.map(m => (
-                  <th key={m} style={{ ...tth, borderLeft: '1px solid var(--border)', minWidth: 60, cursor: 'pointer', color: 'var(--blue)' }}
-                    onClick={() => setView(m)}>
+                  <th key={m} style={{ ...tth, borderLeft: '1px solid var(--border)', minWidth: 60,
+                    cursor: trendTeam === 'us' ? 'pointer' : 'default',
+                    color: trendTeam === 'us' ? 'var(--blue)' : 'var(--red)' }}
+                    onClick={() => trendTeam === 'us' && setView(m)}>
                     <div>{m.replace('AFL ', 'G')}</div>
                     <div style={{ fontSize: 8, fontWeight: 400, color: 'var(--text3)', marginTop: 2 }}>{OPP[m]?.split(' ')[0]}</div>
                   </th>
@@ -781,9 +802,13 @@ function TeamStatsTab({ teamStats }) {
             <tbody>
               {TREND_ROWS.map((row, ri) => {
                 const vals = gamesWithData.map(m => {
+                  const entry = teamStats.find(r => r.match_id === m && r.team === trendTeam)
+                  return entry?.[row.key] ?? null
+                })
+                const usVals = trendTeam === 'them' ? gamesWithData.map(m => {
                   const us = teamStats.find(r => r.match_id === m && r.team === 'us')
                   return us?.[row.key] ?? null
-                })
+                }) : null
                 const hasAny = vals.some(v => v != null)
                 if (!hasAny) return null
                 return (
@@ -792,16 +817,24 @@ function TeamStatsTab({ teamStats }) {
                       {row.label}
                     </td>
                     <td style={{ ...ttd, borderLeft: '1px solid var(--border)', textAlign: 'center', fontSize: 11, color: 'var(--text3)' }}>
-                      {row.target != null ? row.format(row.target) : '—'}
+                      {trendTeam === 'us'
+                        ? (row.target != null ? row.format(row.target) : '—')
+                        : '—'}
                     </td>
                     {vals.map((val, vi) => {
-                      const color = trendColor(row, val)
+                      const color = trendTeam === 'us' ? trendColor(row, val) : null
+                      const usVal = usVals?.[vi]
                       return (
                         <td key={vi} style={{ ...ttd, borderLeft: '1px solid rgba(26,51,86,0.3)', textAlign: 'center',
                           fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700,
-                          color: color || 'var(--text2)',
+                          color: color || 'var(--red)',
                           background: color === 'var(--teal)' ? 'rgba(62,207,142,0.07)' : color === 'var(--red)' ? 'rgba(240,96,96,0.07)' : '' }}>
                           {val != null ? row.format(val) : '—'}
+                          {trendTeam === 'them' && usVal != null && (
+                            <div style={{ fontSize: 9, color: 'var(--teal)', fontWeight: 400, marginTop: 1 }}>
+                              {row.format(usVal)}
+                            </div>
+                          )}
                         </td>
                       )
                     })}
