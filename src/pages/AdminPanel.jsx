@@ -92,6 +92,12 @@ export default function AdminPanel() {
     setAppUsers(prev => prev.map(u => u.id === userId ? { ...u, active: !active } : u))
   }
 
+  const resetUserPin = async (userId, newPin) => {
+    const { error } = await supabase.from('app_users').update({ pin: newPin }).eq('id', userId)
+    if (error) showStatus('error', error.message)
+    else showStatus('success', '✓ Staff PIN updated')
+  }
+
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><div className="spinner" /></div>
 
   return (
@@ -241,6 +247,7 @@ export default function AdminPanel() {
                   <div style={{ fontSize: 10, color: 'var(--text3)' }}>{u.email}</div>
                 </div>
                 <div style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: u.role === 'admin' ? 'rgba(240,180,41,0.12)' : u.role === 'coach' ? 'rgba(74,158,255,0.12)' : 'rgba(62,207,142,0.12)', color: u.role === 'admin' ? 'var(--gold)' : u.role === 'coach' ? 'var(--blue)' : 'var(--teal)', border: `1px solid currentColor` }}>{u.role}</div>
+                <StaffPinResetButton userId={u.id} onReset={resetUserPin} />
                 <button onClick={() => toggleUser(u.id, u.active)}
                   style={{ fontSize: 11, padding: '3px 8px', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 5, color: u.active ? 'var(--red)' : 'var(--teal)', cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
                   {u.active ? 'Disable' : 'Enable'}
@@ -251,6 +258,28 @@ export default function AdminPanel() {
         </div>
       )}
     </div>
+  )
+}
+
+function StaffPinResetButton({ userId, onReset }) {
+  const [editing, setEditing] = useState(false)
+  const [newPin, setNewPin] = useState('')
+  if (editing) return (
+    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+      <input value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/,'').slice(0,4))}
+        placeholder="PIN" maxLength={4}
+        style={{ width: 52, padding: '4px 6px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 5, color: 'var(--text)', fontSize: 13, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, textAlign: 'center', outline: 'none' }} />
+      <button onClick={() => { if(newPin.length===4){onReset(userId,newPin);setEditing(false);setNewPin('')} }}
+        style={{ padding: '4px 8px', background: 'rgba(62,207,142,0.12)', border: '1px solid var(--teal)', borderRadius: 5, color: 'var(--teal)', fontSize: 11, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>✓</button>
+      <button onClick={() => {setEditing(false);setNewPin('')}}
+        style={{ padding: '4px 6px', background: 'none', border: '1px solid var(--border)', borderRadius: 5, color: 'var(--text3)', fontSize: 11, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>✕</button>
+    </div>
+  )
+  return (
+    <button onClick={() => setEditing(true)}
+      style={{ fontSize: 10, padding: '3px 8px', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 5, color: 'var(--text3)', cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
+      Reset PIN
+    </button>
   )
 }
 

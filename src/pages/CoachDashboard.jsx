@@ -24,8 +24,11 @@ const METRICS = {
 }
 
 export default function CoachDashboard() {
-  const { logout } = useAuth()
+  const { logout, appUser } = useAuth()
   const [tab, setTab] = useState('squad')
+  const [changingPin, setChangingPin] = useState(false)
+  const [newPin, setNewPin] = useState('')
+  const [pinStatus, setPinStatus] = useState(null)
   const [allStats, setAllStats] = useState([])
   const [players, setPlayers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -88,6 +91,13 @@ export default function CoachDashboard() {
     }).filter(Boolean)
   }
 
+  const handleChangePin = async () => {
+    if (newPin.length !== 4) { setPinStatus('PIN must be 4 digits'); return }
+    const { error } = await supabase.from('app_users').update({ pin: newPin }).eq('id', appUser.id)
+    if (error) setPinStatus('Error: ' + error.message)
+    else { setPinStatus('✓ PIN updated'); setNewPin(''); setTimeout(() => { setChangingPin(false); setPinStatus(null) }, 1500) }
+  }
+
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}><div className="spinner" /></div>
 
   const squadStats = getSquadStats()
@@ -101,8 +111,21 @@ export default function CoachDashboard() {
           <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1 }}>Coach Dashboard</div>
           <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>Ballyboden St Enda's · AFL 2026</div>
         </div>
+        <button onClick={() => setChangingPin(v => !v)}
+          style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 9px', color: 'var(--text3)', fontSize: 11, cursor: 'pointer', fontFamily: 'Barlow, sans-serif', marginRight: 4 }}>PIN</button>
         <button onClick={logout} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 9px', color: 'var(--text3)', fontSize: 11, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>Sign Out</button>
       </div>
+      {changingPin && (
+        <div style={{ background: 'var(--bg2)', borderBottom: '1px solid var(--border)', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ fontSize: 11, color: 'var(--text3)', flex: 1 }}>New PIN (4 digits)</div>
+          <input value={newPin} onChange={e => setNewPin(e.target.value.replace(/\D/,'').slice(0,4))}
+            maxLength={4} type="password" placeholder="••••"
+            style={{ width: 70, padding: '6px 8px', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 6, color: 'var(--text)', fontSize: 16, fontFamily: 'Barlow Condensed', fontWeight: 700, textAlign: 'center', outline: 'none', letterSpacing: 4 }} />
+          <button onClick={handleChangePin}
+            style={{ padding: '6px 12px', background: 'rgba(62,207,142,0.12)', border: '1px solid var(--teal)', borderRadius: 6, color: 'var(--teal)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>Save</button>
+          {pinStatus && <div style={{ fontSize: 11, color: pinStatus.startsWith('✓') ? 'var(--teal)' : 'var(--red)' }}>{pinStatus}</div>}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="tabs" style={{ top: 61 }}>
