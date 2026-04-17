@@ -127,14 +127,25 @@ export default function CoachDashboard() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="tabs" style={{ top: 61 }}>
-        {['squad', 'compare', 'match', 'team', 'kickouts', 'turnovers', 'entry', 'publish', 'admin', 'glossary'].map(t => (
-          <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'entry' ? 'Enter Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'Turnovers' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? '📖 Guide' : t === 'team' ? 'Team' : t.charAt(0).toUpperCase() + t.slice(1)}
-          </button>
-        ))}
-      </div>
+      {/* Tabs — two rows of 5 so nothing is hidden */}
+      {(() => {
+        const COACH_TABS = ['squad', 'compare', 'match', 'team', 'kickouts', 'turnovers', 'entry', 'publish', 'admin', 'glossary']
+        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'team' ? 'Team' : t.charAt(0).toUpperCase() + t.slice(1)
+        return (
+          <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
+              {COACH_TABS.slice(0, 5).map(t => (
+                <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>{label(t)}</button>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', borderTop: '1px solid rgba(26,51,86,0.3)' }}>
+              {COACH_TABS.slice(5).map(t => (
+                <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>{label(t)}</button>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       <div style={{ padding: 14 }}>
         {tab === 'squad' && (

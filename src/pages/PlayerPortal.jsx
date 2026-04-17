@@ -63,13 +63,23 @@ export default function PlayerPortal() {
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="tabs" style={{ top: 61 }}>
-        {TABS.map(t => (
-          <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
-          </button>
-        ))}
+      {/* Tabs — two rows of 4/3 so nothing is hidden */}
+      <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {TABS.slice(0, 4).map(t => (
+            <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderTop: '1px solid rgba(26,51,86,0.3)' }}>
+          {TABS.slice(4).map(t => (
+            <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </button>
+          ))}
+          {Array(4 - TABS.slice(4).length).fill(null).map((_, i) => <div key={i} />)}
+        </div>
       </div>
 
       {/* Content */}

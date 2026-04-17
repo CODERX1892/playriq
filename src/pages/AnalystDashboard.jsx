@@ -101,7 +101,7 @@ export default function AnalystDashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="tabs" style={{ top: 61 }}>
+      <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
         {['squad', 'match', 'entry'].map(t => (
           <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>
             {t === 'entry' ? 'Enter Data' : t.charAt(0).toUpperCase() + t.slice(1)}
