@@ -109,7 +109,7 @@ export default function CoachDashboard() {
         <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'var(--bg4)', border: '2px solid var(--blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--blue)', flexShrink: 0 }}>MGR</div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1 }}>Coach Dashboard</div>
-          <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>Ballyboden St Enda's · AFL 2026</div>
+          <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>Ballyboden St Enda's · AFL 2026 · <span style={{ color: 'var(--border2)' }}>v0.4.0</span></div>
         </div>
         <button onClick={() => setChangingPin(v => !v)}
           style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 9px', color: 'var(--text3)', fontSize: 11, cursor: 'pointer', fontFamily: 'Barlow, sans-serif', marginRight: 4 }}>PIN</button>

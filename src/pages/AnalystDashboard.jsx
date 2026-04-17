@@ -95,7 +95,7 @@ export default function AnalystDashboard() {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1 }}>{appUser.name}</div>
-          <div style={{ fontSize: 10, color: 'var(--teal)', marginTop: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Analyst</div>
+          <div style={{ fontSize: 10, color: 'var(--teal)', marginTop: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Analyst · <span style={{ color: 'var(--border2)', textTransform: 'none', letterSpacing: 0 }}>v0.4.0</span></div>
         </div>
         <button onClick={logout} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 9px', color: 'var(--text3)', fontSize: 11, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>Sign Out</button>
       </div>
