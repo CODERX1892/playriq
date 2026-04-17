@@ -10,6 +10,8 @@ export default function Login() {
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState([])
   const [selected, setSelected] = useState(null)
+  const [selectedStaff, setSelectedStaff] = useState(null)
+  const [appUsers, setAppUsers] = useState([])
   const [step, setStep] = useState('name') // name | pin | staff | forgot | forgotCode
   const [pinError, setPinError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -24,8 +26,14 @@ export default function Login() {
   const CREST_URL = '/crest.png'
 
   useEffect(() => {
-    supabase.from('players').select('name,position,pin,irish_name,dob,photo_url,email')
-      .then(({ data }) => { setPlayers(data || []); setLoading(false) })
+    Promise.all([
+      supabase.from('players').select('name,position,pin,irish_name,dob,photo_url,email,role'),
+      supabase.from('app_users').select('*').eq('active', true).order('name'),
+    ]).then(([{ data: pData }, { data: uData }]) => {
+      setPlayers(pData || [])
+      setAppUsers(uData || [])
+      setLoading(false)
+    })
   }, [])
 
   useEffect(() => {
@@ -44,11 +52,9 @@ export default function Login() {
   }
 
   const handleStaffPin = (pin) => {
-    supabase.from('app_users').select('*').eq('pin', pin).eq('active', true).single()
-      .then(({ data }) => {
-        if (data) loginAppUser(data)
-        else setPinError('Incorrect PIN')
-      })
+    if (!selectedStaff) return
+    if (pin === selectedStaff.pin) loginAppUser(selectedStaff)
+    else setPinError('Incorrect PIN — try again')
   }
 
   const handleForgotSubmit = async () => {
@@ -172,15 +178,43 @@ export default function Login() {
             </div>
           )}
 
-          {/* STAFF PIN */}
-          {step === 'staff' && (
+          {/* STAFF NAME SELECT */}
+          {step === 'staff' && !selectedStaff && (
             <div className="fade-in">
-              <div style={{ textAlign: 'center', marginBottom: 14 }}>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>Staff Access</div>
-                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>Enter your staff PIN</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12, textAlign: 'center' }}>Select your name</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {appUsers.map(u => (
+                  <div key={u.id} onClick={() => { setSelectedStaff(u); setPinError('') }}
+                    style={{ padding: '11px 14px', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--blue)'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>{u.name}</span>
+                    <span style={{ fontSize: 10, color: u.role === 'admin' ? 'var(--gold)' : u.role === 'coach' ? 'var(--blue)' : 'var(--teal)', textTransform: 'uppercase', letterSpacing: 1 }}>{u.role}</span>
+                  </div>
+                ))}
               </div>
-              <PinPad onSubmit={handleStaffPin} error={pinError} dotColor="var(--blue)" />
               <button onClick={() => { setStep('name'); setPinError('') }}
+                style={{ display: 'block', width: '100%', marginTop: 12, background: 'none', border: 'none', color: 'var(--text3)', fontSize: 12, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
+                ← Back
+              </button>
+            </div>
+          )}
+
+          {/* STAFF PIN */}
+          {step === 'staff' && selectedStaff && (
+            <div className="fade-in">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, padding: '10px 12px', background: 'var(--bg3)', borderRadius: 8 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg4)', border: '2px solid var(--blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--blue)', flexShrink: 0 }}>
+                  {selectedStaff.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()}
+                </div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 600 }}>{selectedStaff.name}</div>
+                  <div style={{ fontSize: 11, color: selectedStaff.role === 'admin' ? 'var(--gold)' : 'var(--blue)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>{selectedStaff.role}</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4, textAlign: 'center' }}>Enter PIN</div>
+              <PinPad onSubmit={handleStaffPin} error={pinError} dotColor="var(--blue)" />
+              <button onClick={() => { setSelectedStaff(null); setPinError('') }}
                 style={{ display: 'block', width: '100%', marginTop: 12, background: 'none', border: 'none', color: 'var(--text3)', fontSize: 12, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
                 ← Back
               </button>
