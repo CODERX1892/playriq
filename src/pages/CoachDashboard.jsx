@@ -881,8 +881,6 @@ function TeamStatsTab({ teamStats }) {
   const [view, setView] = useState('trend')
   const [trendTeam, setTrendTeam] = useState('us')
   const gamesWithData = MATCHES.filter(m => teamStats.some(r => r.match_id === m && r.team === 'us'))
-  const [view, setView] = useState('trend') // 'trend' | match_id
-  const gamesWithData = MATCHES.filter(m => teamStats.some(r => r.match_id === m && r.team === 'us'))
 
   // ── GAME DETAIL VIEW ──────────────────────────────────────────────────────
   if (view !== 'trend') {
