@@ -24,7 +24,7 @@ export default function Login() {
   const CREST_URL = '/crest.png'
 
   useEffect(() => {
-    supabase.from('players').select('name,position,pin,irish_name,dob,photo_url,email,role')
+    supabase.from('players').select('name,position,pin,irish_name,dob,photo_url,email')
       .then(({ data }) => { setPlayers(data || []); setLoading(false) })
   }, [])
 
