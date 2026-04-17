@@ -516,10 +516,10 @@ function MatchesTab({ stats }) {
               ))}
             </div>
             {/* Impact row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', padding: '8px 14px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
-              {[['Attack', ai, 'var(--gold)'], ['Transition', ti, 'var(--blue)'], ['Defence', di, 'var(--teal)']].map(([l, v, c]) => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', padding: '8px 14px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
+              {[['Total', imp, impactColor(imp)], ['Attack', ai, 'var(--gold)'], ['Trans', ti, 'var(--blue)'], ['Defence', di, 'var(--teal)']].map(([l, v, c]) => (
                 <div key={l} style={{ textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 17, fontWeight: 700, color: c }}>{v}</div>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: l === 'Total' ? 20 : 16, fontWeight: 700, color: c }}>{v}</div>
                   <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase' }}>{l}</div>
                 </div>
               ))}
