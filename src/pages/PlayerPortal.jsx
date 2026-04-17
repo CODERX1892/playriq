@@ -680,29 +680,49 @@ function RingChart({ value, color, id }) {
   )
 }
 
+// EV per shot = (scored × point_value) / attempts
+// 1-pointer = 1pt, 2-pointer = 2pts, goal = 3pts
+const SHOT_PTS = [1, 2, 3]
+
 function ShootTable({ title, badge, rows }) {
+  // rows: [label, att, scored, wide, ds] — order must be 1pt, 2pt, goal
+  // Calculate overall EV across all rows
+  const totalPts = rows.reduce((s, [,att,scored,,], i) => s + scored * (SHOT_PTS[i] || 1), 0)
+  const totalAtt = rows.reduce((s, [,att]) => s + att, 0)
+  const overallEV = totalAtt > 0 ? Math.round((totalPts / totalAtt) * 100) / 100 : null
+  const evColor = overallEV === null ? 'var(--text3)' : overallEV >= 0.65 ? 'var(--teal)' : overallEV >= 0.45 ? 'var(--gold)' : 'var(--red)'
+
   return (
     <div className="card" style={{ overflow: 'hidden', marginBottom: 11 }}>
       <div className="card-header">
         <span style={{ color: 'var(--gold)' }}>{title}</span>
-        <span style={{ fontSize: 10, color: 'var(--text3)', background: 'var(--bg4)', borderRadius: 4, padding: '2px 7px' }}>{badge}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {overallEV !== null && (
+            <span style={{ fontSize: 11, color: evColor, fontWeight: 700 }}>EV: {overallEV}</span>
+          )}
+          <span style={{ fontSize: 10, color: 'var(--text3)', background: 'var(--bg4)', borderRadius: 4, padding: '2px 7px' }}>{badge}</span>
+        </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 28px 28px 28px 28px 42px', gap: 3, padding: '5px 13px 3px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
-        {['Shot', 'Att', 'Scr', 'Wde', 'DS', '%'].map((h, i) => (
-          <div key={h} style={{ fontSize: 9, color: ['var(--text3)', 'var(--text2)', 'var(--teal)', 'var(--red)', 'var(--gold)', 'var(--text3)'][i], textAlign: i > 0 ? 'center' : 'left', textTransform: 'uppercase', letterSpacing: 1 }}>{h}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 28px 28px 28px 28px 36px 36px', gap: 2, padding: '5px 13px 3px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
+        {['Shot', 'Att', 'Scr', 'Wde', 'DS', '%', 'EV'].map((h, i) => (
+          <div key={h} style={{ fontSize: 9, color: ['var(--text3)', 'var(--text2)', 'var(--teal)', 'var(--red)', 'var(--gold)', 'var(--text3)', 'var(--purple)'][i], textAlign: i > 0 ? 'center' : 'left', textTransform: 'uppercase', letterSpacing: 1 }}>{h}</div>
         ))}
       </div>
       {rows.map(([label, att, scored, wide, ds], i) => {
+        const shotPts = SHOT_PTS[i] || 1
         const p = pct(scored, att)
         const pc = p >= 60 ? 'var(--teal)' : p >= 40 ? 'var(--gold)' : 'var(--red)'
+        const ev = att > 0 ? Math.round((scored * shotPts / att) * 100) / 100 : null
+        const evc = ev === null ? 'var(--text3)' : ev >= shotPts * 0.65 ? 'var(--teal)' : ev >= shotPts * 0.45 ? 'var(--gold)' : 'var(--red)'
         return (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 28px 28px 28px 28px 42px', alignItems: 'center', gap: 3, padding: '7px 13px', borderTop: '1px solid rgba(26,51,86,0.25)' }}>
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 28px 28px 28px 28px 36px 36px', alignItems: 'center', gap: 2, padding: '7px 13px', borderTop: '1px solid rgba(26,51,86,0.25)' }}>
             <div style={{ fontSize: 12, color: 'var(--text2)' }}>{label}</div>
             <div style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center' }}>{att}</div>
             <div style={{ fontSize: 12, color: 'var(--teal)', textAlign: 'center' }}>{scored}</div>
             <div style={{ fontSize: 12, color: 'var(--red)', textAlign: 'center' }}>{wide}</div>
             <div style={{ fontSize: 12, color: 'var(--gold)', textAlign: 'center' }}>{ds || 0}</div>
-            <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right', color: att > 0 ? pc : 'var(--text3)' }}>{att > 0 ? `${p}%` : '—'}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', color: att > 0 ? pc : 'var(--text3)' }}>{att > 0 ? `${p}%` : '—'}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', color: evc }}>{ev !== null ? ev : '—'}</div>
           </div>
         )
       })}

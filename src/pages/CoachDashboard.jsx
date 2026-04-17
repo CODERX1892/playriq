@@ -562,29 +562,32 @@ function PlayerMatchDrillDown({ r, players, matchView, onBack }) {
             <span style={{ color: 'var(--gold)' }}>Shooting</span>
             <span style={{ color: shootPct >= 60 ? 'var(--teal)' : shootPct >= 45 ? 'var(--gold)' : 'var(--red)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700 }}>{shootPct}%</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 32px 32px 32px 32px 40px', gap: 3, padding: '5px 13px 3px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
-            {['Type','Att','Scr','Wde','DS','%'].map((h, i) => (
-              <div key={h} style={{ fontSize: 9, color: 'var(--text3)', textAlign: i > 0 ? 'center' : 'left', textTransform: 'uppercase', letterSpacing: 1 }}>{h}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 28px 28px 28px 28px 34px 34px', gap: 2, padding: '5px 13px 3px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
+            {['Type','Att','Scr','Wde','DS','%','EV'].map((h, i) => (
+              <div key={h} style={{ fontSize: 9, color: ['var(--text3)','var(--text2)','var(--teal)','var(--red)','var(--gold)','var(--text3)','var(--purple)'][i], textAlign: i > 0 ? 'center' : 'left', textTransform: 'uppercase', letterSpacing: 1 }}>{h}</div>
             ))}
           </div>
           {[
-            ['1pt Play', p1a, p1s, p1w, p1ds],
-            ['2pt Play', p2a, p2s, p2w, p2ds],
-            ['Goal Play', ga, gs, gw, gds],
-            f1a > 0 ? ['1pt Free', f1a, f1s, 0, 0] : null,
-            f2a > 0 ? ['2pt Free', f2a, f2s, 0, 0] : null,
-            fga > 0 ? ['Goal Free', fga, fgs, 0, 0] : null,
-          ].filter(Boolean).filter(([,att]) => att > 0).map(([label, att, scr, wide, ds]) => {
+            ['1pt Play', p1a, p1s, p1w, p1ds, 1],
+            ['2pt Play', p2a, p2s, p2w, p2ds, 2],
+            ['Goal Play', ga, gs, gw, gds, 3],
+            f1a > 0 ? ['1pt Free', f1a, f1s, 0, 0, 1] : null,
+            f2a > 0 ? ['2pt Free', f2a, f2s, 0, 0, 2] : null,
+            fga > 0 ? ['Goal Free', fga, fgs, 0, 0, 3] : null,
+          ].filter(Boolean).filter(([,att]) => att > 0).map(([label, att, scr, wide, ds, shotPts]) => {
             const pct2 = att > 0 ? Math.round((scr / att) * 100) : 0
             const pc = pct2 >= 60 ? 'var(--teal)' : pct2 >= 40 ? 'var(--gold)' : 'var(--red)'
+            const ev = att > 0 ? Math.round((scr * shotPts / att) * 100) / 100 : null
+            const evc = ev === null ? 'var(--text3)' : ev >= shotPts * 0.65 ? 'var(--teal)' : ev >= shotPts * 0.45 ? 'var(--gold)' : 'var(--red)'
             return (
-              <div key={label} style={{ display: 'grid', gridTemplateColumns: '1fr 32px 32px 32px 32px 40px', gap: 3, padding: '7px 13px', borderTop: '1px solid rgba(26,51,86,0.25)', alignItems: 'center' }}>
+              <div key={label} style={{ display: 'grid', gridTemplateColumns: '1fr 28px 28px 28px 28px 34px 34px', gap: 2, padding: '7px 13px', borderTop: '1px solid rgba(26,51,86,0.25)', alignItems: 'center' }}>
                 <div style={{ fontSize: 12, color: 'var(--text2)' }}>{label}</div>
                 <div style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center' }}>{att}</div>
                 <div style={{ fontSize: 12, color: 'var(--teal)', textAlign: 'center' }}>{scr}</div>
                 <div style={{ fontSize: 12, color: 'var(--red)', textAlign: 'center' }}>{wide || '—'}</div>
                 <div style={{ fontSize: 12, color: 'var(--gold)', textAlign: 'center' }}>{ds || '—'}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right', color: att > 0 ? pc : 'var(--text3)' }}>{att > 0 ? `${pct2}%` : '—'}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', color: att > 0 ? pc : 'var(--text3)' }}>{att > 0 ? `${pct2}%` : '—'}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', color: evc }}>{ev !== null ? ev : '—'}</div>
               </div>
             )
           })}
