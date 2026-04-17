@@ -469,8 +469,26 @@ function MatchesTab({ stats }) {
         const totalAtt = (n(r.one_pointer_scored)+n(r.one_pointer_wide)+n(r.one_pointer_drop_short_block)) + n(r.one_pointer_attempts_f) + (n(r.two_pointer_scored)+n(r.two_pointer_wide)+n(r.two_pointer_drop_short_block)) + n(r.two_pointer_attempts_f) + (n(r.goals_scored)+n(r.goals_wide)+n(r.goal_drop_short_block)) + n(r.goal_attempts_f)
         const totScr = p1s + p2s + gs
         const sp = pct(totScr, totalAtt)
+        // Kickout data
+        const koOursClean = n(r.won_clean_p1_our) + n(r.won_clean_p2_our) + n(r.won_clean_p3_our)
+        const koOursBreak = n(r.won_break_our)
+        const koOppClean = n(r.won_clean_p1_opp) + n(r.won_clean_p2_opp) + n(r.won_clean_p3_opp)
+        const koOppBreak = n(r.won_break_opp)
+        // Assists
+        const assists = n(r.assists_shots) + n(r.assists_goals) + n(r.assists_2pt)
+        // Turnovers
+        const toNeg = n(r.turnovers_kicked_away) + n(r.turnover_skill_error) + n(r.turnovers_in_contact)
+        const dropShorts = n(r.drop_shorts)
+        // Defence
+        const forcedTO = n(r.forced_to_win)
+        const kickawayTO = n(r.kickaway_to_received)
+        const dne = n(r.dne)
+        const hasKO = koOursClean + koOursBreak + koOppClean + koOppBreak > 0
+        const hasTO = toNeg + dropShorts > 0
+        const hasDef = forcedTO + kickawayTO + dne > 0
         return (
           <div key={m} className="card" style={{ overflow: 'hidden', marginBottom: 12 }}>
+            {/* Header */}
             <div style={{ background: 'var(--bg3)', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
               <div><div style={{ fontSize: 13, fontWeight: 700 }}>{m}</div><div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>{OPP[m]}</div></div>
               <div style={{ textAlign: 'right' }}>
@@ -478,15 +496,17 @@ function MatchesTab({ stats }) {
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color: impactColor(imp) }}>{imp}</div>
               </div>
             </div>
+            {/* Top stats row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', padding: '10px 14px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
-              {[['Mins', n(r.total_minutes), 'var(--text)'], ['Points', pts, 'var(--gold)'], ['Tackles', n(r.tackles), 'var(--blue)'], ['Forced TO', n(r.forced_to_win), 'var(--teal)']].map(([l, v, c]) => (
+              {[['Mins', n(r.total_minutes), 'var(--text)'], ['Points', pts, 'var(--gold)'], ['Assists', assists, 'var(--purple)'], ['Tackles', n(r.tackles), 'var(--blue)']].map(([l, v, c]) => (
                 <div key={l} style={{ textAlign: 'center' }}>
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 20, fontWeight: 700, color: c }}>{v}</div>
                   <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase' }}>{l}</div>
                 </div>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', padding: '8px 14px' }}>
+            {/* Impact row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', padding: '8px 14px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
               {[['Attack', ai, 'var(--gold)'], ['Transition', ti, 'var(--blue)'], ['Defence', di, 'var(--teal)']].map(([l, v, c]) => (
                 <div key={l} style={{ textAlign: 'center' }}>
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 17, fontWeight: 700, color: c }}>{v}</div>
@@ -494,8 +514,63 @@ function MatchesTab({ stats }) {
                 </div>
               ))}
             </div>
+            {/* Kickouts */}
+            {hasKO && (
+              <div style={{ padding: '8px 14px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
+                <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Kickouts</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4 }}>
+                  {[
+                    ['Our Clean', koOursClean, 'var(--teal)'],
+                    ['Our Break', koOursBreak, 'var(--teal)'],
+                    ['Opp Clean', koOppClean, 'var(--blue)'],
+                    ['Opp Break', koOppBreak, 'var(--blue)'],
+                  ].map(([l, v, c]) => (
+                    <div key={l} style={{ textAlign: 'center' }}>
+                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, color: v > 0 ? c : 'var(--text3)' }}>{v > 0 ? v : '—'}</div>
+                      <div style={{ fontSize: 8, color: 'var(--text3)', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 2 }}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Defence won */}
+            {hasDef && (
+              <div style={{ padding: '8px 14px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
+                <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Defence</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4 }}>
+                  {[
+                    ['Forced TO', forcedTO, 'var(--teal)'],
+                    ['Kickaway TO', kickawayTO, 'var(--teal)'],
+                    ['DNE', dne, dne > 0 ? 'var(--red)' : 'var(--text3)'],
+                  ].map(([l, v, c]) => (
+                    <div key={l} style={{ textAlign: 'center' }}>
+                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, color: v > 0 ? c : 'var(--text3)' }}>{v > 0 ? v : '—'}</div>
+                      <div style={{ fontSize: 8, color: 'var(--text3)', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 2 }}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Turnovers lost */}
+            {hasTO && (
+              <div style={{ padding: '8px 14px', borderBottom: pts > 0 ? '1px solid rgba(26,51,86,0.3)' : 'none' }}>
+                <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Turnovers Lost</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 4 }}>
+                  {[
+                    ['Kickaway/Skill/Contact', toNeg, 'var(--red)'],
+                    ['Drop Shorts', dropShorts, 'var(--gold)'],
+                  ].map(([l, v, c]) => (
+                    <div key={l} style={{ textAlign: 'center' }}>
+                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, color: v > 0 ? c : 'var(--text3)' }}>{v > 0 ? v : '—'}</div>
+                      <div style={{ fontSize: 8, color: 'var(--text3)', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 2 }}>{l}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Scoring detail */}
             {pts > 0 && (
-              <div style={{ padding: '8px 14px', borderTop: '1px solid rgba(26,51,86,0.3)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ padding: '8px 14px', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {p1s > 0 && <span style={{ fontSize: 11, color: 'var(--blue)' }}>1pt: <b>{p1s}</b></span>}
                 {p2s > 0 && <span style={{ fontSize: 11, color: 'var(--purple)' }}>2pt: <b>{p2s}</b></span>}
                 {gs > 0 && <span style={{ fontSize: 11, color: 'var(--teal)' }}>Goals: <b>{gs}</b></span>}
