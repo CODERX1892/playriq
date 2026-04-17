@@ -1,151 +1,266 @@
 import { useState } from 'react'
 import { n, r1, pct, sf, MATCHES } from '../lib/utils'
 
+// ─── BENCHMARKS ──────────────────────────────────────────────────────────────
+// Hard targets per role. As dataset grows these can be replaced with dynamic p75/p90.
+// lower_is_better + warning = acceptable ceiling (not zero — realistic low target)
+// zero_target removed — replaced with explicit warning thresholds
+
 const DYNAMIC_BENCHMARKS = {
   "Inside Forward": {
-    one_pointer_attempts: { min: 2.0, good: 3.0, p90: 3.0, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 3.0+ per game" },
-    pts: { min: 2.0, good: 2.5, p90: 3.0, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 2.5+ per game" },
-    duels_contested: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.0+ per game" },
-    tackles: { min: 3.0, good: 3.0, p90: 5.0, lower_is_better: false, zero_target: false, warning: 3.0, label: "Target 3.0+ per game" },
-    forced_to_win: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.0+ per game" },
-    drop_shorts: { min: 1.0, good: 1.5, p90: 1.8, lower_is_better: true, zero_target: true, warning: 0.5, label: "Drop shorts per game — target zero" },
-    turnovers_in_contact: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: true, zero_target: true, warning: 0.5, label: "TOs in contact — target zero" },
-    turnovers_kicked_away: { min: 1.0, good: 1.25, p90: 1.7, lower_is_better: true, zero_target: true, warning: 0.3, label: "Kickaway TOs — target zero" },
+    // Shooting
+    one_pointer_attempts:  { good: 3.0,  p90: 4.0,  lower_is_better: false, zero_target: false, warning: 3.0,  label: "1pt Attempts per game" },
+    one_pointer_pct:       { good: 75,   p90: 85,   lower_is_better: false, zero_target: false, warning: 75,   label: "1pt Shooting %" },
+    two_pointer_attempts:  { good: 0.5,  p90: 1.0,  lower_is_better: false, zero_target: false, warning: 0.5,  label: "2pt Attempts per game" },
+    two_pointer_pct:       { good: 50,   p90: 65,   lower_is_better: false, zero_target: false, warning: 50,   label: "2pt Shooting %" },
+    pts:                   { good: 2.5,  p90: 4.0,  lower_is_better: false, zero_target: false, warning: 2.5,  label: "Points per game" },
+    assists_shots:         { good: 1.0,  p90: 2.0,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Assists (3 scores) per game" },
+    // Defence & workrate
+    tackles:               { good: 3.0,  p90: 4.0,  lower_is_better: false, zero_target: false, warning: 3.0,  label: "Tackles per game" },
+    forced_to_win:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Forced TOs Won per game" },
+    kickaway_to_received:  { good: 0.5,  p90: 1.0,  lower_is_better: false, zero_target: false, warning: 0.5,  label: "Kickaway TOs Won per game" },
+    // Opp kickouts
+    won_clean_p1_opp:      { good: 0.5,  p90: 1.0,  lower_is_better: false, zero_target: false, warning: 0.5,  label: "Opp KO Clean Wins per game" },
+    won_break_opp:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Opp KO Breaks per game" },
+    // Our kickouts
+    won_clean_p1_our:      { good: 0.5,  p90: 1.0,  lower_is_better: false, zero_target: false, warning: 0.5,  label: "Our KO Clean Wins per game" },
+    won_break_our:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Our KO Breaks per game" },
+    // Turnovers lost — realistic low targets (not zero)
+    drop_shorts:           { good: 0.3,  p90: 0.2,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "Drop Shorts per game" },
+    turnovers_in_contact:  { good: 0.3,  p90: 0.2,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "TOs in Contact per game" },
+    turnovers_kicked_away: { good: 0.3,  p90: 0.2,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "Kickaway TOs Lost per game" },
+    turnover_skill_error:  { good: 0.3,  p90: 0.2,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "Skill Errors per game" },
   },
+
   "Half Forward": {
-    simple_pass: { min: 6.0, good: 10.0, p90: 10.6, lower_is_better: false, zero_target: false, warning: 6.0, label: "Target 10.0+ per game" },
-    advance_pass: { min: 2.0, good: 3.0, p90: 3.6, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 3.0+ per game" },
-    assists_shots: { min: 2.0, good: 2.5, p90: 3.8, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 2.5+ per game" },
-    tackles: { min: 1.5, good: 2.25, p90: 3.3, lower_is_better: false, zero_target: false, warning: 1.5, label: "Target 2.25+ per game" },
-    carries: { min: 1.0, good: 1.5, p90: 1.8, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.5+ per game" },
-    turnovers_kicked_away: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: true, zero_target: true, warning: 0.3, label: "Kickaway TOs — target zero" },
-    turnover_skill_error: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: true, zero_target: true, warning: 0.3, label: "Skill errors — target zero" },
-    drop_shorts: { min: 1.0, good: 1.5, p90: 1.8, lower_is_better: true, zero_target: true, warning: 0.5, label: "Drop shorts per game — target zero" },
+    // Shooting
+    one_pointer_attempts:  { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "1pt Attempts per game" },
+    one_pointer_pct:       { good: 75,   p90: 85,   lower_is_better: false, zero_target: false, warning: 75,   label: "1pt Shooting %" },
+    two_pointer_pct:       { good: 50,   p90: 65,   lower_is_better: false, zero_target: false, warning: 50,   label: "2pt Shooting %" },
+    assists_shots:         { good: 3.0,  p90: 4.0,  lower_is_better: false, zero_target: false, warning: 3.0,  label: "Assists (3 scores) per game" },
+    // Possession
+    simple_pass:           { good: 8.0,  p90: 12.0, lower_is_better: false, zero_target: false, warning: 8.0,  label: "Simple Passes per game" },
+    advance_pass:          { good: 2.0,  p90: 3.5,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Advance Passes per game" },
+    carries:               { good: 1.5,  p90: 2.5,  lower_is_better: false, zero_target: false, warning: 1.5,  label: "Carries per game" },
+    // Defence
+    tackles:               { good: 3.0,  p90: 4.0,  lower_is_better: false, zero_target: false, warning: 3.0,  label: "Tackles per game" },
+    forced_to_win:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Forced TOs Won per game" },
+    kickaway_to_received:  { good: 0.5,  p90: 1.0,  lower_is_better: false, zero_target: false, warning: 0.5,  label: "Kickaway TOs Won per game" },
+    // Opp kickouts
+    won_clean_p1_opp:      { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Opp KO Clean Wins per game" },
+    won_break_opp:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Opp KO Breaks per game" },
+    // Our kickouts
+    won_clean_p1_our:      { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Our KO Clean Wins per game" },
+    won_break_our:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Our KO Breaks per game" },
+    // Turnovers lost
+    drop_shorts:           { good: 0.3,  p90: 0.2,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "Drop Shorts per game" },
+    turnovers_in_contact:  { good: 0.3,  p90: 0.2,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "TOs in Contact per game" },
+    turnovers_kicked_away: { good: 0.3,  p90: 0.2,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "Kickaway TOs Lost per game" },
+    turnover_skill_error:  { good: 0.3,  p90: 0.2,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "Skill Errors per game" },
   },
+
   "Midfielder": {
-    simple_pass: { min: 16.5, good: 20.0, p90: 23.0, lower_is_better: false, zero_target: false, warning: 16.5, label: "Target 20.0+ per game" },
-    advance_pass: { min: 1.5, good: 3.5, p90: 4.5, lower_is_better: false, zero_target: false, warning: 1.5, label: "Target 3.5+ per game" },
-    carries: { min: 1.0, good: 1.25, p90: 1.7, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.25+ per game" },
-    tackles: { min: 2.5, good: 3.0, p90: 4.1, lower_is_better: false, zero_target: false, warning: 2.5, label: "Target 3.0+ per game" },
-    forced_to_win: { min: 2.0, good: 2.0, p90: 2.0, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 2.0+ per game" },
-    duels_contested: { min: 1.0, good: 1.25, p90: 1.7, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.25+ per game" },
-    turnovers_in_contact: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: true, zero_target: true, warning: 0.5, label: "TOs in contact — target zero" },
-    dne: { min: 1.0, good: 1.5, p90: 1.8, lower_is_better: true, zero_target: true, warning: 0.3, label: "DNE — must engage every contest" },
-    won_clean_p1_our: { min: 1.5, good: 1.75, p90: 1.9, lower_is_better: false, zero_target: false, warning: 1.5, label: "Target 1.75+ per game" },
-    won_clean_p2_our: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.0+ per game" },
+    // Possession
+    simple_pass:           { good: 12.0, p90: 18.0, lower_is_better: false, zero_target: false, warning: 12.0, label: "Simple Passes per game" },
+    advance_pass:          { good: 3.0,  p90: 4.5,  lower_is_better: false, zero_target: false, warning: 3.0,  label: "Advance Passes per game" },
+    carries:               { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Carries per game" },
+    assists_shots:         { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Assists (3 scores) per game" },
+    // Defence
+    tackles:               { good: 3.0,  p90: 5.0,  lower_is_better: false, zero_target: false, warning: 3.0,  label: "Tackles per game" },
+    forced_to_win:         { good: 1.0,  p90: 2.0,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Forced TOs Won per game" },
+    kickaway_to_received:  { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Kickaway TOs Won per game" },
+    dne:                   { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "DNE per game" },
+    // Opp kickouts
+    won_clean_p1_opp:      { good: 1.5,  p90: 2.0,  lower_is_better: false, zero_target: false, warning: 1.5,  label: "Opp KO Clean Wins per game" },
+    won_clean_p2_opp:      { good: 0.5,  p90: 1.0,  lower_is_better: false, zero_target: false, warning: 0.5,  label: "Opp KO P2 Wins per game" },
+    won_break_opp:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Opp KO Breaks per game" },
+    // Our kickouts
+    won_clean_p1_our:      { good: 1.5,  p90: 2.0,  lower_is_better: false, zero_target: false, warning: 1.5,  label: "Our KO Clean Wins per game" },
+    won_clean_p2_our:      { good: 0.5,  p90: 1.0,  lower_is_better: false, zero_target: false, warning: 0.5,  label: "Our KO P2 Wins per game" },
+    won_break_our:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Our KO Breaks per game" },
+    // Turnovers lost
+    drop_shorts:           { good: 0.3,  p90: 0.2,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "Drop Shorts per game" },
+    turnovers_in_contact:  { good: 0.3,  p90: 0.2,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "TOs in Contact per game" },
+    turnovers_kicked_away: { good: 0.3,  p90: 0.2,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "Kickaway TOs Lost per game" },
+    turnover_skill_error:  { good: 0.3,  p90: 0.2,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "Skill Errors per game" },
   },
+
   "Half Back": {
-    simple_pass: { min: 8.0, good: 10.0, p90: 14.6, lower_is_better: false, zero_target: false, warning: 8.0, label: "Target 10.0+ per game" },
-    advance_pass: { min: 2.0, good: 2.0, p90: 2.6, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 2.0+ per game" },
-    tackles: { min: 3.0, good: 5.0, p90: 8.1, lower_is_better: false, zero_target: false, warning: 3.0, label: "Target 5.0+ per game" },
-    forced_to_win: { min: 1.0, good: 1.5, p90: 1.8, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.5+ per game" },
-    kickaway_to_received: { min: 1.0, good: 1.25, p90: 1.7, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.25+ per game" },
-    duels_contested: { min: 1.0, good: 2.0, p90: 2.6, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 2.0+ per game" },
-    defensive_duels_won: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.0+ per game" },
-    turnovers_kicked_away: { min: 1.5, good: 1.75, p90: 1.9, lower_is_better: true, zero_target: true, warning: 0.3, label: "Kickaway TOs — target zero" },
-    dne: { min: 1.0, good: 2.0, p90: 2.6, lower_is_better: true, zero_target: true, warning: 0.3, label: "DNE — must engage every contest" },
-    breach_1v1: { min: 2.0, good: 2.0, p90: 2.0, lower_is_better: true, zero_target: true, warning: 0.5, label: "Breach 1v1 — target zero" },
+    // Possession
+    simple_pass:           { good: 10.0, p90: 15.0, lower_is_better: false, zero_target: false, warning: 10.0, label: "Simple Passes per game" },
+    advance_pass:          { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Advance Passes per game" },
+    carries:               { good: 1.5,  p90: 2.5,  lower_is_better: false, zero_target: false, warning: 1.5,  label: "Carries per game" },
+    assists_shots:         { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Assists (3 scores) per game" },
+    // Defence
+    tackles:               { good: 4.0,  p90: 6.0,  lower_is_better: false, zero_target: false, warning: 4.0,  label: "Tackles per game" },
+    forced_to_win:         { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Forced TOs Won per game" },
+    kickaway_to_received:  { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Kickaway TOs Won per game" },
+    dne:                   { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "DNE per game" },
+    breach_1v1:            { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "Breach 1v1 per game" },
+    // Our kickouts — higher targets for half backs
+    won_clean_p1_our:      { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Our KO Clean Wins per game" },
+    won_clean_p2_our:      { good: 0.5,  p90: 1.0,  lower_is_better: false, zero_target: false, warning: 0.5,  label: "Our KO P2 Wins per game" },
+    won_break_our:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Our KO Breaks per game" },
+    // Opp kickouts
+    won_clean_p1_opp:      { good: 1.5,  p90: 2.0,  lower_is_better: false, zero_target: false, warning: 1.5,  label: "Opp KO Clean Wins per game" },
+    won_break_opp:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Opp KO Breaks per game" },
+    // Turnovers lost — backs must protect possession
+    drop_shorts:           { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "Drop Shorts per game" },
+    turnovers_in_contact:  { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "TOs in Contact per game" },
+    turnovers_kicked_away: { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "Kickaway TOs Lost per game" },
+    turnover_skill_error:  { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "Skill Errors per game" },
   },
+
   "Full Back": {
-    duels_contested: { min: 2.0, good: 2.5, p90: 2.8, lower_is_better: false, zero_target: false, warning: 2.0, label: "Target 2.5+ per game" },
-    defensive_duels_won: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.0+ per game" },
-    tackles: { min: 3.0, good: 3.5, p90: 4.4, lower_is_better: false, zero_target: false, warning: 3.0, label: "Target 3.5+ per game" },
-    forced_to_win: { min: 2.5, good: 3.25, p90: 3.7, lower_is_better: false, zero_target: false, warning: 2.5, label: "Target 3.25+ per game" },
-    breach_1v1: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: true, zero_target: true, warning: 0.5, label: "Breach 1v1 — target zero" },
-    dne: { min: 1.5, good: 2.0, p90: 2.0, lower_is_better: true, zero_target: true, warning: 0.3, label: "DNE — must engage every contest" },
-    simple_pass: { min: 20.0, good: 25.25, p90: 27.5, lower_is_better: false, zero_target: false, warning: 20.0, label: "Target 25.25+ per game" },
-    turnovers_kicked_away: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: true, zero_target: true, warning: 0.3, label: "Kickaway TOs — target zero" },
+    // Possession — full backs recycle a lot
+    simple_pass:           { good: 12.0, p90: 18.0, lower_is_better: false, zero_target: false, warning: 12.0, label: "Simple Passes per game" },
+    advance_pass:          { good: 1.0,  p90: 2.0,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Advance Passes per game" },
+    // Defence
+    tackles:               { good: 4.0,  p90: 6.0,  lower_is_better: false, zero_target: false, warning: 4.0,  label: "Tackles per game" },
+    forced_to_win:         { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Forced TOs Won per game" },
+    kickaway_to_received:  { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Kickaway TOs Won per game" },
+    dne:                   { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "DNE per game" },
+    breach_1v1:            { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "Breach 1v1 per game" },
+    // Our kickouts — full backs are primary targets
+    won_clean_p1_our:      { good: 2.5,  p90: 3.5,  lower_is_better: false, zero_target: false, warning: 2.5,  label: "Our KO Clean Wins per game" },
+    won_clean_p2_our:      { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Our KO P2 Wins per game" },
+    won_break_our:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Our KO Breaks per game" },
+    ko_target_lost_clean:  { good: 0.3,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "KO Target Lost Clean per game" },
+    // Turnovers lost — strict for full backs
+    turnovers_in_contact:  { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "TOs in Contact per game" },
+    turnovers_kicked_away: { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "Kickaway TOs Lost per game" },
+    turnover_skill_error:  { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "Skill Errors per game" },
   },
+
   "Goalkeeper": {
-    shots_saved: { min: 1.0, good: 1.0, p90: 1.0, lower_is_better: false, zero_target: false, warning: 1.0, label: "Target 1.0+ per game" },
-    ko_target_lost_clean: { min: 2.0, good: 3.5, p90: 4.4, lower_is_better: true, zero_target: true, warning: 1, label: "Kickout losses — target zero" },
+    shots_saved:           { good: 1.0,  p90: 2.0,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Shots Saved per game" },
+    ko_target_lost_clean:  { good: 0.3,  p90: 0.2,  lower_is_better: true,  zero_target: false, warning: 0.3,  label: "KO Target Lost Clean per game" },
+    won_clean_p1_our:      { good: 3.0,  p90: 4.0,  lower_is_better: false, zero_target: false, warning: 3.0,  label: "Our KO P1 Won per game" },
+    won_clean_p2_our:      { good: 1.0,  p90: 2.0,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Our KO P2 Won per game" },
+    won_break_our:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Our KO Breaks per game" },
   },
 }
 
 const ROLE_BENCHMARKS = {
   "Inside Forward": {
-    description: "Primary scoring threat. Expected to shoot, win possession in scoring zones, work hard on turnovers.",
+    description: "Primary scoring threat. Shoot early and often, convert chances, win the ball back in scoring zones.",
     key_metrics: {
-      one_pointer_attempts: { min: 2, good: 4, label: "1pt attempts per game", higher_better: true },
-      two_pointer_attempts: { min: 0.5, good: 2, label: "2pt attempts per game", higher_better: true },
-      pts: { min: 2, good: 5, label: "Points per game", higher_better: true },
-      drop_shorts: { max: 1, label: "Drop shorts per game", higher_better: false },
-      duels_contested: { min: 3, good: 5, label: "Duels contested per game", higher_better: true },
-      tackles: { min: 1, good: 2, label: "Tackles per game", higher_better: true },
-      turnovers_in_contact: { max: 1, label: "TOs in contact per game", higher_better: false },
+      one_pointer_attempts:  { good: 3.0,  label: "1pt attempts per game",       higher_better: true  },
+      one_pointer_pct:       { good: 75,   label: "1pt shooting %",              higher_better: true  },
+      two_pointer_pct:       { good: 50,   label: "2pt shooting %",              higher_better: true  },
+      pts:                   { good: 2.5,  label: "Points per game",             higher_better: true  },
+      assists_shots:         { good: 1.0,  label: "Assists (3 scores) per game", higher_better: true  },
+      tackles:               { good: 3.0,  label: "Tackles per game",            higher_better: true  },
+      forced_to_win:         { good: 1.0,  label: "Forced TOs Won per game",     higher_better: true  },
+      kickaway_to_received:  { good: 0.5,  label: "Kickaway TOs Won per game",   higher_better: true  },
+      won_clean_p1_opp:      { good: 0.5,  label: "Opp KO Clean Wins per game",  higher_better: true  },
+      won_break_opp:         { good: 1.0,  label: "Opp KO Breaks per game",      higher_better: true  },
+      won_clean_p1_our:      { good: 0.5,  label: "Our KO Clean Wins per game",  higher_better: true  },
+      won_break_our:         { good: 1.0,  label: "Our KO Breaks per game",      higher_better: true  },
+      drop_shorts:           { good: 0.3,  label: "Drop Shorts per game",        higher_better: false },
+      turnovers_in_contact:  { good: 0.3,  label: "TOs in Contact per game",     higher_better: false },
+      turnovers_kicked_away: { good: 0.3,  label: "Kickaway TOs Lost per game",  higher_better: false },
+      turnover_skill_error:  { good: 0.3,  label: "Skill Errors per game",       higher_better: false },
     }
   },
   "Half Forward": {
-    description: "Link player between midfield and attack. High possession, creates scores, contributes defensively.",
+    description: "Link player. Creates scores, recycles possession, contributes defensively across the pitch.",
     key_metrics: {
-      simple_pass: { min: 4, good: 8, label: "Simple passes per game", higher_better: true },
-      advance_pass: { min: 1, good: 3, label: "Advance passes per game", higher_better: true },
-      assists_shots: { min: 0.5, good: 2, label: "Shot assists per game", higher_better: true },
-      tackles: { min: 1, good: 3, label: "Tackles per game", higher_better: true },
-      forced_to_win: { min: 0.5, good: 1, label: "Forced TOs per game", higher_better: true },
-      turnovers_kicked_away: { max: 0.5, label: "Kickaway TOs per game", higher_better: false },
-      turnover_skill_error: { max: 0.5, label: "Skill errors per game", higher_better: false },
-      drop_shorts: { max: 0.5, label: "Drop shorts per game", higher_better: false },
-      carries: { min: 1, good: 3, label: "Carries per game", higher_better: true },
+      one_pointer_attempts:  { good: 2.0,  label: "1pt attempts per game",       higher_better: true  },
+      one_pointer_pct:       { good: 75,   label: "1pt shooting %",              higher_better: true  },
+      two_pointer_pct:       { good: 50,   label: "2pt shooting %",              higher_better: true  },
+      assists_shots:         { good: 3.0,  label: "Assists (3 scores) per game", higher_better: true  },
+      simple_pass:           { good: 8.0,  label: "Simple passes per game",      higher_better: true  },
+      advance_pass:          { good: 2.0,  label: "Advance passes per game",     higher_better: true  },
+      carries:               { good: 1.5,  label: "Carries per game",            higher_better: true  },
+      tackles:               { good: 3.0,  label: "Tackles per game",            higher_better: true  },
+      forced_to_win:         { good: 1.0,  label: "Forced TOs Won per game",     higher_better: true  },
+      kickaway_to_received:  { good: 0.5,  label: "Kickaway TOs Won per game",   higher_better: true  },
+      won_clean_p1_opp:      { good: 1.0,  label: "Opp KO Clean Wins per game",  higher_better: true  },
+      won_break_opp:         { good: 1.0,  label: "Opp KO Breaks per game",      higher_better: true  },
+      won_clean_p1_our:      { good: 1.0,  label: "Our KO Clean Wins per game",  higher_better: true  },
+      won_break_our:         { good: 1.0,  label: "Our KO Breaks per game",      higher_better: true  },
+      drop_shorts:           { good: 0.3,  label: "Drop Shorts per game",        higher_better: false },
+      turnovers_in_contact:  { good: 0.3,  label: "TOs in Contact per game",     higher_better: false },
+      turnovers_kicked_away: { good: 0.3,  label: "Kickaway TOs Lost per game",  higher_better: false },
+      turnover_skill_error:  { good: 0.3,  label: "Skill Errors per game",       higher_better: false },
     }
   },
   "Midfielder": {
-    description: "Engine of the team. Highest workrate expected. Must dominate kickouts, recycle ball, win turnovers.",
+    description: "Engine of the team. Dominates kickouts, recycles ball, wins turnovers, covers the most ground.",
     key_metrics: {
-      simple_pass: { min: 6, good: 10, label: "Simple passes per game", higher_better: true },
-      advance_pass: { min: 2, good: 4, label: "Advance passes per game", higher_better: true },
-      carries: { min: 2, good: 4, label: "Carries per game", higher_better: true },
-      tackles: { min: 2, good: 4, label: "Tackles per game", higher_better: true },
-      forced_to_win: { min: 0.5, good: 1.5, label: "Forced TOs per game", higher_better: true },
-      duels_contested: { min: 3, good: 6, label: "Duels contested per game", higher_better: true },
-      turnovers_in_contact: { max: 0.5, label: "TOs in contact per game", higher_better: false },
-      turnover_skill_error: { max: 0.5, label: "Skill errors per game", higher_better: false },
-      dne: { max: 0.5, label: "DNE per game", higher_better: false },
+      simple_pass:           { good: 12.0, label: "Simple passes per game",      higher_better: true  },
+      advance_pass:          { good: 3.0,  label: "Advance passes per game",     higher_better: true  },
+      carries:               { good: 2.0,  label: "Carries per game",            higher_better: true  },
+      assists_shots:         { good: 2.0,  label: "Assists (3 scores) per game", higher_better: true  },
+      tackles:               { good: 3.0,  label: "Tackles per game",            higher_better: true  },
+      forced_to_win:         { good: 1.0,  label: "Forced TOs Won per game",     higher_better: true  },
+      kickaway_to_received:  { good: 2.0,  label: "Kickaway TOs Won per game",   higher_better: true  },
+      dne:                   { good: 0.2,  label: "DNE per game",                higher_better: false },
+      won_clean_p1_opp:      { good: 1.5,  label: "Opp KO Clean Wins per game",  higher_better: true  },
+      won_break_opp:         { good: 1.0,  label: "Opp KO Breaks per game",      higher_better: true  },
+      won_clean_p1_our:      { good: 1.5,  label: "Our KO Clean Wins per game",  higher_better: true  },
+      won_break_our:         { good: 1.0,  label: "Our KO Breaks per game",      higher_better: true  },
+      drop_shorts:           { good: 0.3,  label: "Drop Shorts per game",        higher_better: false },
+      turnovers_in_contact:  { good: 0.3,  label: "TOs in Contact per game",     higher_better: false },
+      turnovers_kicked_away: { good: 0.3,  label: "Kickaway TOs Lost per game",  higher_better: false },
+      turnover_skill_error:  { good: 0.3,  label: "Skill Errors per game",       higher_better: false },
     }
   },
   "Half Back": {
-    description: "Ball-playing defender. Must recycle possession efficiently, win kickouts, apply pressure in transition.",
+    description: "Ball-playing defender. Win kickouts, protect possession, drive forward, win the ball back high.",
     key_metrics: {
-      simple_pass: { min: 5, good: 9, label: "Simple passes per game", higher_better: true },
-      advance_pass: { min: 1, good: 3, label: "Advance passes per game", higher_better: true },
-      tackles: { min: 2, good: 4, label: "Tackles per game", higher_better: true },
-      forced_to_win: { min: 0.5, good: 1, label: "Forced TOs per game", higher_better: true },
-      kickaway_to_received: { min: 0.5, good: 1.5, label: "Kickaway TOs won per game", higher_better: true },
-      duels_contested: { min: 3, good: 5, label: "Duels contested per game", higher_better: true },
-      defensive_duels_won: { min: 1.5, good: 3, label: "Duels won per game", higher_better: true },
-      turnovers_kicked_away: { max: 0.3, label: "Kickaway TOs per game", higher_better: false },
-      dne: { max: 0.3, label: "DNE per game", higher_better: false },
-      breach_1v1: { max: 0.5, label: "Breach 1v1 per game", higher_better: false },
+      simple_pass:           { good: 10.0, label: "Simple passes per game",      higher_better: true  },
+      advance_pass:          { good: 2.0,  label: "Advance passes per game",     higher_better: true  },
+      carries:               { good: 1.5,  label: "Carries per game",            higher_better: true  },
+      assists_shots:         { good: 2.0,  label: "Assists (3 scores) per game", higher_better: true  },
+      tackles:               { good: 4.0,  label: "Tackles per game",            higher_better: true  },
+      forced_to_win:         { good: 2.0,  label: "Forced TOs Won per game",     higher_better: true  },
+      kickaway_to_received:  { good: 2.0,  label: "Kickaway TOs Won per game",   higher_better: true  },
+      dne:                   { good: 0.2,  label: "DNE per game",                higher_better: false },
+      breach_1v1:            { good: 0.2,  label: "Breach 1v1 per game",         higher_better: false },
+      won_clean_p1_our:      { good: 2.0,  label: "Our KO Clean Wins per game",  higher_better: true  },
+      won_break_our:         { good: 1.0,  label: "Our KO Breaks per game",      higher_better: true  },
+      won_clean_p1_opp:      { good: 1.5,  label: "Opp KO Clean Wins per game",  higher_better: true  },
+      won_break_opp:         { good: 1.0,  label: "Opp KO Breaks per game",      higher_better: true  },
+      drop_shorts:           { good: 0.2,  label: "Drop Shorts per game",        higher_better: false },
+      turnovers_in_contact:  { good: 0.2,  label: "TOs in Contact per game",     higher_better: false },
+      turnovers_kicked_away: { good: 0.2,  label: "Kickaway TOs Lost per game",  higher_better: false },
+      turnover_skill_error:  { good: 0.2,  label: "Skill Errors per game",       higher_better: false },
     }
   },
   "Full Back": {
-    description: "Last line of defence. Duels, blocks, and sweeping. Must win individual battles consistently.",
+    description: "Last line of defence. Win kickouts, protect the goal, force turnovers, give nothing away.",
     key_metrics: {
-      duels_contested: { min: 3, good: 6, label: "Duels contested per game", higher_better: true },
-      defensive_duels_won: { min: 2, good: 4, label: "Duels won per game", higher_better: true },
-      tackles: { min: 2, good: 4, label: "Tackles per game", higher_better: true },
-      forced_to_win: { min: 0.5, good: 1, label: "Forced TOs per game", higher_better: true },
-      breach_1v1: { max: 0.5, label: "Breach 1v1 per game", higher_better: false },
-      dne: { max: 0.3, label: "DNE per game", higher_better: false },
-      shot_free_conceded: { max: 0.5, label: "Shot frees conceded per game", higher_better: false },
-      simple_pass: { min: 3, good: 6, label: "Simple passes per game", higher_better: true },
-      turnovers_kicked_away: { max: 0.3, label: "Kickaway TOs per game", higher_better: false },
+      simple_pass:           { good: 12.0, label: "Simple passes per game",      higher_better: true  },
+      advance_pass:          { good: 1.0,  label: "Advance passes per game",     higher_better: true  },
+      tackles:               { good: 4.0,  label: "Tackles per game",            higher_better: true  },
+      forced_to_win:         { good: 2.0,  label: "Forced TOs Won per game",     higher_better: true  },
+      kickaway_to_received:  { good: 2.0,  label: "Kickaway TOs Won per game",   higher_better: true  },
+      dne:                   { good: 0.2,  label: "DNE per game",                higher_better: false },
+      breach_1v1:            { good: 0.2,  label: "Breach 1v1 per game",         higher_better: false },
+      won_clean_p1_our:      { good: 2.5,  label: "Our KO Clean Wins per game",  higher_better: true  },
+      won_clean_p2_our:      { good: 1.0,  label: "Our KO P2 Wins per game",     higher_better: true  },
+      won_break_our:         { good: 1.0,  label: "Our KO Breaks per game",      higher_better: true  },
+      ko_target_lost_clean:  { good: 0.3,  label: "KO Target Lost Clean per game", higher_better: false },
+      turnovers_in_contact:  { good: 0.2,  label: "TOs in Contact per game",     higher_better: false },
+      turnovers_kicked_away: { good: 0.2,  label: "Kickaway TOs Lost per game",  higher_better: false },
+      turnover_skill_error:  { good: 0.2,  label: "Skill Errors per game",       higher_better: false },
     }
   },
   "Goalkeeper": {
     description: "Shot stopper and kickout distributor. Accuracy and decision-making on restarts is critical.",
     key_metrics: {
-      won_clean_p1_our: { min: 1, good: 3, label: "P1 kickout wins per game", higher_better: true },
-      won_clean_p2_our: { min: 1, good: 3, label: "P2 kickout wins per game", higher_better: true },
-      won_clean_p3_our: { min: 0.5, good: 1.5, label: "P3 kickout wins per game", higher_better: true },
-      won_break_our: { min: 0.5, good: 1.5, label: "Kickout breaks won per game", higher_better: true },
-      shots_saved: { min: 1, good: 3, label: "Shots saved per game", higher_better: true },
-      ko_target_lost_clean: { max: 1, label: "Kickout losses per game", higher_better: false },
+      shots_saved:           { good: 1.0,  label: "Shots saved per game",        higher_better: true  },
+      won_clean_p1_our:      { good: 3.0,  label: "Our KO P1 Won per game",      higher_better: true  },
+      won_clean_p2_our:      { good: 1.0,  label: "Our KO P2 Won per game",      higher_better: true  },
+      won_break_our:         { good: 1.0,  label: "Our KO Breaks per game",      higher_better: true  },
+      ko_target_lost_clean:  { good: 0.3,  label: "KO Target Lost Clean per game", higher_better: false },
     }
   }
 }
 
-// Field name map for DB columns
+// Field name map for DB columns — add opp kickout fields
 const FIELD_MAP = {
   one_pointer_attempts: 'one_pointer_attempts',
   two_pointer_attempts: 'two_pointer_attempts',
@@ -173,9 +288,13 @@ const FIELD_MAP = {
   won_clean_p2_our: 'won_clean_p2_our',
   won_clean_p3_our: 'won_clean_p3_our',
   won_break_our: 'won_break_our',
+  won_clean_p1_opp: 'won_clean_p1_opp',
+  won_clean_p2_opp: 'won_clean_p2_opp',
+  won_break_opp: 'won_break_opp',
   shots_saved: 'shots_saved',
   ko_target_lost_clean: 'ko_target_lost_clean',
 }
+
 
 export default function PlayrIQEdge({ stats, player }) {
   const [loading, setLoading] = useState(false)
@@ -207,9 +326,15 @@ export default function PlayrIQEdge({ stats, player }) {
     playerAvgs[metric] = r1(total / mc)
   })
 
-  // Also calc shooting pct
-  const totalAtt = stats.reduce((s,r) => s + n(r.one_pointer_attempts) + n(r.one_pointer_attempts_f) + n(r.two_pointer_attempts) + n(r.two_pointer_attempts_f) + n(r.goal_attempts) + n(r.goal_attempts_f), 0)
-  const totalScored = stats.reduce((s,r) => s + n(r.one_pointer_scored) + n(r.one_pointer_scored_f) + n(r.two_pointer_scored) + n(r.two_pointer_scored_f) + n(r.goals_scored) + n(r.goals_scored_f), 0)
+  // Shooting percentages — computed metrics not in FIELD_MAP
+  const onePtAtt   = stats.reduce((s,r) => s + n(r.one_pointer_attempts), 0)
+  const onePtScored = stats.reduce((s,r) => s + n(r.one_pointer_scored), 0)
+  const twoPtAtt   = stats.reduce((s,r) => s + n(r.two_pointer_attempts), 0)
+  const twoPtScored = stats.reduce((s,r) => s + n(r.two_pointer_scored), 0)
+  playerAvgs.one_pointer_pct = onePtAtt > 0 ? Math.round((onePtScored / onePtAtt) * 100) : 0
+  playerAvgs.two_pointer_pct = twoPtAtt > 0 ? Math.round((twoPtScored / twoPtAtt) * 100) : 0
+  const totalAtt = onePtAtt + twoPtAtt + stats.reduce((s,r) => s + n(r.one_pointer_attempts_f) + n(r.two_pointer_attempts_f) + n(r.goal_attempts) + n(r.goal_attempts_f), 0)
+  const totalScored = onePtScored + twoPtScored + stats.reduce((s,r) => s + n(r.one_pointer_scored_f) + n(r.two_pointer_scored_f) + n(r.goals_scored) + n(r.goals_scored_f), 0)
   playerAvgs.shoot_pct = pct(totalScored, totalAtt)
 
   // Match by match data for pattern detection
@@ -222,26 +347,22 @@ export default function PlayrIQEdge({ stats, player }) {
   // Score each metric
   const metricScores = {}
   Object.entries(activeBenchmarks || {}).forEach(([metric, bench]) => {
-    const avg = playerAvgs[metric] || 0
+    const avg = playerAvgs[metric] ?? 0
     let status, gap
     const lowerIsBetter = bench.lower_is_better !== undefined ? bench.lower_is_better : !bench.higher_better
-    const isZeroTarget = bench.zero_target === true
+
     if (!lowerIsBetter) {
+      // Higher is better — bench.good is target, bench.p90 is elite
       if (avg >= (bench.p90 || bench.good)) { status = 'strong'; gap = null }
-      else if (avg >= (bench.good || bench.min)) { status = 'ok'; gap = `${r1((bench.p90||bench.good) - avg)} below target` }
-      else { status = 'work_on'; gap = `${r1((bench.good||bench.min) - avg)} below squad benchmark` }
-    } else if (isZeroTarget) {
-      // Zero is always the target for these metrics
-      const warn = bench.warning || 0.5
-      if (avg === 0) { status = 'strong'; gap = null }
-      else if (avg <= warn) { status = 'ok'; gap = `Target is zero` }
-      else { status = 'work_on'; gap = `${avg} per game — target zero` }
+      else if (avg >= bench.good) { status = 'ok'; gap = `${r1((bench.p90 || bench.good) - avg)} below elite` }
+      else { status = 'work_on'; gap = `${r1(bench.good - avg)} below target` }
     } else {
-      const limit = bench.min || bench.max || 1
+      // Lower is better — bench.good is the realistic acceptable ceiling (not zero)
+      const target = bench.good || bench.warning || 0.3
       if (avg === 0) { status = 'strong'; gap = null }
-      else if (avg <= (limit * 0.5)) { status = 'strong'; gap = null }
-      else if (avg <= limit) { status = 'ok'; gap = `Getting close to limit` }
-      else { status = 'work_on'; gap: `${r1(avg - limit)} above squad average` }
+      else if (avg <= target) { status = 'strong'; gap = null }
+      else if (avg <= target * 2) { status = 'ok'; gap = `${avg}/game — target \u22640.${String(Math.round(target*10))}` }
+      else { status = 'work_on'; gap = `${avg}/game — target \u2264${target}` }
     }
     metricScores[metric] = { avg, status, gap, bench }
   })
@@ -346,17 +467,20 @@ Keep it under 350 words. Be direct. This is a performance review not a pep talk.
         {Object.entries(metricScores).map(([metric, data], i) => {
           const statusColor = data.status === 'strong' ? 'var(--teal)' : data.status === 'ok' ? 'var(--gold)' : 'var(--red)'
           const statusLabel = data.status === 'strong' ? '✓ Strong' : data.status === 'ok' ? '~ On Track' : '↑ Work On'
-          const target = data.bench.good || data.bench.max || data.bench.min
-          const barPct = data.bench.higher_better
-            ? Math.min(100, (data.avg / (data.bench.good || data.bench.min || 1)) * 100)
-            : data.avg === 0 ? 100 : Math.max(0, 100 - (data.avg / (data.bench.max || 1)) * 100)
+          const lowerIsBetter = data.bench.lower_is_better !== undefined ? data.bench.lower_is_better : !data.bench.higher_better
+          const target = data.bench.good || 1
+          const barPct = !lowerIsBetter
+            ? Math.min(100, (data.avg / (data.bench.p90 || data.bench.good || 1)) * 100)
+            : data.avg === 0 ? 100 : Math.max(0, 100 - (data.avg / (data.bench.good * 3 || 1)) * 100)
           return (
             <div key={metric} style={{ padding: '9px 14px', borderTop: i === 0 ? 'none' : '1px solid rgba(26,51,86,0.25)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                <div style={{ fontSize: 12, color: 'var(--text2)' }}>{data.bench.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--text2)' }}>{benchmarks?.key_metrics?.[metric]?.label || data.bench.label}</div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 10, color: statusColor }}>{statusLabel}</span>
-                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, color: statusColor }}>{data.avg}</span>
+                  <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700, color: statusColor }}>
+                    {metric.endsWith('_pct') ? data.avg + '%' : data.avg}
+                  </span>
                 </div>
               </div>
               <div style={{ height: 4, background: 'var(--bg3)', borderRadius: 2, overflow: 'hidden' }}>
@@ -364,7 +488,7 @@ Keep it under 350 words. Be direct. This is a performance review not a pep talk.
               </div>
               {(data.status === 'work_on' || data.status === 'ok') && (
                 <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 3 }}>
-                  {data.bench.zero_target ? 'Target: 0 per game' : data.bench.lower_is_better ? `Target ≤${data.bench.warning || data.bench.min} per game` : `Target: ${data.bench.p90 || data.bench.good}+ per game`}
+                  {lowerIsBetter ? `Target: ≤${data.bench.good} per game` : `Target: ${data.bench.good}+ per game`}
                   {data.gap && <span style={{ color: data.status === 'work_on' ? 'var(--red)' : 'var(--gold)', marginLeft: 6 }}>({data.gap})</span>}
                 </div>
               )}
