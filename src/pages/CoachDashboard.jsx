@@ -247,8 +247,12 @@ function SquadTab({ squadStats, matchFilter, setMatchFilter, posFilter, setPosFi
   const secondaryKey = viewMode === 'p60' ? null : metricDef.p60Key  // show /60 as pill in total view
 
   let filtered = posFilter === 'All' ? squadStats : squadStats.filter(p => p.position === posFilter)
+  // In per/60 view, only show players with 60+ mins to ensure meaningful rates
+  const MIN_MINS_P60 = 60
+  if (viewMode === 'p60') filtered = filtered.filter(p => p.mins >= MIN_MINS_P60)
   filtered = [...filtered].sort((a, b) => (b[displayKey] || 0) - (a[displayKey] || 0))
   const maxVal = filtered.length ? Math.max(...filtered.map(p => p[displayKey] || 0), 1) : 1
+  const hiddenCount = viewMode === 'p60' ? (posFilter === 'All' ? squadStats : squadStats.filter(p => p.position === posFilter)).filter(p => p.mins < MIN_MINS_P60).length : 0
   const color = metricDef.color || 'var(--blue)'
   const label = metricDef.label || metric
 
@@ -302,7 +306,7 @@ function SquadTab({ squadStats, matchFilter, setMatchFilter, posFilter, setPosFi
       <div className="card" style={{ overflow: 'hidden' }}>
         <div className="card-header">
           <span style={{ color }}>{label}</span>
-          <span>{filtered.length} players{posFilter !== 'All' ? ` · ${posFilter}` : ''}</span>
+          <span style={{ fontSize: 10, color: 'var(--text3)' }}>{filtered.length} players{posFilter !== 'All' ? ` · ${posFilter}` : ''}{hiddenCount > 0 ? ` · ${hiddenCount} <60min hidden` : ''}</span>
         </div>
         {filtered.map((p, i) => {
           const val = p[displayKey] || 0
