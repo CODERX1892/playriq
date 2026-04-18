@@ -7,10 +7,10 @@ Software: PlayrIQ
 Authorised Signatory: Eamon O'Reilly, Director, Canabo Holdings Limited
 
 NOTICE: This software and all associated source code, algorithms, data models,
-impact scoring methodology, performance weighting systems, user interface designs,
-and documentation (collectively, the "Software") are the exclusive proprietary
-and confidential property of Canabo Holdings Limited, a company incorporated
-in Ireland.
+impact scoring methodology, performance weighting systems, artificial intelligence
+systems, prompt engineering frameworks, user interface designs, and documentation
+(collectively, the "Software") are the exclusive proprietary and confidential
+property of Canabo Holdings Limited, a company incorporated in Ireland.
 
 1. OWNERSHIP
    All intellectual property rights in and to the Software, including but not
@@ -44,31 +44,54 @@ in Ireland.
    be reproduced, disclosed, or used in any form without the express written
    permission of Canabo Holdings Limited.
 
-5. NO WARRANTY
+5. ARTIFICIAL INTELLIGENCE SYSTEMS AND PROMPT ENGINEERING
+   The Software incorporates a proprietary artificial intelligence athlete
+   performance analysis system ("PlayrIQ Edge") applicable across team and
+   individual sports, which constitutes novel and original intellectual
+   property of Canabo Holdings Limited. This includes but is not limited to:
+   (a) the prompt engineering framework and instruction architecture used
+       to direct AI-generated player performance analysis;
+   (b) the role-specific performance benchmark system defining position-based
+       targets and thresholds for athletes across team and individual sports;
+   (c) the methodology for translating raw statistical inputs into structured
+       AI-driven performance narratives;
+   (d) the dynamic benchmarking system that contextualises individual player
+       data against position-specific and team-wide performance standards;
+   (e) the integration architecture connecting player statistics databases
+       to AI analysis outputs;
+   (f) the tone, structure, and format of AI-generated player feedback.
+   
+   To the best knowledge of Canabo Holdings Limited, the application of this
+   prompt engineering methodology to GAA football performance analysis
+   represents a novel and original approach. Canabo Holdings Limited asserts
+   full ownership of this system and its outputs as proprietary intellectual
+   property under Irish and EU law.
+
+6. NO WARRANTY
    The Software is provided on an "as is" basis. Canabo Holdings Limited makes
    no warranties, express or implied, regarding the Software, including but not
    limited to warranties of merchantability, fitness for a particular purpose,
    or non-infringement.
 
-6. LIMITATION OF LIABILITY
+7. LIMITATION OF LIABILITY
    In no event shall Canabo Holdings Limited or its directors, officers, or
    employees be liable for any indirect, incidental, special, or consequential
    damages arising out of or in connection with the Software.
 
-7. GOVERNING LAW
+8. GOVERNING LAW
    This licence shall be governed by and construed in accordance with the laws
    of Ireland. Any disputes arising under or in connection with this licence
    shall be subject to the exclusive jurisdiction of the Irish courts.
 
-8. ASSIGNMENT
+9. ASSIGNMENT
    Canabo Holdings Limited reserves the right to assign all intellectual property
    rights in the Software to any successor entity, including but not limited to
    PlayrIQ Limited upon its incorporation, without notice.
 
-9. CONTACT
-   For licensing enquiries or permissions:
-   Canabo Holdings Limited
-   Authorised by: Eamon O'Reilly, Director
-   Email: eamon@sparc.ie
+10. CONTACT
+    For licensing enquiries or permissions:
+    Canabo Holdings Limited
+    Authorised by: Eamon O'Reilly, Director
+    Email: eamon@sparc.ie
 
 Dated: April 2026

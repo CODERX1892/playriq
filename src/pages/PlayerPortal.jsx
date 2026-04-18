@@ -1,13 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import Avatar, { EditableAvatar } from '../components/Avatar'
+import Avatar from '../components/Avatar'
 import StatGroup from '../components/StatGroup'
 import { MATCHES, OPP, POS_COLORS, n, r1, pct, sf, impactColor, buildStatRows } from '../lib/utils'
 import PlayrIQEdge from './PlayrIQEdge'
-import ConsentScreen from './ConsentScreen'
 import Glossary from './Glossary'
-import PrivacyPolicy from './PrivacyPolicy'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const TEAM_AVGS = {
@@ -28,19 +26,12 @@ export default function PlayerPortal() {
   const [stats, setStats] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('home')
-  const [consent, setConsent] = useState(null) // null=loading, false=needed, object=given
   const [matchFilter, setMatchFilter] = useState('all')
   const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'edge', 'glossary']
 
   useEffect(() => {
-    Promise.all([
-      supabase.from('player_stats').select('*').eq('player_name', player.name),
-      supabase.from('player_consent').select('*').eq('player_name', player.name).maybeSingle(),
-    ]).then(([{ data: statsData }, { data: consentData }]) => {
-      setStats(statsData || [])
-      setConsent(consentData && consentData.privacy_agreed ? consentData : false)
-      setLoading(false)
-    })
+    supabase.from('player_stats').select('*').eq('player_name', player.name)
+      .then(({ data }) => { setStats(data || []); setLoading(false) })
   }, [player.name])
 
   const rows = matchFilter === 'all' ? stats : stats.filter(r => r.match_id === matchFilter)
@@ -55,15 +46,11 @@ export default function PlayerPortal() {
     </div>
   )
 
-  if (consent === false) return (
-    <ConsentScreen player={player} onConsented={(c) => setConsent(c)} />
-  )
-
   return (
     <div style={{ minHeight: '100vh' }}>
       {/* Header */}
       <div style={{ background: 'var(--bg2)', borderBottom: '1px solid var(--border)', padding: '10px 15px', display: 'flex', alignItems: 'center', gap: 11, position: 'sticky', top: 0, zIndex: 40 }}>
-        <Avatar name={player.name} size={38} photoUrl={player.photo_url} />
+        <Avatar name={player.name} size={38} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{player.name}</div>
           <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>
@@ -76,23 +63,13 @@ export default function PlayerPortal() {
         </button>
       </div>
 
-      {/* Tabs — two rows of 4/3 so nothing is hidden */}
-      <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
-          {TABS.slice(0, 4).map(t => (
-            <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderTop: '1px solid rgba(26,51,86,0.3)' }}>
-          {TABS.slice(4).map(t => (
-            <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
-              {t.charAt(0).toUpperCase() + t.slice(1)}
-            </button>
-          ))}
-          {Array(4 - TABS.slice(4).length).fill(null).map((_, i) => <div key={i} />)}
-        </div>
+      {/* Tabs */}
+      <div className="tabs" style={{ top: 61 }}>
+        {TABS.map(t => (
+          <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
+            {t.charAt(0).toUpperCase() + t.slice(1)}
+          </button>
+        ))}
       </div>
 
       {/* Content */}
@@ -104,14 +81,6 @@ export default function PlayerPortal() {
         {tab === 'matches' && <MatchesTab stats={stats} />}
         {tab === 'edge' && <PlayrIQEdge stats={stats} player={player} />}
         {tab === 'glossary' && <Glossary />}
-        {tab === 'privacy' && <PrivacyPolicy />}
-        {tab !== 'privacy' && (
-          <div style={{ textAlign: 'center', padding: '20px 0 8px', borderTop: '1px solid rgba(26,51,86,0.2)', marginTop: 8 }}>
-            <button onClick={() => setTab('privacy')} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 10, cursor: 'pointer', fontFamily: 'Barlow, sans-serif', letterSpacing: 1, textTransform: 'uppercase' }}>
-              Privacy Policy
-            </button>
-          </div>
-        )}
       </div>
     </div>
   )
@@ -119,7 +88,6 @@ export default function PlayerPortal() {
 
 // ─── HOME TAB ───────────────────────────────────────────────────────────────
 function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
-  const [chipView, setChipView] = useState('p60')
   const p1s = sf(rows, 'one_pointer_scored'), f1s = sf(rows, 'one_pointer_scored_f')
   const p2s = sf(rows, 'two_pointer_scored'), f2s = sf(rows, 'two_pointer_scored_f')
   const gs = sf(rows, 'goals_scored'), fgs = sf(rows, 'goals_scored_f')
@@ -130,7 +98,7 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
   const di = r1(rows.reduce((s, r) => s + n(r.defensive_impact), 0))
   const mins = rows.reduce((s, r) => s + n(r.total_minutes), 0)
 
-  const totalAtt = (sf(rows,'one_pointer_scored')+sf(rows,'one_pointer_wide')+sf(rows,'one_pointer_drop_short_block')) + sf(rows, 'one_pointer_attempts_f') +
+  const totalAtt = sf(rows, 'one_pointer_attempts') + sf(rows, 'one_pointer_attempts_f') +
     sf(rows, 'two_pointer_attempts') + sf(rows, 'two_pointer_attempts_f') +
     sf(rows, 'goal_attempts') + sf(rows, 'goal_attempts_f')
   const totalScored = p1s + f1s + p2s + f2s + gs + fgs
@@ -156,7 +124,7 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
       {/* Hero */}
       <div style={{ background: 'linear-gradient(155deg,#0d1e38,#0f2a48 50%,#0d1e38)', border: '1px solid #2a4f7a', borderRadius: 13, padding: 15, marginBottom: 13 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 13 }}>
-          <EditableAvatar player={player} size={76} onPhotoUpdated={(url) => { player.photo_url = url }} />
+          <Avatar name={player.name} size={76} round={false} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 600, color: posColor, marginBottom: 3 }}>{player.position}</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 26, fontWeight: 800, lineHeight: 1, marginBottom: 2 }}>{player.name}</div>
@@ -167,7 +135,6 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
               {dob && <span className="tag"><b>{dob}</b></span>}
               <span className="tag">Games <b>{allMc}</b></span>
               <span className="tag">Mins <b>{mins}</b></span>
-              {mins > 0 && <span className="tag">Impact/60min <b style={{ color: 'var(--purple)' }}>{r1(ti / mins * 60)}</b></span>}
             </div>
           </div>
         </div>
@@ -232,25 +199,12 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
       {/* Match chips */}
       {stats.length > 0 && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase' }}>Match by Match Impact</div>
-            <div style={{ display: 'flex', gap: 4 }}>
-              {[['p60', '/60'], ['total', 'Total']].map(([mode, mLabel]) => (
-                <button key={mode} onClick={() => setChipView(mode)}
-                  style={{ padding: '3px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: `1px solid ${chipView === mode ? 'var(--blue)' : 'var(--border)'}`, background: chipView === mode ? 'rgba(74,158,255,0.12)' : 'transparent', color: chipView === mode ? 'var(--blue)' : 'var(--text3)', fontFamily: 'Barlow, sans-serif' }}>
-                  {mLabel}
-                </button>
-              ))}
-            </div>
-          </div>
+          <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Match by Match Impact</div>
           <div style={{ display: 'flex', gap: 7, overflowX: 'auto', paddingBottom: 4, marginBottom: 13, scrollbarWidth: 'none' }}>
             {MATCHES.map(m => {
               const r = stats.find(s => s.match_id === m)
               if (!r) return null
-              const impTotal = r1(n(r.total_impact))
-              const mins = n(r.total_minutes)
-              const impP60 = mins > 0 ? r1(n(r.total_impact) / mins * 60) : 0
-              const imp = chipView === 'p60' ? impP60 : impTotal
+              const imp = r1(n(r.total_impact))
               const pts = n(r.one_pointer_scored) + n(r.one_pointer_scored_f) + (n(r.two_pointer_scored) + n(r.two_pointer_scored_f)) * 2 + (n(r.goals_scored) + n(r.goals_scored_f)) * 3
               return (
                 <div key={m} className="card" style={{ padding: '9px 11px', minWidth: 84, textAlign: 'center', flexShrink: 0 }}>
@@ -258,7 +212,6 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
                   <div style={{ fontSize: 8, color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{OPP[m]}</div>
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 700, color: impactColor(imp), marginTop: 3 }}>{imp}</div>
                   <div style={{ fontSize: 9, color: 'var(--text3)' }}>{pts > 0 ? `${pts}pt` : '—'}</div>
-                  {chipView === 'total' && mins > 0 && <div style={{ fontSize: 8, color: 'var(--text3)', marginTop: 1 }}>{impP60}/60</div>}
                 </div>
               )
             })}
@@ -296,9 +249,9 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
 
 // ─── ATTACK TAB ──────────────────────────────────────────────────────────────
 function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
-  const p1s = sf(rows, 'one_pointer_scored'), p1w = sf(rows, 'one_pointer_wide'), p1ds = sf(rows, 'one_pointer_drop_short_block'); const p1a = p1s + p1w + p1ds
-  const p2s = sf(rows, 'two_pointer_scored'), p2w = sf(rows, 'two_pointer_wide'), p2ds = sf(rows, 'two_pointer_drop_short_block'); const p2a = p2s + p2w + p2ds
-  const gs = sf(rows, 'goals_scored'), gw = sf(rows, 'goals_wide'), gds = sf(rows, 'goal_drop_short_block'); const ga = gs + gw + gds
+  const p1a = sf(rows, 'one_pointer_attempts'), p1s = sf(rows, 'one_pointer_scored'), p1w = sf(rows, 'one_pointer_wide'), p1ds = sf(rows, 'one_pointer_drop_short_block')
+  const p2a = sf(rows, 'two_pointer_attempts'), p2s = sf(rows, 'two_pointer_scored'), p2w = sf(rows, 'two_pointer_wide'), p2ds = sf(rows, 'two_pointer_drop_short_block')
+  const ga = sf(rows, 'goal_attempts'), gs = sf(rows, 'goals_scored'), gw = sf(rows, 'goals_wide'), gds = sf(rows, 'goal_drop_short_block')
   const f1a = sf(rows, 'one_pointer_attempts_f'), f1s = sf(rows, 'one_pointer_scored_f')
   const f2a = sf(rows, 'two_pointer_attempts_f'), f2s = sf(rows, 'two_pointer_scored_f')
   const fga = sf(rows, 'goal_attempts_f'), fgs = sf(rows, 'goals_scored_f')
@@ -312,16 +265,10 @@ function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
   const as1 = sf(rows, 'assists_shots'), ag2 = sf(rows, 'assists_goals'), a2pt = sf(rows, 'assists_2pt')
 
   const rings = [
-    { label: '1-Point', scored: p1s, att: p1a, color: '#f0b429', target: 70 },
-    { label: '2-Point', scored: p2s, att: p2a, color: '#a78bfa', target: 45 },
-    { label: 'Goals', scored: gs, att: ga, color: '#3ecf8e', target: 75 },
+    { label: '1-Point', scored: p1s + f1s, att: p1a + f1a, color: '#f0b429' },
+    { label: '2-Point', scored: p2s + f2s, att: p2a + f2a, color: '#a78bfa' },
+    { label: 'Goals', scored: gs + fgs, att: ga + fga, color: '#3ecf8e' },
   ]
-  const freeRings = [
-    { label: '1-Point Free', scored: f1s, att: f1a, color: '#f0b429', target: 70 },
-    { label: '2-Point Free', scored: f2s, att: f2a, color: '#a78bfa', target: 45 },
-    { label: 'Goal Free', scored: fgs, att: fga, color: '#3ecf8e', target: 75 },
-  ].filter(r => r.att > 0)
-  const hasFrees = f1a + f2a + fga > 0
 
   return (
     <div className="fade-in">
@@ -352,25 +299,6 @@ function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
         })}
       </div>
 
-      {hasFrees && (
-        <div style={{marginBottom:13}}>
-          <div style={{fontSize:10,color:'var(--text3)',letterSpacing:1.5,textTransform:'uppercase',marginBottom:6}}>From Frees</div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat('+freeRings.length+',1fr)',gap:9}}>
-            {freeRings.map((r,i) => {
-              const p2 = r.att > 0 ? Math.round((r.scored/r.att)*100) : 0
-              const rc = p2 >= r.target ? 'var(--teal)' : p2 >= r.target*0.8 ? r.color : 'var(--red)'
-              return (
-                <div key={i} style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:11,padding:'14px 8px',textAlign:'center'}}>
-                  <div style={{fontSize:10,color:'var(--text3)',marginBottom:6}}>{r.label}</div>
-                  <RingChart value={p2} color={rc} id={"fr"+i} />
-                  <div style={{fontFamily:'Barlow Condensed,sans-serif',fontSize:20,fontWeight:800,color:rc,marginTop:4}}>{p2}%</div>
-                  <div style={{fontSize:11,color:'var(--text3)',marginTop:2}}>{r.scored}/{r.att}</div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
       {/* Shooting table from play */}
       <ShootTable title="Shooting — From Play" badge={`${mc} games`}
         rows={[['1-Pointer', p1a, p1s, p1w, p1ds], ['2-Pointer', p2a, p2s, p2w, p2ds], ['Goal', ga, gs, gw, gds]]} />
@@ -513,29 +441,11 @@ function MatchesTab({ stats }) {
         const gs = n(r.goals_scored) + n(r.goals_scored_f)
         const pts = p1s + p2s * 2 + gs * 3
         const ai = r1(n(r.attack_impact)), ti = r1(n(r.transition_impact)), di = r1(n(r.defensive_impact))
-        const totalAtt = (n(r.one_pointer_scored)+n(r.one_pointer_wide)+n(r.one_pointer_drop_short_block)) + n(r.one_pointer_attempts_f) + (n(r.two_pointer_scored)+n(r.two_pointer_wide)+n(r.two_pointer_drop_short_block)) + n(r.two_pointer_attempts_f) + (n(r.goals_scored)+n(r.goals_wide)+n(r.goal_drop_short_block)) + n(r.goal_attempts_f)
+        const totalAtt = n(r.one_pointer_attempts) + n(r.one_pointer_attempts_f) + n(r.two_pointer_attempts) + n(r.two_pointer_attempts_f) + n(r.goal_attempts) + n(r.goal_attempts_f)
         const totScr = p1s + p2s + gs
         const sp = pct(totScr, totalAtt)
-        // Kickout data
-        const koOursClean = n(r.won_clean_p1_our) + n(r.won_clean_p2_our) + n(r.won_clean_p3_our)
-        const koOursBreak = n(r.won_break_our)
-        const koOppClean = n(r.won_clean_p1_opp) + n(r.won_clean_p2_opp) + n(r.won_clean_p3_opp)
-        const koOppBreak = n(r.won_break_opp)
-        // Assists
-        const assists = n(r.assists_shots) + n(r.assists_goals) + n(r.assists_2pt)
-        // Turnovers
-        const toNeg = n(r.turnovers_kicked_away) + n(r.turnover_skill_error) + n(r.turnovers_in_contact)
-        const dropShorts = n(r.drop_shorts)
-        // Defence
-        const forcedTO = n(r.forced_to_win)
-        const kickawayTO = n(r.kickaway_to_received)
-        const dne = n(r.dne)
-        const hasKO = koOursClean + koOursBreak + koOppClean + koOppBreak > 0
-        const hasTO = toNeg + dropShorts > 0
-        const hasDef = forcedTO + kickawayTO + dne > 0
         return (
           <div key={m} className="card" style={{ overflow: 'hidden', marginBottom: 12 }}>
-            {/* Header */}
             <div style={{ background: 'var(--bg3)', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
               <div><div style={{ fontSize: 13, fontWeight: 700 }}>{m}</div><div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>{OPP[m]}</div></div>
               <div style={{ textAlign: 'right' }}>
@@ -543,81 +453,24 @@ function MatchesTab({ stats }) {
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color: impactColor(imp) }}>{imp}</div>
               </div>
             </div>
-            {/* Top stats row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', padding: '10px 14px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
-              {[['Mins', n(r.total_minutes), 'var(--text)'], ['Points', pts, 'var(--gold)'], ['Assists', assists, 'var(--purple)'], ['Tackles', n(r.tackles), 'var(--blue)']].map(([l, v, c]) => (
+              {[['Mins', n(r.total_minutes), 'var(--text)'], ['Points', pts, 'var(--gold)'], ['Tackles', n(r.tackles), 'var(--blue)'], ['Forced TO', n(r.forced_to_win), 'var(--teal)']].map(([l, v, c]) => (
                 <div key={l} style={{ textAlign: 'center' }}>
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 20, fontWeight: 700, color: c }}>{v}</div>
                   <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase' }}>{l}</div>
                 </div>
               ))}
             </div>
-            {/* Impact row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', padding: '8px 14px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
-              {[['Total', imp, impactColor(imp)], ['Attack', ai, 'var(--gold)'], ['Trans', ti, 'var(--blue)'], ['Defence', di, 'var(--teal)']].map(([l, v, c]) => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', padding: '8px 14px' }}>
+              {[['Attack', ai, 'var(--gold)'], ['Transition', ti, 'var(--blue)'], ['Defence', di, 'var(--teal)']].map(([l, v, c]) => (
                 <div key={l} style={{ textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: l === 'Total' ? 20 : 16, fontWeight: 700, color: c }}>{v}</div>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 17, fontWeight: 700, color: c }}>{v}</div>
                   <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase' }}>{l}</div>
                 </div>
               ))}
             </div>
-            {/* Kickouts */}
-            {hasKO && (
-              <div style={{ padding: '8px 14px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
-                <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Kickouts</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 4 }}>
-                  {[
-                    ['Our Clean', koOursClean, 'var(--teal)'],
-                    ['Our Break', koOursBreak, 'var(--teal)'],
-                    ['Opp Clean', koOppClean, 'var(--blue)'],
-                    ['Opp Break', koOppBreak, 'var(--blue)'],
-                  ].map(([l, v, c]) => (
-                    <div key={l} style={{ textAlign: 'center' }}>
-                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, color: v > 0 ? c : 'var(--text3)' }}>{v > 0 ? v : '—'}</div>
-                      <div style={{ fontSize: 8, color: 'var(--text3)', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 2 }}>{l}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Defence won */}
-            {hasDef && (
-              <div style={{ padding: '8px 14px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
-                <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Defence</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4 }}>
-                  {[
-                    ['Forced TO', forcedTO, 'var(--teal)'],
-                    ['Kickaway TO', kickawayTO, 'var(--teal)'],
-                    ['DNE', dne, dne > 0 ? 'var(--red)' : 'var(--text3)'],
-                  ].map(([l, v, c]) => (
-                    <div key={l} style={{ textAlign: 'center' }}>
-                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, color: v > 0 ? c : 'var(--text3)' }}>{v > 0 ? v : '—'}</div>
-                      <div style={{ fontSize: 8, color: 'var(--text3)', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 2 }}>{l}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Turnovers lost */}
-            {hasTO && (
-              <div style={{ padding: '8px 14px', borderBottom: pts > 0 ? '1px solid rgba(26,51,86,0.3)' : 'none' }}>
-                <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Turnovers Lost</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 4 }}>
-                  {[
-                    ['Kickaway/Skill/Contact', toNeg, 'var(--red)'],
-                    ['Drop Shorts', dropShorts, 'var(--gold)'],
-                  ].map(([l, v, c]) => (
-                    <div key={l} style={{ textAlign: 'center' }}>
-                      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, color: v > 0 ? c : 'var(--text3)' }}>{v > 0 ? v : '—'}</div>
-                      <div style={{ fontSize: 8, color: 'var(--text3)', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 2 }}>{l}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Scoring detail */}
             {pts > 0 && (
-              <div style={{ padding: '8px 14px', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ padding: '8px 14px', borderTop: '1px solid rgba(26,51,86,0.3)', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                 {p1s > 0 && <span style={{ fontSize: 11, color: 'var(--blue)' }}>1pt: <b>{p1s}</b></span>}
                 {p2s > 0 && <span style={{ fontSize: 11, color: 'var(--purple)' }}>2pt: <b>{p2s}</b></span>}
                 {gs > 0 && <span style={{ fontSize: 11, color: 'var(--teal)' }}>Goals: <b>{gs}</b></span>}
@@ -717,49 +570,29 @@ function RingChart({ value, color, id }) {
   )
 }
 
-// EV per shot = (scored × point_value) / attempts
-// 1-pointer = 1pt, 2-pointer = 2pts, goal = 3pts
-const SHOT_PTS = [1, 2, 3]
-
 function ShootTable({ title, badge, rows }) {
-  // rows: [label, att, scored, wide, ds] — order must be 1pt, 2pt, goal
-  // Calculate overall EV across all rows
-  const totalPts = rows.reduce((s, [,att,scored,,], i) => s + scored * (SHOT_PTS[i] || 1), 0)
-  const totalAtt = rows.reduce((s, [,att]) => s + att, 0)
-  const overallEV = totalAtt > 0 ? Math.round((totalPts / totalAtt) * 100) / 100 : null
-  const evColor = overallEV === null ? 'var(--text3)' : overallEV >= 0.65 ? 'var(--teal)' : overallEV >= 0.45 ? 'var(--gold)' : 'var(--red)'
-
   return (
     <div className="card" style={{ overflow: 'hidden', marginBottom: 11 }}>
       <div className="card-header">
         <span style={{ color: 'var(--gold)' }}>{title}</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {overallEV !== null && (
-            <span style={{ fontSize: 11, color: evColor, fontWeight: 700 }}>EV: {overallEV}</span>
-          )}
-          <span style={{ fontSize: 10, color: 'var(--text3)', background: 'var(--bg4)', borderRadius: 4, padding: '2px 7px' }}>{badge}</span>
-        </div>
+        <span style={{ fontSize: 10, color: 'var(--text3)', background: 'var(--bg4)', borderRadius: 4, padding: '2px 7px' }}>{badge}</span>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 28px 28px 28px 28px 36px 36px', gap: 2, padding: '5px 13px 3px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
-        {['Shot', 'Att', 'Scr', 'Wde', 'DS', '%', 'EV'].map((h, i) => (
-          <div key={h} style={{ fontSize: 9, color: ['var(--text3)', 'var(--text2)', 'var(--teal)', 'var(--red)', 'var(--gold)', 'var(--text3)', 'var(--purple)'][i], textAlign: i > 0 ? 'center' : 'left', textTransform: 'uppercase', letterSpacing: 1 }}>{h}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 28px 28px 28px 28px 42px', gap: 3, padding: '5px 13px 3px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
+        {['Shot', 'Att', 'Scr', 'Wde', 'DS', '%'].map((h, i) => (
+          <div key={h} style={{ fontSize: 9, color: ['var(--text3)', 'var(--text2)', 'var(--teal)', 'var(--red)', 'var(--gold)', 'var(--text3)'][i], textAlign: i > 0 ? 'center' : 'left', textTransform: 'uppercase', letterSpacing: 1 }}>{h}</div>
         ))}
       </div>
       {rows.map(([label, att, scored, wide, ds], i) => {
-        const shotPts = SHOT_PTS[i] || 1
         const p = pct(scored, att)
         const pc = p >= 60 ? 'var(--teal)' : p >= 40 ? 'var(--gold)' : 'var(--red)'
-        const ev = att > 0 ? Math.round((scored * shotPts / att) * 100) / 100 : null
-        const evc = ev === null ? 'var(--text3)' : ev >= shotPts * 0.65 ? 'var(--teal)' : ev >= shotPts * 0.45 ? 'var(--gold)' : 'var(--red)'
         return (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 28px 28px 28px 28px 36px 36px', alignItems: 'center', gap: 2, padding: '7px 13px', borderTop: '1px solid rgba(26,51,86,0.25)' }}>
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 28px 28px 28px 28px 42px', alignItems: 'center', gap: 3, padding: '7px 13px', borderTop: '1px solid rgba(26,51,86,0.25)' }}>
             <div style={{ fontSize: 12, color: 'var(--text2)' }}>{label}</div>
             <div style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center' }}>{att}</div>
             <div style={{ fontSize: 12, color: 'var(--teal)', textAlign: 'center' }}>{scored}</div>
             <div style={{ fontSize: 12, color: 'var(--red)', textAlign: 'center' }}>{wide}</div>
             <div style={{ fontSize: 12, color: 'var(--gold)', textAlign: 'center' }}>{ds || 0}</div>
-            <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', color: att > 0 ? pc : 'var(--text3)' }}>{att > 0 ? `${p}%` : '—'}</div>
-            <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', color: evc }}>{ev !== null ? ev : '—'}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'right', color: att > 0 ? pc : 'var(--text3)' }}>{att > 0 ? `${p}%` : '—'}</div>
           </div>
         )
       })}
