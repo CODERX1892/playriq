@@ -40,26 +40,26 @@ export default function ConsentScreen({ player, onConsented }) {
 
       <div style={{ flex: 1, padding: '24px 20px', maxWidth: 480, margin: '0 auto', width: '100%' }}>
         {/* Welcome */}
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 700, marginBottom: 6 }}>
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
             Welcome, {player.name.split(' ')[0]}
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 12, color: 'var(--text3)', lineHeight: 1.6 }}>
             PlayrIQ collects and processes your performance data to provide personalised analysis and feedback. Before you access the platform, please review and agree to our Privacy Policy.
           </div>
         </div>
 
         {/* What we collect summary */}
-        <div className="card" style={{ padding: 16, marginBottom: 16 }}>
-          <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 12 }}>What we collect</div>
+        <div className="card" style={{ padding: 14, marginBottom: 12 }}>
+          <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10, fontWeight: 600 }}>What we collect</div>
           {[
-            ['📋', 'Account data', 'Name, email, date of birth, PIN'],
-            ['📊', 'Performance stats', 'Match statistics entered by your coaching staff'],
-            ['🤖', 'AI analysis', 'Generated from anonymised stats only — your name is never sent to AI systems'],
-            ['📸', 'Profile photo', 'Optional — uploaded by you, removable at any time'],
-          ].map(([icon, title, desc]) => (
-            <div key={title} style={{ display: 'flex', gap: 12, marginBottom: 10 }}>
-              <div style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{icon}</div>
+            ['Account data', 'Name, email, date of birth, PIN'],
+            ['Performance stats', 'Match statistics entered by your coaching staff'],
+            ['AI analysis', 'Generated from anonymised stats only — your name is never sent to AI systems'],
+            ['Profile photo', 'Optional — uploaded by you, removable at any time'],
+          ].map(([title, desc]) => (
+            <div key={title} style={{ display: 'flex', gap: 10, marginBottom: 10, alignItems: 'flex-start' }}>
+              <div style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--blue)', flexShrink: 0, marginTop: 6 }} />
               <div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{title}</div>
                 <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2, lineHeight: 1.5 }}>{desc}</div>
@@ -69,7 +69,7 @@ export default function ConsentScreen({ player, onConsented }) {
         </div>
 
         {/* GPS consent — separate optional */}
-        <div className="card" style={{ padding: 16, marginBottom: 16, border: gpsConsent ? '1px solid var(--blue)' : '1px solid var(--border)' }}>
+        <div className="card" style={{ padding: 14, marginBottom: 12, border: gpsConsent ? '1px solid var(--blue)' : '1px solid var(--border)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>
@@ -98,7 +98,7 @@ export default function ConsentScreen({ player, onConsented }) {
         </div>
 
         {/* Privacy policy link */}
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: 14 }}>
           <button
             onClick={() => setShowPolicy(v => !v)}
             style={{ background: 'none', border: 'none', color: 'var(--blue)', fontSize: 12, cursor: 'pointer', fontFamily: 'Barlow, sans-serif', padding: 0, textDecoration: 'underline' }}>
@@ -127,7 +127,7 @@ export default function ConsentScreen({ player, onConsented }) {
         {/* Privacy agree checkbox */}
         <div
           onClick={() => { setPrivacyAgreed(v => !v); setError(null) }}
-          style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 24, cursor: 'pointer' }}>
+          style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 16, cursor: 'pointer' }}>
           <div style={{
             width: 20, height: 20, borderRadius: 5, flexShrink: 0, marginTop: 1,
             background: privacyAgreed ? 'var(--blue)' : 'transparent',
