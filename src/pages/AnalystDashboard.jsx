@@ -7,6 +7,7 @@ import DataEntry from './DataEntry'
 const POS_COLORS = { Forward: '#f0b429', Defender: '#4a9eff', Midfield: '#3ecf8e', Goalkeeper: '#a78bfa' }
 
 const METRICS = {
+  ipm: { label: 'Avg/Game', color: '#a78bfa' },
   total_impact: { label: 'Total Impact', color: '#a78bfa' },
   attack_impact: { label: 'Attack Impact', color: '#f0b429' },
   transition_impact: { label: 'Transition', color: '#4a9eff' },
@@ -24,7 +25,7 @@ export default function AnalystDashboard() {
   const [matchStatuses, setMatchStatuses] = useState({})
   const [loading, setLoading] = useState(true)
   const [matchFilter, setMatchFilter] = useState('all')
-  const [metric, setMetric] = useState('total_impact')
+  const [metric, setMetric] = useState('ipm')
   const [matchView, setMatchView] = useState('AFL 1')
   const [publishing, setPublishing] = useState(false)
   const [pubStatus, setPubStatus] = useState(null)
@@ -60,6 +61,7 @@ export default function AnalystDashboard() {
       const gs = rows.reduce((s,r) => s+n(r.goals_scored)+n(r.goals_scored_f),0)
       return { name: p.name, position: p.position, mc, mins,
         total_impact: ti, attack_impact: ai, transition_impact: tri, defensive_impact: di,
+        ipm: mc > 0 ? r1(ti / mc) : 0,
         pts: p1s + p2s*2 + gs*3,
         tackles: rows.reduce((s,r)=>s+n(r.tackles),0),
         forced_to: rows.reduce((s,r)=>s+n(r.forced_to_win),0),
@@ -95,13 +97,13 @@ export default function AnalystDashboard() {
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 16, fontWeight: 700, lineHeight: 1 }}>{appUser.name}</div>
-          <div style={{ fontSize: 10, color: 'var(--teal)', marginTop: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Analyst · <span style={{ color: 'var(--border2)', textTransform: 'none', letterSpacing: 0 }}>v0.4.0</span></div>
+          <div style={{ fontSize: 10, color: 'var(--teal)', marginTop: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Analyst</div>
         </div>
         <button onClick={logout} style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 9px', color: 'var(--text3)', fontSize: 11, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>Sign Out</button>
       </div>
 
       {/* Tabs */}
-      <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
+      <div className="tabs" style={{ top: 61 }}>
         {['squad', 'match', 'entry'].map(t => (
           <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>
             {t === 'entry' ? 'Enter Data' : t.charAt(0).toUpperCase() + t.slice(1)}
