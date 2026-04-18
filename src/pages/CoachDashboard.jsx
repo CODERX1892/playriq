@@ -7,6 +7,7 @@ import DataEntry from './DataEntry'
 import AdminPanel from './AdminPanel'
 import Glossary from './Glossary'
 import PrivacyPolicy from './PrivacyPolicy'
+import AddMatch from './AddMatch'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts'
 
 // p60Key = per/60 field, rawKey = total field, null = already a ratio
@@ -225,7 +226,7 @@ export default function CoachDashboard() {
         {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
         {tab === 'kickouts' && <KickoutsTab allStats={allStats} players={players} />}
         {tab === 'turnovers' && <TurnoversTab allStats={allStats} players={players} />}
-        {tab === 'entry' && <DataEntry />}
+        {tab === 'entry' && <div><AddMatch onMatchAdded={() => window.location.reload()} /><DataEntry /></div>}
         {tab === 'publish' && <PublishTab matchStatuses={matchStatuses} setMatchStatuses={setMatchStatuses} appUser={appUser} allStats={allStats} />}
         {tab === 'admin' && <AdminPanel />}
         {tab === 'breach' && <BreachTab squadStats={squadStats} allStats={allStats} players={players} />}
