@@ -5,6 +5,7 @@ import Avatar from '../components/Avatar'
 import StatGroup from '../components/StatGroup'
 import { MATCHES, OPP, POS_COLORS, n, r1, pct, sf, impactColor, buildStatRows } from '../lib/utils'
 import PlayrIQEdge from './PlayrIQEdge'
+import ConsentScreen from './ConsentScreen'
 import Glossary from './Glossary'
 import PrivacyPolicy from './PrivacyPolicy'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -27,12 +28,19 @@ export default function PlayerPortal() {
   const [stats, setStats] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('home')
+  const [consent, setConsent] = useState(null) // null=loading, false=needed, object=given
   const [matchFilter, setMatchFilter] = useState('all')
   const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'edge', 'glossary', 'privacy']
 
   useEffect(() => {
-    supabase.from('player_stats').select('*').eq('player_name', player.name)
-      .then(({ data }) => { setStats(data || []); setLoading(false) })
+    Promise.all([
+      supabase.from('player_stats').select('*').eq('player_name', player.name),
+      supabase.from('player_consent').select('*').eq('player_name', player.name).maybeSingle(),
+    ]).then(([{ data: statsData }, { data: consentData }]) => {
+      setStats(statsData || [])
+      setConsent(consentData && consentData.privacy_agreed ? consentData : false)
+      setLoading(false)
+    })
   }, [player.name])
 
   const rows = matchFilter === 'all' ? stats : stats.filter(r => r.match_id === matchFilter)
@@ -45,6 +53,10 @@ export default function PlayerPortal() {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
       <div className="spinner" />
     </div>
+  )
+
+  if (consent === false) return (
+    <ConsentScreen player={player} onConsented={(c) => setConsent(c)} />
   )
 
   return (
