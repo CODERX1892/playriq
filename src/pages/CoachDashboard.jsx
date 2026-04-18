@@ -109,6 +109,10 @@ export default function CoachDashboard() {
         ko_our_break_p60: mins > 0 ? r1(sf(rows,'won_break_our') / mins * 60) : 0,
         ko_opp_break_p60: mins > 0 ? r1(sf(rows,'won_break_opp') / mins * 60) : 0,
         duels_won_p60: mins > 0 ? r1(sf(rows,'defensive_duels_won') / mins * 60) : 0,
+        duels_lost_p60: mins > 0 ? r1(sf(rows,'duels_lost') / mins * 60) : 0,
+        duels_won: sf(rows,'defensive_duels_won'),
+        duels_lost: sf(rows,'duels_lost'),
+        breach: sf(rows,'breach_1v1'),
         assists_p60: mins > 0 ? r1((sf(rows,'assists_shots')+sf(rows,'assists_goals')+sf(rows,'assists_2pt')) / mins * 60) : 0,
         // EV per shot from play and frees
         ev_play: (() => {
@@ -178,8 +182,8 @@ export default function CoachDashboard() {
 
       {/* Tabs — two rows of 5 so nothing is hidden */}
       {(() => {
-        const COACH_TABS = ['squad', 'compare', 'match', 'team', 'kickouts', 'turnovers', 'entry', 'publish', 'admin', 'glossary']
-        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'team' ? 'Team' : t.charAt(0).toUpperCase() + t.slice(1)
+        const COACH_TABS = ['squad', 'compare', 'match', 'team', 'kickouts', 'breach', 'turnovers', 'entry', 'publish', 'admin', 'glossary']
+        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'breach' ? 'Breach' : t === 'team' ? 'Team' : t.charAt(0).toUpperCase() + t.slice(1)
         return (
           <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
@@ -224,6 +228,7 @@ export default function CoachDashboard() {
         {tab === 'entry' && <DataEntry />}
         {tab === 'publish' && <PublishTab matchStatuses={matchStatuses} setMatchStatuses={setMatchStatuses} appUser={appUser} allStats={allStats} />}
         {tab === 'admin' && <AdminPanel />}
+        {tab === 'breach' && <BreachTab squadStats={squadStats} allStats={allStats} players={players} />}
         {tab === 'glossary' && <Glossary />}
         {tab === 'privacy' && <div style={{padding:14}}><PrivacyPolicy /></div>}
         {/* Privacy footer link */}
@@ -894,6 +899,9 @@ function PlayerMatchDrillDown({ r, players, matchView, onBack }) {
   const tackles = n(r.tackles)
   const dne = n(r.dne)
   const breach = n(r.breach_1v1)
+  const duelsWon = n(r.defensive_duels_won)
+  const duelsLost = n(r.duels_lost)
+  const duelsContested = n(r.duels_contested)
 
   // Turnovers lost
   const toContact = n(r.turnovers_in_contact)
@@ -1009,6 +1017,14 @@ function PlayerMatchDrillDown({ r, players, matchView, onBack }) {
         ['Forced TO', forcedTO, 'var(--teal)'],
         ['Kickaway TO', kickawayTO, 'var(--teal)'],
         ['Tackles', tackles, 'var(--blue)'],
+        ['Duels Won', duelsWon, 'var(--teal)'],
+      ])}
+
+      {/* Duels */}
+      {(duelsContested > 0 || duelsLost > 0) && section('Duels', 'var(--blue)', [
+        ['Contested', duelsContested, 'var(--blue)'],
+        ['Won', duelsWon, 'var(--teal)'],
+        ['Lost', duelsLost, 'var(--red)'],
       ])}
 
       {/* Defence — Conceded */}
@@ -1034,6 +1050,113 @@ function PlayerMatchDrillDown({ r, players, matchView, onBack }) {
           <span>Total: <b style={{ color: 'var(--gold)' }}>{pts}</b></span>
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── BREACH TAB ──────────────────────────────────────────────────────────────
+function BreachTab({ squadStats, allStats, players }) {
+  const [matchFilter, setMatchFilter] = useState('all')
+  const [posFilter, setPosFilter] = useState('All')
+
+  const filtered = squadStats
+    .filter(p => posFilter === 'All' || p.position === posFilter)
+    .filter(p => p.mins >= 60)
+    .sort((a, b) => (b.breach_p60 || 0) - (a.breach_p60 || 0))
+
+  return (
+    <div className="fade-in">
+      {/* Match filter */}
+      <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 5, marginBottom: 11, scrollbarWidth: 'none' }}>
+        {['all', ...MATCHES].map(m => (
+          <button key={m} onClick={() => setMatchFilter(m)}
+            style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${m === matchFilter ? 'var(--red)' : 'var(--border)'}`, background: m === matchFilter ? 'rgba(240,96,96,0.12)' : 'var(--bg2)', color: m === matchFilter ? 'var(--red)' : 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'Barlow, sans-serif' }}>
+            {m === 'all' ? 'All' : m}
+          </button>
+        ))}
+      </div>
+
+      {/* Position filter */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+        {['All', 'Forward', 'Defender', 'Midfield', 'Goalkeeper'].map(pos => {
+          const pc = POS_COLORS[pos] || 'var(--text2)'
+          return (
+            <button key={pos} onClick={() => setPosFilter(pos)}
+              style={{ padding: '5px 13px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${pos === posFilter ? pc : 'var(--border)'}`, background: 'var(--bg2)', color: pos === posFilter ? pc : 'var(--text3)', fontFamily: 'Barlow, sans-serif' }}>
+              {pos}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Breach leaderboard */}
+      <div className="card" style={{ overflow: 'hidden', marginBottom: 14 }}>
+        <div className="card-header">
+          <span style={{ color: 'var(--red)' }}>Breach 1v1</span>
+          <span style={{ fontSize: 10, color: 'var(--text3)' }}>{filtered.length} players · per 60 min</span>
+        </div>
+        {filtered.map((p, i) => {
+          const val = p.breach_p60 || 0
+          const maxVal = filtered.length ? Math.max(...filtered.map(x => x.breach_p60 || 0), 0.1) : 0.1
+          const bw = Math.round(val / maxVal * 100)
+          const posColor = POS_COLORS[p.position] || 'var(--text2)'
+          const rankColor = i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : 'var(--text3)'
+          return (
+            <div key={p.name} style={{ padding: '9px 14px', borderTop: '1px solid rgba(26,51,86,0.35)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 13, fontWeight: 700, color: rankColor, minWidth: 18, textAlign: 'center' }}>{i + 1}</div>
+                <Avatar name={p.name} size={30} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                  <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                    <span style={{ fontSize: 10, color: posColor }}>{p.position} · {p.mc}gm · {p.mins}min</span>
+                    <span style={{ fontSize: 9, color: 'var(--text3)', background: 'rgba(255,255,255,0.05)', borderRadius: 4, padding: '1px 5px' }}>{p.breach || 0} total</span>
+                  </div>
+                </div>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color: val > 1 ? 'var(--red)' : val > 0.5 ? 'var(--gold)' : 'var(--teal)', minWidth: 44, textAlign: 'right' }}>{val}</div>
+              </div>
+              <div style={{ marginTop: 5, marginLeft: 58, height: 4, background: 'var(--bg3)', borderRadius: 2 }}>
+                <div style={{ width: `${bw}%`, height: '100%', background: val > 1 ? 'var(--red)' : val > 0.5 ? 'var(--gold)' : 'var(--teal)', borderRadius: 2 }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Duels leaderboard */}
+      <div className="card" style={{ overflow: 'hidden' }}>
+        <div className="card-header">
+          <span style={{ color: 'var(--blue)' }}>Duels Won</span>
+          <span style={{ fontSize: 10, color: 'var(--text3)' }}>per 60 min</span>
+        </div>
+        {[...filtered].sort((a, b) => (b.duels_won_p60 || 0) - (a.duels_won_p60 || 0)).map((p, i) => {
+          const val = p.duels_won_p60 || 0
+          const lostVal = p.duels_lost_p60 || 0
+          const maxVal = Math.max(...filtered.map(x => x.duels_won_p60 || 0), 0.1)
+          const bw = Math.round(val / maxVal * 100)
+          const posColor = POS_COLORS[p.position] || 'var(--text2)'
+          const rankColor = i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : 'var(--text3)'
+          return (
+            <div key={p.name} style={{ padding: '9px 14px', borderTop: '1px solid rgba(26,51,86,0.35)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 13, fontWeight: 700, color: rankColor, minWidth: 18, textAlign: 'center' }}>{i + 1}</div>
+                <Avatar name={p.name} size={30} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{p.name}</div>
+                  <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                    <span style={{ fontSize: 10, color: posColor }}>{p.position}</span>
+                    <span style={{ fontSize: 9, color: 'var(--red)', background: 'rgba(255,255,255,0.05)', borderRadius: 4, padding: '1px 5px' }}>{lostVal}/60 lost</span>
+                  </div>
+                </div>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color: 'var(--teal)', minWidth: 44, textAlign: 'right' }}>{val}</div>
+              </div>
+              <div style={{ marginTop: 5, marginLeft: 58, height: 4, background: 'var(--bg3)', borderRadius: 2 }}>
+                <div style={{ width: `${bw}%`, height: '100%', background: 'var(--teal)', borderRadius: 2 }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
