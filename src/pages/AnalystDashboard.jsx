@@ -7,14 +7,13 @@ import DataEntry from './DataEntry'
 const POS_COLORS = { Forward: '#f0b429', Defender: '#4a9eff', Midfield: '#3ecf8e', Goalkeeper: '#a78bfa' }
 
 const METRICS = {
-  ipm: { label: 'Avg/Game', color: '#a78bfa' },
-  total_impact: { label: 'Total Impact', color: '#a78bfa' },
-  attack_impact: { label: 'Attack Impact', color: '#f0b429' },
-  transition_impact: { label: 'Transition', color: '#4a9eff' },
-  defensive_impact: { label: 'Defence', color: '#3ecf8e' },
-  pts: { label: 'Points', color: '#f0b429' },
-  tackles: { label: 'Tackles', color: '#4a9eff' },
-  forced_to: { label: 'Forced TO', color: '#3ecf8e' },
+  ipm:               { label: 'Avg Impact/Game', color: '#a78bfa', p60Key: 'ipm',           rawKey: 'total_impact' },
+  attack_impact:     { label: 'Attack Impact',   color: '#f0b429', p60Key: 'attack_p60',     rawKey: 'attack_impact' },
+  transition_impact: { label: 'Transition',      color: '#4a9eff', p60Key: 'transition_p60', rawKey: 'transition_impact' },
+  defensive_impact:  { label: 'Defence',         color: '#3ecf8e', p60Key: 'defence_p60',    rawKey: 'defensive_impact' },
+  pts_p60:           { label: 'Points',          color: '#f0b429', p60Key: 'pts_p60',        rawKey: 'pts' },
+  tackles_p60:       { label: 'Tackles',         color: '#4a9eff', p60Key: 'tackles_p60',    rawKey: 'tackles' },
+  forced_to_p60:     { label: 'Forced TO',       color: '#3ecf8e', p60Key: 'forced_to_p60',  rawKey: 'forced_to' },
 }
 
 export default function AnalystDashboard() {
@@ -26,6 +25,7 @@ export default function AnalystDashboard() {
   const [loading, setLoading] = useState(true)
   const [matchFilter, setMatchFilter] = useState('all')
   const [metric, setMetric] = useState('ipm')
+  const [viewMode, setViewMode] = useState('p60')
   const [matchView, setMatchView] = useState('AFL 1')
   const [publishing, setPublishing] = useState(false)
   const [pubStatus, setPubStatus] = useState(null)
@@ -62,6 +62,12 @@ export default function AnalystDashboard() {
       return { name: p.name, position: p.position, mc, mins,
         total_impact: ti, attack_impact: ai, transition_impact: tri, defensive_impact: di,
         ipm: mc > 0 ? r1(ti / mc) : 0,
+        attack_p60: mins > 0 ? r1(ai / mins * 60) : 0,
+        transition_p60: mins > 0 ? r1(tri / mins * 60) : 0,
+        defence_p60: mins > 0 ? r1(di / mins * 60) : 0,
+        pts_p60: mins > 0 ? r1((p1s + p2s*2 + gs*3) / mins * 60) : 0,
+        tackles_p60: mins > 0 ? r1(rows.reduce((s,r)=>s+n(r.tackles),0) / mins * 60) : 0,
+        forced_to_p60: mins > 0 ? r1(rows.reduce((s,r)=>s+n(r.forced_to_win),0) / mins * 60) : 0,
         pts: p1s + p2s*2 + gs*3,
         tackles: rows.reduce((s,r)=>s+n(r.tackles),0),
         forced_to: rows.reduce((s,r)=>s+n(r.forced_to_win),0),
@@ -140,7 +146,7 @@ export default function AnalystDashboard() {
           })}
         </div>
 
-        {tab === 'squad' && <AnalystSquadTab squadStats={squadStats} matchFilter={matchFilter} setMatchFilter={setMatchFilter} metric={metric} setMetric={setMetric} />}
+        {tab === 'squad' && <AnalystSquadTab squadStats={squadStats} matchFilter={matchFilter} setMatchFilter={setMatchFilter} metric={metric} setMetric={setMetric} viewMode={viewMode} setViewMode={setViewMode} />}
         {tab === 'match' && <AnalystMatchTab allStats={allStats} players={players} matchView={matchView} setMatchView={setMatchView} />}
         {tab === 'entry' && <DataEntry analystName={appUser.name} />}
       </div>
@@ -148,11 +154,14 @@ export default function AnalystDashboard() {
   )
 }
 
-function AnalystSquadTab({ squadStats, matchFilter, setMatchFilter, metric, setMetric }) {
-  let sorted = [...squadStats].sort((a, b) => (b[metric]||0) - (a[metric]||0))
-  const maxVal = sorted.length ? Math.max(...sorted.map(p => p[metric]||0), 1) : 1
-  const color = METRICS[metric]?.color || 'var(--blue)'
-  const label = METRICS[metric]?.label || metric
+function AnalystSquadTab({ squadStats, matchFilter, setMatchFilter, metric, setMetric, viewMode, setViewMode }) {
+  const metricDef = METRICS[metric] || {}
+  const displayKey = viewMode === 'p60' ? (metricDef.p60Key || metric) : (metricDef.rawKey || metricDef.p60Key || metric)
+  const secondaryKey = viewMode === 'p60' ? null : metricDef.p60Key
+  let sorted = [...squadStats].sort((a, b) => (b[displayKey]||0) - (a[displayKey]||0))
+  const maxVal = sorted.length ? Math.max(...sorted.map(p => p[displayKey]||0), 1) : 1
+  const color = metricDef.color || 'var(--blue)'
+  const label = metricDef.label || metric
 
   return (
     <div className="fade-in">
@@ -161,6 +170,15 @@ function AnalystSquadTab({ squadStats, matchFilter, setMatchFilter, metric, setM
           <button key={m} onClick={() => setMatchFilter(m)}
             style={{ padding: '5px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${m === matchFilter ? 'var(--blue)' : 'var(--border)'}`, background: m === matchFilter ? 'rgba(74,158,255,0.12)' : 'var(--bg2)', color: m === matchFilter ? 'var(--blue)' : 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'Barlow, sans-serif' }}>
             {m === 'all' ? 'All' : m}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10, alignItems: 'center' }}>
+        <span style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase' }}>View:</span>
+        {[['p60', 'Per 60 min'], ['total', 'Totals']].map(([mode, mLabel]) => (
+          <button key={mode} onClick={() => setViewMode(mode)}
+            style={{ padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${viewMode === mode ? 'var(--blue)' : 'var(--border)'}`, background: viewMode === mode ? 'rgba(74,158,255,0.12)' : 'var(--bg2)', color: viewMode === mode ? 'var(--blue)' : 'var(--text3)', fontFamily: 'Barlow, sans-serif' }}>
+            {mLabel}
           </button>
         ))}
       </div>
@@ -175,7 +193,8 @@ function AnalystSquadTab({ squadStats, matchFilter, setMatchFilter, metric, setM
       <div className="card" style={{ overflow: 'hidden' }}>
         <div className="card-header"><span style={{ color }}>{label}</span><span>{sorted.length} players</span></div>
         {sorted.map((p, i) => {
-          const val = p[metric] || 0
+          const val = p[displayKey] || 0
+          const secondaryVal = secondaryKey ? p[secondaryKey] : null
           const bw = maxVal > 0 ? Math.max(0, Math.min(100, (val/maxVal)*100)) : 0
           const posColor = POS_COLORS[p.position] || 'var(--text2)'
           const rankColor = i===0?'#ffd700':i===1?'#c0c0c0':i===2?'#cd7f32':'var(--text3)'
@@ -187,8 +206,8 @@ function AnalystSquadTab({ squadStats, matchFilter, setMatchFilter, metric, setM
                   <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 10, color: posColor }}>{p.position} · {p.mc}gm · {p.mins}min</span>
-                    {['total_impact','attack_impact','transition_impact','defensive_impact','pts','tackles','forced_to','simple_pass','adv_pass'].includes(metric) && p.mins > 0 && (
-                      <span style={{ fontSize: 9, color: 'var(--text3)', background: 'rgba(255,255,255,0.05)', borderRadius: 4, padding: '1px 5px' }}>{Math.round(val / p.mins * 60 * 10) / 10} /60min</span>
+                    {secondaryVal > 0 && (
+                      <span style={{ fontSize: 9, color: 'var(--text3)', background: 'rgba(255,255,255,0.05)', borderRadius: 4, padding: '1px 5px' }}>{secondaryVal}/60</span>
                     )}
                   </div>
                 </div>

@@ -119,6 +119,7 @@ export default function PlayerPortal() {
 
 // ─── HOME TAB ───────────────────────────────────────────────────────────────
 function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
+  const [chipView, setChipView] = useState('p60')
   const p1s = sf(rows, 'one_pointer_scored'), f1s = sf(rows, 'one_pointer_scored_f')
   const p2s = sf(rows, 'two_pointer_scored'), f2s = sf(rows, 'two_pointer_scored_f')
   const gs = sf(rows, 'goals_scored'), fgs = sf(rows, 'goals_scored_f')
@@ -231,12 +232,25 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
       {/* Match chips */}
       {stats.length > 0 && (
         <>
-          <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>Match by Match Impact</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase' }}>Match by Match Impact</div>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[['p60', '/60'], ['total', 'Total']].map(([mode, mLabel]) => (
+                <button key={mode} onClick={() => setChipView(mode)}
+                  style={{ padding: '3px 8px', borderRadius: 10, fontSize: 10, fontWeight: 600, cursor: 'pointer', border: `1px solid ${chipView === mode ? 'var(--blue)' : 'var(--border)'}`, background: chipView === mode ? 'rgba(74,158,255,0.12)' : 'transparent', color: chipView === mode ? 'var(--blue)' : 'var(--text3)', fontFamily: 'Barlow, sans-serif' }}>
+                  {mLabel}
+                </button>
+              ))}
+            </div>
+          </div>
           <div style={{ display: 'flex', gap: 7, overflowX: 'auto', paddingBottom: 4, marginBottom: 13, scrollbarWidth: 'none' }}>
             {MATCHES.map(m => {
               const r = stats.find(s => s.match_id === m)
               if (!r) return null
-              const imp = r1(n(r.total_impact))
+              const impTotal = r1(n(r.total_impact))
+              const mins = n(r.total_minutes)
+              const impP60 = mins > 0 ? r1(n(r.total_impact) / mins * 60) : 0
+              const imp = chipView === 'p60' ? impP60 : impTotal
               const pts = n(r.one_pointer_scored) + n(r.one_pointer_scored_f) + (n(r.two_pointer_scored) + n(r.two_pointer_scored_f)) * 2 + (n(r.goals_scored) + n(r.goals_scored_f)) * 3
               return (
                 <div key={m} className="card" style={{ padding: '9px 11px', minWidth: 84, textAlign: 'center', flexShrink: 0 }}>
@@ -244,6 +258,7 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
                   <div style={{ fontSize: 8, color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{OPP[m]}</div>
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 700, color: impactColor(imp), marginTop: 3 }}>{imp}</div>
                   <div style={{ fontSize: 9, color: 'var(--text3)' }}>{pts > 0 ? `${pts}pt` : '—'}</div>
+                  {chipView === 'total' && mins > 0 && <div style={{ fontSize: 8, color: 'var(--text3)', marginTop: 1 }}>{impP60}/60</div>}
                 </div>
               )
             })}
