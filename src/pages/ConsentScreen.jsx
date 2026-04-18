@@ -109,7 +109,7 @@ export default function ConsentScreen({ player, onConsented }) {
             <div style={{ marginTop: 12, background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: 16, maxHeight: 300, overflowY: 'auto', fontSize: 11, color: 'var(--text2)', lineHeight: 1.7 }}>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>PlayrIQ Privacy Policy — v1.0 — April 2026</div>
               <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text3)', letterSpacing: 1, fontSize: 10, textTransform: 'uppercase' }}>Data Controller</div>
-              <div style={{ marginBottom: 10 }}>Canabo Holdings Limited. Contact: eamon@sparc.ie</div>
+              <div style={{ marginBottom: 10 }}>Eamon O'Reilly. Contact: eamon@sparc.ie</div>
               <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text3)', letterSpacing: 1, fontSize: 10, textTransform: 'uppercase' }}>Data We Collect</div>
               <div style={{ marginBottom: 10 }}>Name, email, date of birth, PIN, match performance statistics, optional profile photo, and optional GPS movement data. We do not collect health or financial data.</div>
               <div style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text3)', letterSpacing: 1, fontSize: 10, textTransform: 'uppercase' }}>AI Processing</div>

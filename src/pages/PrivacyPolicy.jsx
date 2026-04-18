@@ -7,9 +7,9 @@ export default function PrivacyPolicy() {
     {
       id: 'who',
       title: 'Who We Are',
-      content: `PlayrIQ is a sports performance analytics platform operated by Canabo Holdings Limited, a company incorporated in Ireland.
+      content: `PlayrIQ is a sports performance analytics platform operated by Eamon O'Reilly, a company incorporated in Ireland.
 
-Data Controller: Canabo Holdings Limited
+Data Controller: Eamon O'Reilly
 Contact: eamon@sparc.ie
 
 For any questions about how we handle your personal data, or to exercise your rights, please contact us at the email above.`
@@ -179,7 +179,7 @@ If you continue to use PlayrIQ after changes are notified, this constitutes acce
 
 Effective date: April 2026
 Version: 1.0
-Operated by: Canabo Holdings Limited`
+Operated by: Eamon O'Reilly`
     },
   ]
 
@@ -188,7 +188,7 @@ Operated by: Canabo Holdings Limited`
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--blue)', marginBottom: 4 }}>Privacy Policy</div>
         <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>How PlayrIQ collects, uses and protects your personal data</div>
-        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Effective April 2026 · Canabo Holdings Limited</div>
+        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Effective April 2026 · Eamon O'Reilly</div>
       </div>
 
       {sections.map(s => (
