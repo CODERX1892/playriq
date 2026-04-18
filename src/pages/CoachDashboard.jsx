@@ -6,6 +6,7 @@ import { MATCHES, OPP, POS_COLORS, n, r1, pct, sf, impactColor, normalise } from
 import DataEntry from './DataEntry'
 import AdminPanel from './AdminPanel'
 import Glossary from './Glossary'
+import PrivacyPolicy from './PrivacyPolicy'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts'
 
 const METRICS = {
@@ -129,8 +130,8 @@ export default function CoachDashboard() {
 
       {/* Tabs — two rows of 5 so nothing is hidden */}
       {(() => {
-        const COACH_TABS = ['squad', 'compare', 'match', 'team', 'kickouts', 'turnovers', 'entry', 'publish', 'admin', 'glossary']
-        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'team' ? 'Team' : t.charAt(0).toUpperCase() + t.slice(1)
+        const COACH_TABS = ['squad', 'compare', 'match', 'team', 'kickouts', 'turnovers', 'entry', 'publish', 'admin', 'glossary', 'privacy']
+        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'privacy' ? 'Privacy' : t === 'team' ? 'Team' : t.charAt(0).toUpperCase() + t.slice(1)
         return (
           <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
@@ -167,6 +168,7 @@ export default function CoachDashboard() {
         {tab === 'publish' && <PublishTab matchStatuses={matchStatuses} setMatchStatuses={setMatchStatuses} appUser={appUser} allStats={allStats} />}
         {tab === 'admin' && <AdminPanel />}
         {tab === 'glossary' && <Glossary />}
+        {tab === 'privacy' && <div style={{padding:14}}><PrivacyPolicy /></div>}
       </div>
     </div>
   )

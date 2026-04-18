@@ -6,6 +6,7 @@ import StatGroup from '../components/StatGroup'
 import { MATCHES, OPP, POS_COLORS, n, r1, pct, sf, impactColor, buildStatRows } from '../lib/utils'
 import PlayrIQEdge from './PlayrIQEdge'
 import Glossary from './Glossary'
+import PrivacyPolicy from './PrivacyPolicy'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const TEAM_AVGS = {
@@ -27,7 +28,7 @@ export default function PlayerPortal() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('home')
   const [matchFilter, setMatchFilter] = useState('all')
-  const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'edge', 'glossary']
+  const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'edge', 'glossary', 'privacy']
 
   useEffect(() => {
     supabase.from('player_stats').select('*').eq('player_name', player.name)
@@ -91,6 +92,7 @@ export default function PlayerPortal() {
         {tab === 'matches' && <MatchesTab stats={stats} />}
         {tab === 'edge' && <PlayrIQEdge stats={stats} player={player} />}
         {tab === 'glossary' && <Glossary />}
+        {tab === 'privacy' && <PrivacyPolicy />}
       </div>
     </div>
   )
