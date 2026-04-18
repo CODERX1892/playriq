@@ -18,7 +18,7 @@ const METRICS = {
   shoot_pct: { label: 'Shooting %', color: '#3ecf8e' },
   tackles: { label: 'Tackles', color: '#4a9eff' },
   forced_to: { label: 'Forced TO', color: '#3ecf8e' },
-  ipm: { label: 'Impact/60', color: '#a78bfa' },
+  ipm: { label: 'Avg/Game', color: '#a78bfa' },
   simple_pass: { label: 'Simple Passes', color: '#4a9eff' },
   adv_pass: { label: 'Advance Passes', color: '#4a9eff' },
   dne: { label: 'DNE', color: '#f06060' },
@@ -36,7 +36,7 @@ export default function CoachDashboard() {
   const [loading, setLoading] = useState(true)
   const [matchFilter, setMatchFilter] = useState('all')
   const [posFilter, setPosFilter] = useState('All')
-  const [metric, setMetric] = useState('total_impact')
+  const [metric, setMetric] = useState('ipm')
   const [compareP1, setCompareP1] = useState(null)
   const [compareP2, setCompareP2] = useState(null)
   const [matchView, setMatchView] = useState('AFL 1')
@@ -88,7 +88,7 @@ export default function CoachDashboard() {
         tackles: sf(rows, 'tackles'), forced_to: sf(rows, 'forced_to_win'),
         dne: sf(rows, 'dne'), simple_pass: sf(rows, 'simple_pass'),
         adv_pass: sf(rows, 'advance_pass'),
-        ipm: mins > 0 ? r1(ti / mins * 60) : 0,
+        ipm: mc > 0 ? r1(ti / mc) : 0,
       }
     }).filter(Boolean)
   }
@@ -225,7 +225,7 @@ function SquadTab({ squadStats, matchFilter, setMatchFilter, posFilter, setPosFi
       </div>
 
       {/* Metric selector */}
-      <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 5, marginBottom: 12, scrollbarWidth: 'none' }}>
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginBottom: 12 }}>
         {Object.entries(METRICS).map(([k, { label: l, color: c }]) => (
           <button key={k} onClick={() => setMetric(k)}
             style={{ padding: '5px 11px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${k === metric ? c : 'var(--border)'}`, background: k === metric ? 'rgba(255,255,255,0.04)' : 'var(--bg2)', color: k === metric ? c : 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'Barlow, sans-serif' }}>
@@ -421,16 +421,16 @@ function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
         {statRow('Advance Passes', advPass, 'var(--blue)')}
         {statRow('Carries', carries, 'var(--blue)')}
         {(koOursClean+koOursBreak) > 0 && statRow('Our KO Clean', koOursClean, 'var(--teal)')}
-        {koOursBreak > 0 && statRow('Our KO Break', koOursBreak, 'var(--teal)')}
-        {(koOppClean+koOppBreak) > 0 && statRow('Opp KO Clean', koOppClean, 'var(--blue)')}
-        {koOppBreak > 0 && statRow('Opp KO Break', koOppBreak, 'var(--blue)')}
+        {koOursBreak > 0 && statRow('Our KO Break Ball', koOursBreak, 'var(--teal)')}
+        {(koOppClean) > 0 && statRow('Opp KO Clean', koOppClean, 'var(--blue)')}
       </>)}
 
       {/* Defence */}
-      {(tackles+forcedTO+kickawayTO+dne+breach) > 0 && sectionCard('Defence', 'var(--teal)', <>
+      {(tackles+forcedTO+kickawayTO+dne+breach+koOppBreak) > 0 && sectionCard('Defence', 'var(--teal)', <>
         {statRow('Tackles', tackles, 'var(--blue)')}
         {statRow('Forced TO Won', forcedTO, 'var(--teal)')}
         {statRow('Kickaway TO Won', kickawayTO, 'var(--teal)')}
+        {koOppBreak > 0 && statRow('Opp KO Break Won', koOppBreak, 'var(--teal)')}
         {dne > 0 && statRow('DNE', dne, 'var(--red)')}
         {breach > 0 && statRow('Breach 1v1', breach, 'var(--red)')}
       </>)}
@@ -466,6 +466,7 @@ function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
           )
         })}
       </div>
+      <div style={{ height: 40 }} />
     </div>
   )
 }
