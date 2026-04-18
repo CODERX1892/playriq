@@ -387,27 +387,28 @@ export default function PlayrIQEdge({ stats, player }) {
       contactTO: n(m.turnovers_in_contact),
     }))
 
-    const prompt = `You are PlayrIQ Edge, an AI performance analyst for GAA football. Give a direct, honest performance analysis for a player. No fluff, no generic praise. Coaching language. Focus on patterns and specific actionable improvements.
+    // Fully anonymised — no sport, league, club, player name or match identifiers sent
+    // Match IDs replaced with sequential game numbers only
+    const prompt = `You are a performance analyst AI. Give a direct, honest performance analysis for an athlete. No fluff, no generic praise. Coaching language. Focus on patterns and specific actionable improvements.
 
-PLAYER: ${player.name}
-ROLE: ${role}
+POSITION ROLE: ${role}
 ROLE DESCRIPTION: ${benchmarks.description}
-GAMES ANALYSED: ${mc} (${matchData.map(m=>m.match).join(', ')})
+GAMES ANALYSED: ${mc}
 
 PERFORMANCE AVERAGES PER GAME:
 ${Object.entries(metricScores).map(([metric, data]) => 
   `${data.bench.label}: ${data.avg} [${data.status.toUpperCase()}${data.gap ? ' — ' + data.gap : ''}]`
 ).join('\n')}
 
-MATCH-BY-MATCH TURNOVER/DROP SHORT PATTERNS:
-${turnoverPatterns.map(m => 
-  `${m.match}: Drop Shorts=${m.dropShorts} (1pt=${m.oneDS}, 2pt=${m.twoDS}, Goal=${m.goalDS}), Kickaway TOs=${m.kickawayTO}, Skill Errors=${m.skillError}, Contact TOs=${m.contactTO}`
+GAME-BY-GAME EXECUTION PATTERNS:
+${turnoverPatterns.map((m, i) => 
+  `Game ${i + 1}: Drop Shorts=${m.dropShorts} (1pt=${m.oneDS}, 2pt=${m.twoDS}, Goal=${m.goalDS}), Kicked Away=${m.kickawayTO}, Skill Errors=${m.skillError}, Contact Loss=${m.contactTO}`
 ).join('\n')}
 
 SHOOTING ACCURACY: ${playerAvgs.shoot_pct}%
 
 Write a performance analysis with these sections:
-1. OVERALL ASSESSMENT (2-3 sentences, honest summary of where this player is at)
+1. OVERALL ASSESSMENT (2-3 sentences, honest summary of where this athlete is at)
 2. STRENGTHS (bullet points, specific to the numbers — mention actual figures)
 3. WORK-ONS (bullet points, be direct and specific — if drop shorts are a pattern say exactly that and when it happened)
 4. TARGETS FOR NEXT GAME (3 specific, measurable targets based on the gaps identified)
@@ -421,6 +422,7 @@ Keep it under 350 words. Be direct. This is a performance review not a pep talk.
         body: JSON.stringify({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 1000,
+          system: 'You are a stateless performance analysis engine. Treat all data as transient and confidential. Do not reference, store, or infer any information beyond what is provided in this single request. Each request is fully independent.',
           messages: [{ role: 'user', content: prompt }]
         })
       })
