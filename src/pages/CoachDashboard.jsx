@@ -334,13 +334,38 @@ function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
     if (r) return <PlayerMatchDrillDown r={r} players={players} matchView={selectedMatch} onBack={() => setSelectedMatch(null)} />
   }
 
-  const statRow = (label, val, color, perGame = true) => val > 0 ? (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 14px', borderTop: '1px solid rgba(26,51,86,0.2)' }}>
-      <div style={{ fontSize: 12, color: 'var(--text2)' }}>{label}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {perGame && mc > 0 && <span style={{ fontSize: 11, color: 'var(--text3)' }}>{r1(val/mc)}/gm</span>}
-        <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, color }}>{val}</span>
+  const [expandedStat, setExpandedStat] = useState(null)
+
+  const statRow = (label, val, color, perGame = true, field = null) => val > 0 ? (
+    <div>
+      <div
+        onClick={() => field && setExpandedStat(expandedStat === field ? null : field)}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 14px', borderTop: '1px solid rgba(26,51,86,0.2)', cursor: field ? 'pointer' : 'default' }}
+        onMouseEnter={e => field && (e.currentTarget.style.background = 'var(--bg3)')}
+        onMouseLeave={e => field && (e.currentTarget.style.background = '')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ fontSize: 12, color: 'var(--text2)' }}>{label}</div>
+          {field && <span style={{ fontSize: 10, color: 'var(--text3)' }}>{expandedStat === field ? '▲' : '▾'}</span>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {perGame && mc > 0 && <span style={{ fontSize: 11, color: 'var(--text3)' }}>{r1(val/mc)}/gm</span>}
+          <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, color }}>{val}</span>
+        </div>
       </div>
+      {field && expandedStat === field && (
+        <div style={{ background: 'rgba(26,51,86,0.2)', padding: '6px 14px 8px' }}>
+          {MATCHES.map(m => {
+            const r = playerRows.find(row => row.match_id === m)
+            const v = r ? n(r[field]) : null
+            return (
+              <div key={m} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(26,51,86,0.2)' }}>
+                <span style={{ fontSize: 11, color: 'var(--text3)' }}>{m} <span style={{ color: 'var(--text3)', fontSize: 10 }}>{OPP[m]}</span></span>
+                <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, fontWeight: 700, color: v > 0 ? color : 'var(--text3)' }}>{v === null ? 'DNP' : v > 0 ? v : '—'}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   ) : null
 
@@ -424,28 +449,28 @@ function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
 
       {/* Transition */}
       {sectionCard('Transition', 'var(--blue)', <>
-        {statRow('Simple Passes', simPass, 'var(--blue)')}
-        {statRow('Advance Passes', advPass, 'var(--blue)')}
-        {statRow('Carries', carries, 'var(--blue)')}
-        {(koOursClean+koOursBreak) > 0 && statRow('Our KO Clean', koOursClean, 'var(--teal)')}
-        {koOursBreak > 0 && statRow('Our KO Break Ball', koOursBreak, 'var(--teal)')}
-        {(koOppClean) > 0 && statRow('Opp KO Clean', koOppClean, 'var(--blue)')}
+        {statRow('Simple Passes', simPass, 'var(--blue)', true, 'simple_pass')}
+        {statRow('Advance Passes', advPass, 'var(--blue)', true, 'advance_pass')}
+        {statRow('Carries', carries, 'var(--blue)', true, 'carries')}
+        {(koOursClean+koOursBreak) > 0 && statRow('Our KO Clean', koOursClean, 'var(--teal)', true, null)}
+        {koOursBreak > 0 && statRow('Our KO Break Ball', koOursBreak, 'var(--teal)', true, 'won_break_our')}
+        {(koOppClean) > 0 && statRow('Opp KO Clean', koOppClean, 'var(--blue)', true, null)}
       </>)}
 
       {/* Defence */}
       {(tackles+forcedTO+kickawayTO+dne+breach+koOppBreak) > 0 && sectionCard('Defence', 'var(--teal)', <>
-        {statRow('Tackles', tackles, 'var(--blue)')}
-        {statRow('Forced TO Won', forcedTO, 'var(--teal)')}
-        {statRow('Kickaway TO Won', kickawayTO, 'var(--teal)')}
-        {koOppBreak > 0 && statRow('Opp KO Break Won', koOppBreak, 'var(--teal)')}
-        {dne > 0 && statRow('DNE', dne, 'var(--red)')}
-        {breach > 0 && statRow('Breach 1v1', breach, 'var(--red)')}
+        {statRow('Tackles', tackles, 'var(--blue)', true, 'tackles')}
+        {statRow('Forced TO Won', forcedTO, 'var(--teal)', true, 'forced_to_win')}
+        {statRow('Kickaway TO Won', kickawayTO, 'var(--teal)', true, 'kickaway_to_received')}
+        {koOppBreak > 0 && statRow('Opp KO Break Won', koOppBreak, 'var(--teal)', true, 'won_break_opp')}
+        {dne > 0 && statRow('DNE', dne, 'var(--red)', true, 'dne')}
+        {breach > 0 && statRow('Breach 1v1', breach, 'var(--red)', true, 'breach_1v1')}
       </>)}
 
       {/* Turnovers Lost */}
       {(toNeg+dropShorts) > 0 && sectionCard('Turnovers Lost', 'var(--red)', <>
-        {statRow('Contact/Skill/Kickaway', toNeg, 'var(--red)')}
-        {statRow('Drop Shorts', dropShorts, 'var(--gold)')}
+        {statRow('Contact/Skill/Kickaway', toNeg, 'var(--red)', true, null)}
+        {statRow('Drop Shorts', dropShorts, 'var(--gold)', true, 'drop_shorts')}
       </>)}
 
       {/* Per game match breakdown */}
