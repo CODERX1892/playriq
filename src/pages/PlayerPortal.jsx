@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import Avatar from '../components/Avatar'
+import Avatar, { EditableAvatar } from '../components/Avatar'
 import StatGroup from '../components/StatGroup'
 import { MATCHES, OPP, POS_COLORS, n, r1, pct, sf, impactColor, buildStatRows } from '../lib/utils'
 import PlayrIQEdge from './PlayrIQEdge'
@@ -63,7 +63,7 @@ export default function PlayerPortal() {
     <div style={{ minHeight: '100vh' }}>
       {/* Header */}
       <div style={{ background: 'var(--bg2)', borderBottom: '1px solid var(--border)', padding: '10px 15px', display: 'flex', alignItems: 'center', gap: 11, position: 'sticky', top: 0, zIndex: 40 }}>
-        <Avatar name={player.name} size={38} />
+        <Avatar name={player.name} size={38} photoUrl={player.photo_url} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 17, fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{player.name}</div>
           <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>
@@ -148,7 +148,7 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
       {/* Hero */}
       <div style={{ background: 'linear-gradient(155deg,#0d1e38,#0f2a48 50%,#0d1e38)', border: '1px solid #2a4f7a', borderRadius: 13, padding: 15, marginBottom: 13 }}>
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 13 }}>
-          <Avatar name={player.name} size={76} round={false} />
+          <EditableAvatar player={player} size={76} onPhotoUpdated={(url) => { player.photo_url = url }} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', fontWeight: 600, color: posColor, marginBottom: 3 }}>{player.position}</div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 26, fontWeight: 800, lineHeight: 1, marginBottom: 2 }}>{player.name}</div>
