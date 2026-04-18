@@ -272,6 +272,7 @@ function SquadTab({ squadStats, matchFilter, setMatchFilter, posFilter, setPosFi
 
 // ─── PLAYER DETAIL VIEW ──────────────────────────────────────────────────────
 function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
+  const [selectedMatch, setSelectedMatch] = useState(null)
   const playerRows = allStats.filter(r => r.player_name === name)
   const player = players.find(p => p.name === name) || {}
   const posColor = POS_COLORS[player.position] || 'var(--text2)'
@@ -326,6 +327,12 @@ function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
   // Turnovers
   const toNeg = playerRows.reduce((s,r) => s+n(r.turnovers_in_contact)+n(r.turnover_skill_error)+n(r.turnovers_kicked_away),0)
   const dropShorts = playerRows.reduce((s,r) => s+n(r.drop_shorts),0)
+
+  // If a match is selected drill into it
+  if (selectedMatch) {
+    const r = playerRows.find(row => row.match_id === selectedMatch)
+    if (r) return <PlayerMatchDrillDown r={r} players={players} matchView={selectedMatch} onBack={() => setSelectedMatch(null)} />
+  }
 
   const statRow = (label, val, color, perGame = true) => val > 0 ? (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 14px', borderTop: '1px solid rgba(26,51,86,0.2)' }}>
@@ -455,8 +462,10 @@ function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
           const imp = r1(n(r.total_impact))
           const mPts = n(r.one_pointer_scored)+n(r.one_pointer_scored_f)+(n(r.two_pointer_scored)+n(r.two_pointer_scored_f))*2+(n(r.goals_scored)+n(r.goals_scored_f))*3
           return (
-            <div key={m} style={{ padding: '8px 14px', borderTop: '1px solid rgba(26,51,86,0.2)', display: 'grid', gridTemplateColumns: '1fr 44px 44px 44px 44px 44px' }}>
-              <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>{m}<span style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 400, marginLeft: 6 }}>{OPP[m]}</span></div>
+            <div key={m} onClick={() => setSelectedMatch(m)} style={{ padding: '8px 14px', borderTop: '1px solid rgba(26,51,86,0.2)', display: 'grid', gridTemplateColumns: '1fr 44px 44px 44px 44px 44px', cursor: 'pointer' }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--bg3)'}
+              onMouseLeave={e => e.currentTarget.style.background = ''}>
+              <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>{m}<span style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 400, marginLeft: 6 }}>{OPP[m]}</span><span style={{ fontSize: 10, color: 'var(--text3)', marginLeft: 6 }}>›</span></div>
               <div style={{ textAlign: 'center' }}><div style={{ fontSize: 13, fontWeight: 700, color: impactColor(imp) }}>{imp}</div><div style={{ fontSize: 8, color: 'var(--text3)', textTransform: 'uppercase' }}>Imp</div></div>
               <div style={{ textAlign: 'center' }}><div style={{ fontSize: 13, fontWeight: 700, color: 'var(--gold)' }}>{r1(n(r.attack_impact))}</div><div style={{ fontSize: 8, color: 'var(--text3)', textTransform: 'uppercase' }}>Atk</div></div>
               <div style={{ textAlign: 'center' }}><div style={{ fontSize: 13, fontWeight: 700, color: 'var(--blue)' }}>{r1(n(r.transition_impact))}</div><div style={{ fontSize: 8, color: 'var(--text3)', textTransform: 'uppercase' }}>Trans</div></div>
