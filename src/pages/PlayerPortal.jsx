@@ -166,7 +166,7 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
               {dob && <span className="tag"><b>{dob}</b></span>}
               <span className="tag">Games <b>{allMc}</b></span>
               <span className="tag">Mins <b>{mins}</b></span>
-              {mins > 0 && <span className="tag">Avg/60 <b style={{ color: 'var(--purple)' }}>{r1(ti / mins * 60)}</b></span>}
+              {mins > 0 && <span className="tag">Impact/60min <b style={{ color: 'var(--purple)' }}>{r1(ti / mins * 60)}</b></span>}
             </div>
           </div>
         </div>
@@ -244,7 +244,6 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
                   <div style={{ fontSize: 8, color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{OPP[m]}</div>
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 700, color: impactColor(imp), marginTop: 3 }}>{imp}</div>
                   <div style={{ fontSize: 9, color: 'var(--text3)' }}>{pts > 0 ? `${pts}pt` : '—'}</div>
-                  <div style={{ fontSize: 8, color: 'var(--text3)', marginTop: 1 }}>{n(r.total_minutes) > 0 ? `${Math.round(n(r.total_impact) / n(r.total_minutes) * 60 * 10) / 10}/60` : ''}</div>
                 </div>
               )
             })}

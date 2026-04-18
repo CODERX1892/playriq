@@ -185,7 +185,12 @@ function AnalystSquadTab({ squadStats, matchFilter, setMatchFilter, metric, setM
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 13, fontWeight: 700, color: rankColor, minWidth: 18, textAlign: 'center' }}>{i+1}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                  <div style={{ fontSize: 10, color: posColor }}>{p.position} · {p.mc}gm · {p.mins}min · <span style={{ color: 'var(--text3)' }}>{p.mins > 0 ? Math.round(val / p.mins * 60 * 10) / 10 : 0}/60</span></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 10, color: posColor }}>{p.position} · {p.mc}gm · {p.mins}min</span>
+                    {['total_impact','attack_impact','transition_impact','defensive_impact','pts','tackles','forced_to','simple_pass','adv_pass'].includes(metric) && p.mins > 0 && (
+                      <span style={{ fontSize: 9, color: 'var(--text3)', background: 'rgba(255,255,255,0.05)', borderRadius: 4, padding: '1px 5px' }}>{Math.round(val / p.mins * 60 * 10) / 10} /60min</span>
+                    )}
+                  </div>
                 </div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color, minWidth: 44, textAlign: 'right' }}>{val}</div>
               </div>

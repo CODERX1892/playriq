@@ -296,7 +296,12 @@ function SquadTab({ squadStats, matchFilter, setMatchFilter, posFilter, setPosFi
                 <Avatar name={p.name} size={30} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                  <div style={{ fontSize: 10, color: posColor }}>{p.position} · {p.mc}gm · {p.mins}min · <span style={{ color: 'var(--text3)' }}>{p.mins > 0 ? r1(val / p.mins * 60) : 0}/60</span></div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 10, color: posColor }}>{p.position} · {p.mc}gm · {p.mins}min</span>
+                    {['total_impact','attack_impact','transition_impact','defensive_impact','pts','tackles','forced_to','simple_pass','adv_pass'].includes(metric) && p.mins > 0 && (
+                      <span style={{ fontSize: 9, color: 'var(--text3)', background: 'rgba(255,255,255,0.05)', borderRadius: 4, padding: '1px 5px' }}>{r1(val / p.mins * 60)} /60min</span>
+                    )}
+                  </div>
                 </div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color, minWidth: 44, textAlign: 'right' }}>{val}</div>
               </div>
