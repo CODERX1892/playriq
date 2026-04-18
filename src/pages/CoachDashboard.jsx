@@ -259,7 +259,9 @@ function SquadTab({ squadStats, matchFilter, setMatchFilter, posFilter, setPosFi
   const maxVal = filtered.length ? Math.max(...filtered.map(p => p[displayKey] || 0), 1) : 1
   const hiddenCount = viewMode === 'p60' ? (posFilter === 'All' ? squadStats : squadStats.filter(p => p.position === posFilter)).filter(p => p.mins < MIN_MINS_P60).length : 0
   const color = metricDef.color || 'var(--blue)'
-  const label = metricDef.label || metric
+  const label = viewMode === 'total' && metricDef.rawKey
+    ? (metric === 'ipm' ? 'Total Impact' : metricDef.label)
+    : metricDef.label || metric
 
   return (
     <div className="fade-in">
