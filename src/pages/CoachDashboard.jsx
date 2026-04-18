@@ -18,7 +18,7 @@ const METRICS = {
   shoot_pct: { label: 'Shooting %', color: '#3ecf8e' },
   tackles: { label: 'Tackles', color: '#4a9eff' },
   forced_to: { label: 'Forced TO', color: '#3ecf8e' },
-  ipm: { label: 'Avg/Game', color: '#a78bfa' },
+  ipm: { label: 'Avg Impact/Game', color: '#a78bfa' },
   simple_pass: { label: 'Simple Passes', color: '#4a9eff' },
   adv_pass: { label: 'Advance Passes', color: '#4a9eff' },
   dne: { label: 'DNE', color: '#f06060' },
