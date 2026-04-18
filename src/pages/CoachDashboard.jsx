@@ -131,8 +131,8 @@ export default function CoachDashboard() {
 
       {/* Tabs — two rows of 5 so nothing is hidden */}
       {(() => {
-        const COACH_TABS = ['squad', 'compare', 'match', 'team', 'kickouts', 'turnovers', 'entry', 'publish', 'admin', 'glossary', 'privacy']
-        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'privacy' ? 'Privacy' : t === 'team' ? 'Team' : t.charAt(0).toUpperCase() + t.slice(1)
+        const COACH_TABS = ['squad', 'compare', 'match', 'team', 'kickouts', 'turnovers', 'entry', 'publish', 'admin', 'glossary']
+        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'team' ? 'Team' : t.charAt(0).toUpperCase() + t.slice(1)
         return (
           <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
@@ -178,6 +178,14 @@ export default function CoachDashboard() {
         {tab === 'admin' && <AdminPanel />}
         {tab === 'glossary' && <Glossary />}
         {tab === 'privacy' && <div style={{padding:14}}><PrivacyPolicy /></div>}
+        {/* Privacy footer link */}
+        {tab !== 'privacy' && (
+          <div style={{ textAlign: 'center', padding: '20px 0 8px', borderTop: '1px solid rgba(26,51,86,0.2)', marginTop: 8 }}>
+            <button onClick={() => setTab('privacy')} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 10, cursor: 'pointer', fontFamily: 'Barlow, sans-serif', letterSpacing: 1, textTransform: 'uppercase' }}>
+              Privacy Policy
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -343,8 +351,8 @@ function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
         <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--blue)', fontSize: 12, cursor: 'pointer', fontFamily: 'Barlow, sans-serif', padding: 0 }}>
           ← Back to Squad
         </button>
-        <button onClick={() => onCompare(name)} style={{ background: 'rgba(74,158,255,0.1)', border: '1px solid var(--blue)', borderRadius: 7, padding: '5px 12px', color: 'var(--blue)', fontSize: 11, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
-          Compare ↗
+        <button onClick={() => onCompare(name)} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 11, cursor: 'pointer', fontFamily: 'Barlow, sans-serif', padding: 0 }}>
+          Compare →
         </button>
       </div>
 

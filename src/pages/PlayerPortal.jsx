@@ -30,7 +30,7 @@ export default function PlayerPortal() {
   const [tab, setTab] = useState('home')
   const [consent, setConsent] = useState(null) // null=loading, false=needed, object=given
   const [matchFilter, setMatchFilter] = useState('all')
-  const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'edge', 'glossary', 'privacy']
+  const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'edge', 'glossary']
 
   useEffect(() => {
     Promise.all([
@@ -105,6 +105,13 @@ export default function PlayerPortal() {
         {tab === 'edge' && <PlayrIQEdge stats={stats} player={player} />}
         {tab === 'glossary' && <Glossary />}
         {tab === 'privacy' && <PrivacyPolicy />}
+        {tab !== 'privacy' && (
+          <div style={{ textAlign: 'center', padding: '20px 0 8px', borderTop: '1px solid rgba(26,51,86,0.2)', marginTop: 8 }}>
+            <button onClick={() => setTab('privacy')} style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 10, cursor: 'pointer', fontFamily: 'Barlow, sans-serif', letterSpacing: 1, textTransform: 'uppercase' }}>
+              Privacy Policy
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
