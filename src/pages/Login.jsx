@@ -145,7 +145,7 @@ export default function Login() {
               <div style={{ textAlign: 'center', marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'center', gap: 20 }}>
                 <button onClick={() => { setStep('staff'); setPinError('') }}
                   style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 12, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
-                  Staff Login →
+                  Coach / Analyst Login →
                 </button>
                 <button onClick={() => { setStep('forgot'); setForgotStatus(''); setResetStep('email') }}
                   style={{ background: 'none', border: 'none', color: 'var(--text3)', fontSize: 12, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
@@ -186,10 +186,10 @@ export default function Login() {
                 {appUsers.map(u => (
                   <div key={u.id} onClick={() => { setSelectedStaff(u); setPinError('') }}
                     style={{ padding: '11px 14px', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-                    onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--blue)'}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = u.role === 'analyst' ? 'var(--teal)' : 'var(--blue)'}
                     onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--border)'}>
                     <span style={{ fontSize: 14, fontWeight: 600 }}>{u.name}</span>
-                    <span style={{ fontSize: 10, color: u.role === 'admin' ? 'var(--gold)' : u.role === 'coach' ? 'var(--blue)' : 'var(--teal)', textTransform: 'uppercase', letterSpacing: 1 }}>{u.role}</span>
+                    <span style={{ fontSize: 10, color: u.role === 'admin' ? 'var(--gold)' : u.role === 'analyst' ? 'var(--teal)' : 'var(--blue)', textTransform: 'uppercase', letterSpacing: 1 }}>{u.role === 'analyst' ? 'Analyst' : u.role === 'admin' ? 'Admin' : 'Coach'}</span>
                   </div>
                 ))}
               </div>
