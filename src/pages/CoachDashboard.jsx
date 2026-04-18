@@ -603,7 +603,7 @@ function CompareTab({ squadStats, compareP1, compareP2, setCompareP1, setCompare
     { subject: 'Transition', p1: normalise(s1.per, squadStats.map(p => p.per)), p2: normalise(s2.per, squadStats.map(p => p.per)) },
     { subject: 'KOs', p1: normalise(s1.ko_our_p60, squadStats.map(p => p.ko_our_p60)), p2: normalise(s2.ko_our_p60, squadStats.map(p => p.ko_our_p60)) },
     { subject: 'Shooting', p1: normalise(s1.shoot_pct, squadStats.map(p => p.shoot_pct)), p2: normalise(s2.shoot_pct, squadStats.map(p => p.shoot_pct)) },
-    { subject: 'Avg/Game', p1: normalise(s1.ipm, squadStats.map(p => p.ipm)), p2: normalise(s2.ipm, squadStats.map(p => p.ipm)) },
+
   ] : []
 
   return (
