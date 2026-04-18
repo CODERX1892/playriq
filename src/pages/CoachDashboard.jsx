@@ -89,6 +89,47 @@ export default function CoachDashboard() {
         dne: sf(rows, 'dne'), simple_pass: sf(rows, 'simple_pass'),
         adv_pass: sf(rows, 'advance_pass'),
         ipm: mc > 0 ? r1(ti / mc) : 0,
+        // Per 60 min metrics
+        tackles_p60: mins > 0 ? r1(sf(rows,'tackles') / mins * 60) : 0,
+        forced_to_p60: mins > 0 ? r1(sf(rows,'forced_to_win') / mins * 60) : 0,
+        dne_p60: mins > 0 ? r1(sf(rows,'dne') / mins * 60) : 0,
+        breach_p60: mins > 0 ? r1(sf(rows,'breach_1v1') / mins * 60) : 0,
+        simple_pass_p60: mins > 0 ? r1(sf(rows,'simple_pass') / mins * 60) : 0,
+        adv_pass_p60: mins > 0 ? r1(sf(rows,'advance_pass') / mins * 60) : 0,
+        carries_p60: mins > 0 ? r1(sf(rows,'carries') / mins * 60) : 0,
+        pts_p60: mins > 0 ? r1(pts / mins * 60) : 0,
+        ko_our_p60: mins > 0 ? r1((sf(rows,'won_clean_p1_our')+sf(rows,'won_clean_p2_our')+sf(rows,'won_clean_p3_our')+sf(rows,'won_break_our')) / mins * 60) : 0,
+        ko_opp_p60: mins > 0 ? r1((sf(rows,'won_clean_p1_opp')+sf(rows,'won_clean_p2_opp')+sf(rows,'won_clean_p3_opp')+sf(rows,'won_break_opp')) / mins * 60) : 0,
+        ko_our_break_p60: mins > 0 ? r1(sf(rows,'won_break_our') / mins * 60) : 0,
+        ko_opp_break_p60: mins > 0 ? r1(sf(rows,'won_break_opp') / mins * 60) : 0,
+        duels_won_p60: mins > 0 ? r1(sf(rows,'defensive_duels_won') / mins * 60) : 0,
+        assists_p60: mins > 0 ? r1((sf(rows,'assists_shots')+sf(rows,'assists_goals')+sf(rows,'assists_2pt')) / mins * 60) : 0,
+        // EV per shot from play and frees
+        ev_play: (() => {
+          const p1s=sf(rows,'one_pointer_scored'),p1a=sf(rows,'one_pointer_attempts')
+          const p2s=sf(rows,'two_pointer_scored'),p2a=sf(rows,'two_pointer_attempts')
+          const gs=sf(rows,'goals_scored'),ga=sf(rows,'goal_attempts')
+          const att=p1a+p2a+ga
+          return att>0 ? Math.round((p1s*1+p2s*2+gs*3)/att*100)/100 : 0
+        })(),
+        ev_free: (() => {
+          const f1s=sf(rows,'one_pointer_scored_f'),f1a=sf(rows,'one_pointer_attempts_f')
+          const f2s=sf(rows,'two_pointer_scored_f'),f2a=sf(rows,'two_pointer_attempts_f')
+          const fgs=sf(rows,'goals_scored_f'),fga=sf(rows,'goal_attempts_f')
+          const att=f1a+f2a+fga
+          return att>0 ? Math.round((f1s*1+f2s*2.5+fgs*4)/att*100)/100 : 0
+        })(),
+        // Pass Efficiency Rating
+        per: (() => {
+          const sp = sf(rows,'simple_pass'), ap = sf(rows,'advance_pass')
+          const to = sf(rows,'turnovers_in_contact')+sf(rows,'turnover_skill_error')+sf(rows,'turnovers_kicked_away')+sf(rows,'drop_shorts')
+          const denom = Math.max(sp + ap + to * 3, 1)
+          return Math.round((sp * 1 + ap * 3) / denom * 100) / 100
+        })(),
+        adv_pct: (() => {
+          const sp = sf(rows,'simple_pass'), ap = sf(rows,'advance_pass')
+          return sp + ap > 0 ? Math.round(ap / (sp + ap) * 100) : 0
+        })(),
       }
     }).filter(Boolean)
   }
@@ -507,6 +548,7 @@ function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
 
 // ─── COMPARE TAB ─────────────────────────────────────────────────────────────
 function CompareTab({ squadStats, compareP1, compareP2, setCompareP1, setCompareP2 }) {
+  const [compareTab, setCompareTab] = useState('attack')
   const s1 = compareP1 ? squadStats.find(p => p.name === compareP1) : null
   const s2 = compareP2 ? squadStats.find(p => p.name === compareP2) : null
 
@@ -516,40 +558,62 @@ function CompareTab({ squadStats, compareP1, compareP2, setCompareP1, setCompare
     setCompareP1(name); setCompareP2(null)
   }
 
-  const radarData = s1 && s2 ? [
-    { subject: 'Attack', p1: normalise(s1.attack_impact, squadStats.map(p => p.attack_impact)), p2: normalise(s2.attack_impact, squadStats.map(p => p.attack_impact)) },
-    { subject: 'Transition', p1: normalise(s1.transition_impact, squadStats.map(p => p.transition_impact)), p2: normalise(s2.transition_impact, squadStats.map(p => p.transition_impact)) },
-    { subject: 'Defence', p1: normalise(s1.defensive_impact, squadStats.map(p => p.defensive_impact)), p2: normalise(s2.defensive_impact, squadStats.map(p => p.defensive_impact)) },
-    { subject: 'Points', p1: normalise(s1.pts, squadStats.map(p => p.pts)), p2: normalise(s2.pts, squadStats.map(p => p.pts)) },
-    { subject: 'Shooting', p1: normalise(s1.shoot_pct, squadStats.map(p => p.shoot_pct)), p2: normalise(s2.shoot_pct, squadStats.map(p => p.shoot_pct)) },
-    { subject: 'Tackles', p1: normalise(s1.tackles, squadStats.map(p => p.tackles)), p2: normalise(s2.tackles, squadStats.map(p => p.tackles)) },
-  ] : []
+  // Compare row helper
+  const cRow = (label, k1, k2, color, unit = '') => {
+    const v1 = s1?.[k1] ?? 0, v2 = s2?.[k2 || k1] ?? 0
+    const maxV = Math.max(Math.abs(v1), Math.abs(v2), 0.01)
+    const w1 = Math.round(Math.abs(v1) / maxV * 100)
+    const w2 = Math.round(Math.abs(v2) / maxV * 100)
+    const win1 = v1 > v2, win2 = v2 > v1
+    return (
+      <div style={{ padding: '8px 14px', borderTop: '1px solid rgba(26,51,86,0.3)' }}>
+        <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 5 }}>{label}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 54px 54px', gap: 6, alignItems: 'center' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div style={{ height: 4, background: 'var(--bg3)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ width: `${w1}%`, height: '100%', background: '#f0b429', borderRadius: 2 }} />
+            </div>
+            <div style={{ height: 4, background: 'var(--bg3)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ width: `${w2}%`, height: '100%', background: '#4a9eff', borderRadius: 2 }} />
+            </div>
+          </div>
+          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 800, textAlign: 'center', color: win1 ? '#f0b429' : 'var(--text3)' }}>{v1}{unit}</div>
+          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 800, textAlign: 'center', color: win2 ? '#4a9eff' : 'var(--text3)' }}>{v2}{unit}</div>
+        </div>
+      </div>
+    )
+  }
 
-  const compareMetrics = [
-    { key: 'total_impact', label: 'Total Impact', color: '#a78bfa' },
-    { key: 'attack_impact', label: 'Attack Impact', color: '#f0b429' },
-    { key: 'transition_impact', label: 'Transition', color: '#4a9eff' },
-    { key: 'defensive_impact', label: 'Defence', color: '#3ecf8e' },
-    { key: 'pts', label: 'Points', color: '#f0b429' },
-    { key: 'shoot_pct', label: 'Shooting %', color: '#3ecf8e' },
-    { key: 'tackles', label: 'Tackles', color: '#4a9eff' },
-    { key: 'forced_to', label: 'Forced TO', color: '#3ecf8e' },
-    { key: 'ipm', label: 'Impact/60min', color: '#a78bfa' },
+  const COMPARE_TABS = [
+    { id: 'attack', label: 'Attack & Scores', color: '#f0b429' },
+    { id: 'defence', label: 'Defence', color: '#3ecf8e' },
+    { id: 'transition', label: 'Transition', color: '#4a9eff' },
+    { id: 'kickouts', label: 'Kickouts', color: '#a78bfa' },
+    { id: 'physical', label: 'Physical', color: '#f06060' },
   ]
+
+  const radarData = s1 && s2 ? [
+    { subject: 'Attack', p1: normalise(s1.pts_p60, squadStats.map(p => p.pts_p60)), p2: normalise(s2.pts_p60, squadStats.map(p => p.pts_p60)) },
+    { subject: 'Defence', p1: normalise(s1.defensive_impact, squadStats.map(p => p.defensive_impact)), p2: normalise(s2.defensive_impact, squadStats.map(p => p.defensive_impact)) },
+    { subject: 'Transition', p1: normalise(s1.per, squadStats.map(p => p.per)), p2: normalise(s2.per, squadStats.map(p => p.per)) },
+    { subject: 'KOs', p1: normalise(s1.ko_our_p60, squadStats.map(p => p.ko_our_p60)), p2: normalise(s2.ko_our_p60, squadStats.map(p => p.ko_our_p60)) },
+    { subject: 'Shooting', p1: normalise(s1.shoot_pct, squadStats.map(p => p.shoot_pct)), p2: normalise(s2.shoot_pct, squadStats.map(p => p.shoot_pct)) },
+    { subject: 'Avg/Game', p1: normalise(s1.ipm, squadStats.map(p => p.ipm)), p2: normalise(s2.ipm, squadStats.map(p => p.ipm)) },
+  ] : []
 
   return (
     <div className="fade-in">
       <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>Select two players to compare</div>
 
-      {/* Slots */}
+      {/* Player slots */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 14 }}>
         {[{ p: s1, slot: 1, color: '#f0b429', set: () => setCompareP1(null) }, { p: s2, slot: 2, color: '#4a9eff', set: () => setCompareP2(null) }].map(({ p, slot, color, set }) => (
           <div key={slot} onClick={set} style={{ border: `1px solid ${p ? color : 'var(--border)'}`, borderRadius: 10, padding: 10, cursor: 'pointer', background: 'var(--bg2)', textAlign: 'center' }}>
             {p ? (
               <>
-                <Avatar name={p.name} size={36} style={{ margin: '0 auto 6px', borderColor: color }} />
-                <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name.split(' ')[1] || p.name}</div>
-                <div style={{ fontSize: 10, color: POS_COLORS[p.position] || 'var(--text2)' }}>{p.position}</div>
+                <Avatar name={p.name} size={36} />
+                <div style={{ fontSize: 12, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 4 }}>{p.name.split(' ')[0]} {p.name.split(' ').slice(-1)}</div>
+                <div style={{ fontSize: 10, color: POS_COLORS[p.position] || 'var(--text2)' }}>{p.position} · {p.mc}gm</div>
               </>
             ) : (
               <div style={{ padding: 8 }}>
@@ -565,7 +629,7 @@ function CompareTab({ squadStats, compareP1, compareP2, setCompareP1, setCompare
         <>
           <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Pick from squad</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 7 }}>
-            {[...squadStats].sort((a, b) => b.total_impact - a.total_impact).map(p => {
+            {[...squadStats].sort((a, b) => b.ipm - a.ipm).map(p => {
               const isSel = p.name === compareP1 || p.name === compareP2
               const posColor = POS_COLORS[p.position] || 'var(--text2)'
               return (
@@ -585,56 +649,101 @@ function CompareTab({ squadStats, compareP1, compareP2, setCompareP1, setCompare
 
       {s1 && s2 && (
         <>
-          {/* Spider chart */}
+          {/* Radar */}
           <div className="card" style={{ padding: 14, marginBottom: 13 }}>
-            <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>Impact Profile</div>
-            <ResponsiveContainer width="100%" height={260}>
+            <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 }}>Overall Profile</div>
+            <ResponsiveContainer width="100%" height={240}>
               <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
                 <PolarGrid stroke="rgba(26,51,86,0.6)" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text2)', fontSize: 11 }} />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text2)', fontSize: 10 }} />
                 <Radar name={s1.name.split(' ')[0]} dataKey="p1" stroke="#f0b429" fill="#f0b429" fillOpacity={0.15} strokeWidth={2} />
                 <Radar name={s2.name.split(' ')[0]} dataKey="p2" stroke="#4a9eff" fill="#4a9eff" fillOpacity={0.15} strokeWidth={2} />
                 <Tooltip contentStyle={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11 }} />
               </RadarChart>
             </ResponsiveContainer>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 4 }}>
               {[s1, s2].map((s, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: 2, background: i === 0 ? '#f0b429' : '#4a9eff' }} />
+                  <div style={{ width: 8, height: 8, borderRadius: 2, background: i === 0 ? '#f0b429' : '#4a9eff' }} />
                   <span style={{ fontSize: 11, color: 'var(--text2)' }}>{s.name.split(' ')[0]}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Side by side bars */}
-          <div className="card" style={{ overflow: 'hidden', marginBottom: 13 }}>
-            <div className="card-header" style={{ display: 'grid', gridTemplateColumns: '1fr 60px 60px', gap: 6 }}>
-              <div>Metric</div>
-              <div style={{ color: '#f0b429', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s1.name.split(' ')[0]}</div>
-              <div style={{ color: '#4a9eff', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s2.name.split(' ')[0]}</div>
-            </div>
-            {compareMetrics.map(m => {
-              const v1 = s1[m.key] || 0, v2 = s2[m.key] || 0
-              const maxV = Math.max(v1, v2, 1)
-              const w1 = Math.round(v1 / maxV * 100), w2 = Math.round(v2 / maxV * 100)
-              return (
-                <div key={m.key} style={{ padding: '8px 14px', borderTop: '1px solid rgba(26,51,86,0.3)' }}>
-                  <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 5 }}>{m.label}</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 50px 50px', gap: 6, alignItems: 'center' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                      <div style={{ height: 5, background: 'var(--bg3)', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: `${w1}%`, height: '100%', background: '#f0b429', borderRadius: 3 }} /></div>
-                      <div style={{ height: 5, background: 'var(--bg3)', borderRadius: 3, overflow: 'hidden' }}><div style={{ width: `${w2}%`, height: '100%', background: '#4a9eff', borderRadius: 3 }} /></div>
-                    </div>
-                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 17, fontWeight: 800, textAlign: 'center', color: v1 > v2 ? '#f0b429' : 'var(--text3)' }}>{v1}</div>
-                    <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 17, fontWeight: 800, textAlign: 'center', color: v2 > v1 ? '#4a9eff' : 'var(--text3)' }}>{v2}</div>
-                  </div>
-                </div>
-              )
-            })}
+          {/* Category tabs */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 5, marginBottom: 12 }}>
+            {COMPARE_TABS.map(t => (
+              <button key={t.id} onClick={() => setCompareTab(t.id)}
+                style={{ padding: '7px 4px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: `1px solid ${compareTab === t.id ? t.color : 'var(--border)'}`, background: compareTab === t.id ? 'rgba(255,255,255,0.04)' : 'var(--bg2)', color: compareTab === t.id ? t.color : 'var(--text3)', fontFamily: 'Barlow, sans-serif' }}>
+                {t.label}
+              </button>
+            ))}
           </div>
 
-          <div style={{ textAlign: 'center' }}>
+          {/* Column headers */}
+          <div className="card" style={{ overflow: 'hidden', marginBottom: 13 }}>
+            <div className="card-header" style={{ display: 'grid', gridTemplateColumns: '1fr 54px 54px', gap: 6 }}>
+              <div style={{ fontSize: 10, color: 'var(--text3)' }}>Metric</div>
+              <div style={{ color: '#f0b429', textAlign: 'center', fontSize: 12, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s1.name.split(' ')[0]}</div>
+              <div style={{ color: '#4a9eff', textAlign: 'center', fontSize: 12, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s2.name.split(' ')[0]}</div>
+            </div>
+
+            {/* ATTACK & SCORES */}
+            {compareTab === 'attack' && <>
+              {cRow('Pts / 60 min', 'pts_p60', null, '#f0b429')}
+              {cRow('Total Points', 'pts', null, '#f0b429')}
+              {cRow('Shooting %', 'shoot_pct', null, '#3ecf8e', '%')}
+              {cRow('EV / Shot (Play)', 'ev_play', null, '#f0b429')}
+              {cRow('EV / Shot (Frees)', 'ev_free', null, '#a78bfa')}
+              {cRow('Assists / 60', 'assists_p60', null, '#3ecf8e')}
+              {cRow('Pass Efficiency', 'per', null, '#4a9eff')}
+              {cRow('Avg Impact / Game', 'ipm', null, '#a78bfa')}
+            </>}
+
+            {/* DEFENCE */}
+            {compareTab === 'defence' && <>
+              {cRow('Tackles / 60', 'tackles_p60', null, '#4a9eff')}
+              {cRow('Forced TO / 60', 'forced_to_p60', null, '#3ecf8e')}
+              {cRow('Duels Won / 60', 'duels_won_p60', null, '#3ecf8e')}
+              {cRow('DNE / 60', 'dne_p60', null, '#f06060')}
+              {cRow('Breach 1v1 / 60', 'breach_p60', null, '#f06060')}
+            </>}
+
+            {/* TRANSITION */}
+            {compareTab === 'transition' && <>
+              {cRow('Adv Passes / 60', 'adv_pass_p60', null, '#4a9eff')}
+              {cRow('Simple Passes / 60', 'simple_pass_p60', null, '#4a9eff')}
+              {cRow('Carries / 60', 'carries_p60', null, '#4a9eff')}
+              {cRow('Pass Efficiency', 'per', null, '#a78bfa')}
+              {cRow('Adv Pass %', 'adv_pct', null, '#a78bfa', '%')}
+            </>}
+
+            {/* KICKOUTS */}
+            {compareTab === 'kickouts' && <>
+              {cRow('Our KO Wins / 60', 'ko_our_p60', null, '#3ecf8e')}
+              {cRow('Our KO Breaks / 60', 'ko_our_break_p60', null, '#3ecf8e')}
+              {cRow('Opp KO Wins / 60', 'ko_opp_p60', null, '#a78bfa')}
+              {cRow('Opp KO Breaks / 60', 'ko_opp_break_p60', null, '#a78bfa')}
+            </>}
+
+            {/* PHYSICAL — GPS placeholder */}
+            {compareTab === 'physical' && <>
+              <div style={{ padding: '16px 14px', borderTop: '1px solid rgba(26,51,86,0.3)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#f06060', flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 600 }}>GPS data coming soon</div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>Distance, speed, sprints and high intensity runs will appear once GPS is enabled</div>
+                </div>
+              </div>
+              {cRow('Distance / game (km)', 'gps_distance', null, '#f06060')}
+              {cRow('Top Speed (km/h)', 'gps_top_speed', null, '#f06060')}
+              {cRow('Sprint Count', 'gps_sprints', null, '#f06060')}
+              {cRow('High Intensity Runs', 'gps_hir', null, '#f06060')}
+            </>}
+          </div>
+
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
             <button onClick={() => { setCompareP1(null); setCompareP2(null) }}
               style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 8, padding: '8px 20px', color: 'var(--text3)', fontSize: 12, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
               Clear comparison
