@@ -296,7 +296,7 @@ function SquadTab({ squadStats, matchFilter, setMatchFilter, posFilter, setPosFi
                 <Avatar name={p.name} size={30} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                  <div style={{ fontSize: 10, color: posColor }}>{p.position} · {p.mc}gm · {p.mins}min</div>
+                  <div style={{ fontSize: 10, color: posColor }}>{p.position} · {p.mc}gm · {p.mins}min · <span style={{ color: 'var(--text3)' }}>{p.mins > 0 ? r1(val / p.mins * 60) : 0}/60</span></div>
                 </div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color, minWidth: 44, textAlign: 'right' }}>{val}</div>
               </div>

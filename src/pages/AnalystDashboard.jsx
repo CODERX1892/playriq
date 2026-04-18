@@ -185,7 +185,7 @@ function AnalystSquadTab({ squadStats, matchFilter, setMatchFilter, metric, setM
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 13, fontWeight: 700, color: rankColor, minWidth: 18, textAlign: 'center' }}>{i+1}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                  <div style={{ fontSize: 10, color: posColor }}>{p.position} · {p.mc}gm · {p.mins}min</div>
+                  <div style={{ fontSize: 10, color: posColor }}>{p.position} · {p.mc}gm · {p.mins}min · <span style={{ color: 'var(--text3)' }}>{p.mins > 0 ? Math.round(val / p.mins * 60 * 10) / 10 : 0}/60</span></div>
                 </div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color, minWidth: 44, textAlign: 'right' }}>{val}</div>
               </div>
