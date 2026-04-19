@@ -9,6 +9,7 @@ import Glossary from './Glossary'
 import PrivacyPolicy from './PrivacyPolicy'
 import AddMatch from './AddMatch'
 import CoachReflectionView from './CoachReflectionView'
+import TeamAnalytics from './TeamAnalytics'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts'
 
 // p60Key = per/60 field, rawKey = total field, null = already a ratio
@@ -184,8 +185,8 @@ export default function CoachDashboard() {
 
       {/* Tabs — two rows of 5 so nothing is hidden */}
       {(() => {
-        const COACH_TABS = ['squad', 'compare', 'match', 'team', 'kickouts', 'breach', 'turnovers', 'goals', 'entry', 'publish', 'admin', 'glossary']
-        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'breach' ? 'Breach' : t === 'goals' ? 'Goals' : t === 'team' ? 'Team' : t.charAt(0).toUpperCase() + t.slice(1)
+        const COACH_TABS = ['squad', 'compare', 'match', 'team', 'analytics', 'kickouts', 'breach', 'turnovers', 'goals', 'entry', 'publish', 'admin', 'glossary']
+        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'breach' ? 'Breach' : t === 'goals' ? 'Goals' : t === 'analytics' ? 'Analytics' : t === 'team' ? 'Team' : t.charAt(0).toUpperCase() + t.slice(1)
         return (
           <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
@@ -231,6 +232,7 @@ export default function CoachDashboard() {
         {tab === 'publish' && <PublishTab matchStatuses={matchStatuses} setMatchStatuses={setMatchStatuses} appUser={appUser} allStats={allStats} />}
         {tab === 'admin' && <AdminPanel />}
         {tab === 'breach' && <BreachTab squadStats={squadStats} allStats={allStats} players={players} />}
+        {tab === 'analytics' && <TeamAnalytics allStats={allStats} matchView={matchView} setMatchView={setMatchView} />}
         {tab === 'goals' && <CoachReflectionView appUser={appUser} isAdmin={appUser.role === 'admin'} />}
         {tab === 'glossary' && <Glossary />}
         {tab === 'privacy' && <div style={{padding:14}}><PrivacyPolicy /></div>}

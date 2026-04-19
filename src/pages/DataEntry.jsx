@@ -136,40 +136,9 @@ const COL_GROUPS = [
   },
 ]
 
-const FULL_LABELS = {
-  total_minutes: 'Minutes', duels_contested: 'Contested', defensive_duels_won: 'Duels Won',
-  duels_neutral: 'Neutral', duels_lost: 'Lost', dne: 'DNE', forced_to_win: 'Forced TO Win',
-  kickaway_to_received: 'Kickaway TO', tackles: 'Tackles', breach_1v1: 'Breach 1v1',
-  free_conceded: 'Free Conceded', shot_free_conceded: 'Shot Free', two_pt_free_conceded: '2pt Free',
-  yellow: 'Yellow', black: 'Black', red: 'Red',
-  one_pointer_attempts: '1pt Att', one_pointer_scored: '1pt Scored', one_pointer_wide: '1pt Wide',
-  one_pointer_drop_short_block: '1pt Drop Short',
-  two_pointer_attempts: '2pt Att', two_pointer_scored: '2pt Scored', two_pointer_wide: '2pt Wide',
-  two_pointer_drop_short_block: '2pt Drop Short',
-  goal_attempts: 'Goal Att', goals_scored: 'Goals', goals_wide: 'Goal Wide',
-  goal_drop_short_block: 'Goal Drop Short',
-  one_pointer_attempts_f: '1pt Att (F)', one_pointer_scored_f: '1pt Scored (F)',
-  two_pointer_attempts_f: '2pt Att (F)', two_pointer_scored_f: '2pt Scored (F)',
-  goal_attempts_f: 'Goal Att (F)', goals_scored_f: 'Goals (F)',
-  turnovers_in_contact: 'Contact TO', turnover_skill_error: 'Skill Error',
-  turnovers_kicked_away: 'Kickaway TO', drop_shorts: 'Drop Shorts',
-  acceptable_turnovers: 'Acceptable TO',
-  assists_shots: 'Shot Assist', assists_goals: 'Goal Assist', assists_2pt: '2pt Assist', pts: 'Points',
-  won_clean_p1_our: 'P1 Clean', won_clean_p2_our: 'P2 Clean', won_clean_p3_our: 'P3 Clean',
-  won_break_our: 'Break', our_ko_contest_opp: 'Contest Opp', our_ko_contest_us: 'Contest Us',
-  ko_target_won_clean: 'Target Won', ko_target_won_break: 'Target Break',
-  ko_target_lost_clean: 'Target Lost', ko_target_lost_contest: 'Target Lost C',
-  won_clean_p1_opp: 'P1 Clean', won_clean_p2_opp: 'P2 Clean', won_clean_p3_opp: 'P3 Clean',
-  won_break_opp: 'Break', their_ko_contest_opp: 'Contest Opp', their_ko_contest_us: 'Contest Us',
-  simple_pass: 'Simple Pass', simple_receive: 'Simple Rec', advance_pass: 'Advance Pass',
-  advance_receive: 'Advance Rec', carries: 'Carries',
-  shots_saved: 'Shots Saved', shots_conceded: 'Conceded',
-  attack_impact: 'Attack Impact', transition_impact: 'Transition', defensive_impact: 'Defence', total_impact: 'Total Impact',
-}
+const ALL_COLS = COL_GROUPS.flatMap(g => g.cols.map(c => ({ ...c, groupColor: g.color, decimal: g.decimal })))
 
-const IMPACT_KEYS = ['attack_impact', 'transition_impact', 'defensive_impact', 'total_impact']
-
-const ALL_COLS = COL_GROUPS.flatMap(g => g.cols.map(c => ({ ...c, groupColor: g.color, decimal: g.decimal, readonly: IMPACT_KEYS.includes(c.key) })))
+import XMLUpload from './XMLUpload'
 
 export default function DataEntry() {
   const [players, setPlayers] = useState([])
@@ -178,13 +147,6 @@ export default function DataEntry() {
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024)
-
-  useEffect(() => {
-    const handler = () => setIsDesktop(window.innerWidth >= 1024)
-    window.addEventListener('resize', handler)
-    return () => window.removeEventListener('resize', handler)
-  }, [])
 
   useEffect(() => {
     supabase.from('players').select('name,position').order('name')
@@ -220,7 +182,7 @@ export default function DataEntry() {
       .filter(p => get(p.name, 'total_minutes') !== '' || ALL_COLS.some(c => get(p.name, c.key) !== ''))
       .map(p => {
         const row = { match_id: match, player_name: p.name }
-        ALL_COLS.filter(c => !c.readonly).forEach(c => {
+        ALL_COLS.forEach(c => {
           const v = get(p.name, c.key)
           row[c.key] = v === '' ? null : parseFloat(v)
         })
@@ -285,8 +247,8 @@ export default function DataEntry() {
                 <th style={{ ...thStyle, minWidth: 130, position: 'sticky', left: 0, background: 'var(--bg3)', zIndex: 2 }}>Player</th>
                 {COL_GROUPS.map(g => (
                   <th key={g.label} colSpan={g.cols.length}
-                    style={{ ...thStyle, color: g.color, borderLeft: '2px solid var(--border)', textAlign: 'center', letterSpacing: 1, opacity: g.label === 'Impact' ? 0.6 : 1 }}>
-                    {g.label}{g.label === 'Impact' ? ' (auto)' : ''}
+                    style={{ ...thStyle, color: g.color, borderLeft: '2px solid var(--border)', textAlign: 'center', letterSpacing: 1 }}>
+                    {g.label}
                   </th>
                 ))}
               </tr>
@@ -295,13 +257,10 @@ export default function DataEntry() {
                 <th style={{ ...thStyle, position: 'sticky', left: 0, background: 'var(--bg3)', zIndex: 2 }} />
                 {COL_GROUPS.map(g => g.cols.map((c, ci) => (
                   <th key={c.key} style={{
-                    ...thStyle,
-                    color: c.readonly ? 'rgba(240,180,41,0.5)' : 'var(--text2)',
-                    fontWeight: 400,
+                    ...thStyle, color: 'var(--text2)', fontWeight: 400,
                     borderLeft: ci === 0 ? '2px solid var(--border)' : '1px solid rgba(26,51,86,0.3)',
-                    minWidth: isDesktop ? 76 : 44,
-                    fontStyle: c.readonly ? 'italic' : 'normal',
-                  }}>{isDesktop ? (FULL_LABELS[c.key] || c.label) : c.label}</th>
+                    minWidth: 44,
+                  }}>{c.label}</th>
                 )))}
               </tr>
             </thead>
@@ -326,22 +285,17 @@ export default function DataEntry() {
                           <input
                             type="number"
                             value={val}
-                            onChange={e => !c.readonly && set(p.name, c.key, e.target.value)}
-                            readOnly={c.readonly}
+                            onChange={e => set(p.name, c.key, e.target.value)}
                             step={g.decimal ? '0.01' : '1'}
                             min="0"
                             style={{
-                              width: isDesktop ? 72 : 42,
-                              padding: isDesktop ? '5px 4px' : '4px 2px',
-                              textAlign: 'center',
-                              background: c.readonly ? 'rgba(26,51,86,0.2)' : hasVal ? 'rgba(255,255,255,0.05)' : 'transparent',
-                              border: `1px solid ${c.readonly ? 'rgba(26,51,86,0.2)' : hasVal ? g.color : 'rgba(26,51,86,0.3)'}`,
+                              width: 42, padding: '4px 2px', textAlign: 'center',
+                              background: hasVal ? 'rgba(255,255,255,0.05)' : 'transparent',
+                              border: `1px solid ${hasVal ? g.color : 'rgba(26,51,86,0.3)'}`,
                               borderRadius: 4,
-                              color: c.readonly ? 'var(--text3)' : hasVal ? g.color : 'var(--text3)',
-                              fontSize: isDesktop ? 13 : 12,
-                              fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700,
+                              color: hasVal ? g.color : 'var(--text3)',
+                              fontSize: 12, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700,
                               outline: 'none',
-                              cursor: c.readonly ? 'default' : 'text',
                             }}
                           />
                         </td>
