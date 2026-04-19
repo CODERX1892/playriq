@@ -91,7 +91,7 @@ function parseXML(xmlText) {
   const bodenShots = evList.filter(e => e.code?.includes(BODEN) && e.code?.includes('Shot'))
   const oppShots = evList.filter(e => !e.code?.includes(BODEN) && e.code?.includes('Shot'))
 
-  const goals = (shots, player) => shots.filter(s => s.Outcome === 'Goal').length
+  const goals = (shots) => shots.filter(s => s.Outcome === 'Goal').length
   const twopts = (shots) => shots.filter(s => s.Outcome === 'Two Points').length
   const pts = (shots) => shots.filter(s => s.Outcome === 'Point').length
   const scored = (shots) => shots.filter(s => SCORE_OUTCOMES.has(s.Outcome)).length
@@ -100,6 +100,17 @@ function parseXML(xmlText) {
   const our2 = twopts(bodenShots)
   const our1 = pts(bodenShots)
   const ourActualPts = ourG * 3 + our2 * 2 + our1
+
+  // Per-source goals/2pt breakdown
+  const sourceBreakdown = (team, src) => {
+    const isB = team === 'boden'
+    const srcLabel = src === 'own_ko' ? 'Own Kickout' : src === 'opp_ko' ? 'Opp Kickout' : 'Turnover'
+    const shots = evList.filter(e => {
+      const isBoden = e.code?.includes(BODEN)
+      return (isB ? isBoden : !isBoden) && e.code?.includes('Shot') && srcMap[e.Source] === (src === 'own_ko' ? 'Own KO' : src === 'opp_ko' ? 'Opp KO' : 'Turnover')
+    })
+    return { goals: goals(shots), twopt: twopts(shots) }
+  }
 
   const pct = (n, d) => d > 0 ? Math.round(n / d * 100) : 0
 
@@ -132,7 +143,24 @@ function parseXML(xmlText) {
     opp_scores_opp_ko: oppScoresBy['Opp KO'],
     opp_scores_turnover: oppScoresBy['Turnover'],
 
+    boden_goals_own_ko: sourceBreakdown('boden','own_ko').goals,
+    boden_2pt_own_ko: sourceBreakdown('boden','own_ko').twopt,
+    boden_goals_opp_ko: sourceBreakdown('boden','opp_ko').goals,
+    boden_2pt_opp_ko: sourceBreakdown('boden','opp_ko').twopt,
+    boden_goals_turnover: sourceBreakdown('boden','turnover').goals,
+    boden_2pt_turnover: sourceBreakdown('boden','turnover').twopt,
+    opp_goals_own_ko: sourceBreakdown('opp','own_ko').goals,
+    opp_2pt_own_ko: sourceBreakdown('opp','own_ko').twopt,
+    opp_goals_opp_ko: sourceBreakdown('opp','opp_ko').goals,
+    opp_2pt_opp_ko: sourceBreakdown('opp','opp_ko').twopt,
+    opp_goals_turnover: sourceBreakdown('opp','turnover').goals,
+    opp_2pt_turnover: sourceBreakdown('opp','turnover').twopt,
+
     our_ko_taken: ourKOTotal,
+    our_ko_short_won_clean: ourKOs.short.wonClean,
+    our_ko_mid_won_clean: ourKOs.mid.wonClean,
+    opp_ko_short_we_won_clean: oppKOs.short.weWonClean,
+    opp_ko_mid_we_won_clean: oppKOs.mid.weWonClean,
     our_ko_won_clean_pct: pct(ourKTWonClean, ourKOTotal),
     our_ko_won_break_pct: pct(ourKTWonBreak, ourKOTotal),
     our_ko_lost_break_pct: pct(ourRTWonBreak, ourKOTotal),
@@ -161,6 +189,7 @@ export default function XMLUpload() {
   const [matchId, setMatchId] = useState('')
   const [possessions, setPossessions] = useState('')
   const [attacks, setAttacks] = useState('')
+  const [turnovers, setTurnovers] = useState('')
   const [parsed, setParsed] = useState(null)
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState(null)
@@ -191,6 +220,7 @@ export default function XMLUpload() {
       match_id: matchId,
       our_possessions: parseFloat(possessions) || null,
       our_attacks: parseFloat(attacks) || null,
+      our_turnovers_lost: parseFloat(turnovers) || null,
       ...parsed,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'match_id' })
@@ -216,8 +246,8 @@ export default function XMLUpload() {
         </select>
       </div>
 
-      {/* Possessions + Attacks (from PASS sheet, not in XML) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+      {/* Possessions + Attacks + Turnovers (from PASS sheet, not in XML) */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
         <div>
           <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 5 }}>Possessions</div>
           <input type="number" value={possessions} onChange={e => setPossessions(e.target.value)} placeholder="e.g. 32"
@@ -226,6 +256,11 @@ export default function XMLUpload() {
         <div>
           <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 5 }}>Attacks</div>
           <input type="number" value={attacks} onChange={e => setAttacks(e.target.value)} placeholder="e.g. 30"
+            style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', color: 'var(--text)', fontSize: 12, fontFamily: 'Barlow, sans-serif', boxSizing: 'border-box' }} />
+        </div>
+        <div>
+          <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 5 }}>Turnovers Lost</div>
+          <input type="number" value={turnovers} onChange={e => setTurnovers(e.target.value)} placeholder="e.g. 14"
             style={{ width: '100%', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', color: 'var(--text)', fontSize: 12, fontFamily: 'Barlow, sans-serif', boxSizing: 'border-box' }} />
         </div>
       </div>
