@@ -23,7 +23,8 @@ export const impactColor = (v) => {
 }
 
 export const normalise = (val, arr) => {
-  const max = Math.max(...arr.filter(v => v != null), 1)
+  let max = 1
+  arr.forEach(v => { if (v != null && v > max) max = v })
   return Math.round((val || 0) / max * 100)
 }
 
