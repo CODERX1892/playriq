@@ -90,28 +90,29 @@ function KOCard({ title, taken, cleanPct, breakPct, lostBreakPct, lostCleanPct, 
 
 export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
   const [analytics, setAnalytics] = useState({})
-  const [teamStats, setTeamStats] = useState({})
+  const [teamStats, setTeamStats] = useState({})       // keyed by `${match_id}|${team}`
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     Promise.all([
       supabase.from('team_analytics').select('*'),
-      supabase.from('team_stats').select('*').eq('team', 'us'),
+      supabase.from('team_stats').select('*'),
     ]).then(([ta, ts]) => {
       const aMap = {}
       ta.data?.forEach(r => { aMap[r.match_id] = r })
       setAnalytics(aMap)
 
       const tsMap = {}
-      ts.data?.forEach(r => { tsMap[r.match_id] = r })
+      ts.data?.forEach(r => { tsMap[`${r.match_id}|${r.team}`] = r })
       setTeamStats(tsMap)
 
       setLoading(false)
     })
   }, [])
 
-  const d = analytics[matchView]
-  const ts = teamStats[matchView]
+  const d       = analytics[matchView]
+  const tsUs    = teamStats[`${matchView}|us`]
+  const tsThem  = teamStats[`${matchView}|them`]
   const matchPlayerStats = allStats?.filter(r => r.match_id === matchView) || []
 
   const ourPoss     = n(d?.our_possessions)
@@ -166,16 +167,35 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
   const oppShortMidClean    = oppShortClean + oppMidClean
   const oppKOBattlePct      = oppKOTaken > 0 ? Math.round(oppShortMidClean / oppKOTaken * 100) : 0
 
-  // ── INTENSITY INDEX ─────────────────────────────────────────────────
-  // Formula: (contact_tackles + forced_TO_from_player_data + duels_won) / opp_shots
-  // contact_tackles = team_stats.contact_tackles (from KPI sheet)
-  // forced_TO = SUM(player_stats.forced_to_win) — blocks roll into this per spec
-  // duels_won = SUM(player_stats.defensive_duels_won)
-  const intContactTackles = n(ts?.contact_tackles)
-  const intForced         = matchPlayerStats.reduce((s, r) => s + n(r.forced_to_win), 0)
-  const intDuels          = matchPlayerStats.reduce((s, r) => s + n(r.defensive_duels_won), 0)
-  const intTotal          = intContactTackles + intForced + intDuels
-  const intensityIndex    = oppShots > 0 ? r1(intTotal / oppShots) : 0
+  // ── INTENSITY INDEX (both sides) ─────────────────────────────────────
+  // Ours:   (contact_tackles + SUM(forced_to_win) + SUM(defensive_duels_won) + SUM(won_break_our)) / opp_shots
+  // Theirs: (their_contact_tackles + their_forced_TO + SUM(duels_lost) + their_break_wins) / our_shots
+  //
+  //   contact_tackles  → team_stats.contact_tackles (both us and them rows)
+  //   forced_to_win    → SUM(player_stats.forced_to_win) [us]; team_stats.turnovers_forced [them]
+  //   duels_won        → SUM(player_stats.defensive_duels_won) [us]; SUM(player_stats.duels_lost) [them mirror]
+  //   won_break_our    → SUM(player_stats.won_break_our) [us]; derived from team_analytics for [them]
+
+  const ourContact   = n(tsUs?.contact_tackles)
+  const ourForcedTO  = matchPlayerStats.reduce((s, r) => s + n(r.forced_to_win), 0)
+  const ourDuelsWon  = matchPlayerStats.reduce((s, r) => s + n(r.defensive_duels_won), 0)
+  const ourBreaks    = matchPlayerStats.reduce((s, r) => s + n(r.won_break_our), 0)
+
+  const themContact  = n(tsThem?.contact_tackles)
+  const themForcedTO = n(tsThem?.turnovers_forced)
+  const themDuelsWon = matchPlayerStats.reduce((s, r) => s + n(r.duels_lost), 0)
+  // their KO breaks: their breaks on own KO + their breaks defending our KO
+  const themBreakOwnKO = Math.round(oppKOTaken * n(d?.opp_ko_lost_break_pct) / 100)
+  const themBreakOppKO = Math.round(ourKOTaken * n(d?.our_ko_lost_break_pct) / 100)
+  const themBreaks     = themBreakOwnKO + themBreakOppKO
+
+  const ourIntTotal  = ourContact + ourForcedTO + ourDuelsWon + ourBreaks
+  const themIntTotal = themContact + themForcedTO + themDuelsWon + themBreaks
+
+  const ourIntensity  = oppShots > 0 ? r1(ourIntTotal / oppShots) : 0
+  const themIntensity = ourShots > 0 ? r1(themIntTotal / ourShots) : 0
+
+  const intensityColor = v => v >= 2.0 ? 'var(--teal)' : v >= 1.5 ? 'var(--gold)' : 'var(--red)'
 
   return (
     <div className="fade-in">
@@ -252,8 +272,6 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
               ))}
             </div>
 
-            {/* NOTE: oSrc values for the opposition side are swapped from bSrc because
-                `opp_*_own_ko` stores opp's scores from opp's own KO (opp perspective). */}
             {[
               { bLabel: 'Our KO',   bShots: bodenFromOwnKO, bSrc: 'own_ko',    oLabel: 'Boden KO', oShots: oppFromBodenKO, oSrc: 'opp_ko' },
               { bLabel: 'Opp KO',   bShots: bodenFromOppKO, bSrc: 'opp_ko',    oLabel: 'Opp KO',   oShots: oppFromOppKO,   oSrc: 'own_ko' },
@@ -297,15 +315,12 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
               )
             })}
 
-            {/* Totals row */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid rgba(26,51,86,0.3)', background: 'rgba(26,51,86,0.1)' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 36px 72px', padding: '7px 14px', gap: 4, alignItems: 'center' }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)' }}>Total</span>
                 <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 800, color: 'var(--blue)', textAlign: 'center' }}>{bodenShotsTotal}</span>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 800, color: 'var(--teal)' }}>
-                    {ourScoreMain}
-                  </div>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 800, color: 'var(--teal)' }}>{ourScoreMain}</div>
                   <div style={{ fontSize: 9, color: 'var(--text3)' }}>{ourScoreSub}</div>
                 </div>
               </div>
@@ -330,9 +345,7 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
               color: ourKOBattlePct >= 35 ? 'var(--teal)' : ourKOBattlePct >= 25 ? 'var(--gold)' : 'var(--red)' }}>
               {ourKOBattlePct}%
             </div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>
-              {ourShortMidClean} short/mid clean of {ourKOTaken}
-            </div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{ourShortMidClean} short/mid clean of {ourKOTaken}</div>
             <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2 }}>target 35%+</div>
           </div>
           <div className="card" style={{ padding: '12px 14px', textAlign: 'center' }}>
@@ -341,9 +354,7 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
               color: oppKOBattlePct <= 20 ? 'var(--teal)' : oppKOBattlePct <= 30 ? 'var(--gold)' : 'var(--red)' }}>
               {oppKOBattlePct}%
             </div>
-            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>
-              {oppShortMidClean} short/mid clean of {oppKOTaken}
-            </div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{oppShortMidClean} short/mid clean of {oppKOTaken}</div>
             <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2 }}>target &lt;20%</div>
           </div>
         </div>
@@ -359,25 +370,52 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
 
         {/* ── INTENSITY INDEX ── */}
         <SectionHeader title="Intensity Index" color="var(--red)" />
-        <div className="card" style={{ padding: 14, marginBottom: 10 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)' }}>Intensity Index</div>
-              <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2 }}>(Contact tackles + Forced TO + Duels won) ÷ opp shots · Target 2.0+</div>
-              <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{intTotal} actions ÷ {oppShots} opp shots</div>
+        <div style={{ fontSize: 9, color: 'var(--text3)', marginBottom: 8, marginTop: -4 }}>
+          (Contact Tackles + Forced TO + Duels Won + KO Breaks) ÷ opp shots · Target 2.0+
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          <div className="card" style={{ padding: '12px 14px', textAlign: 'center' }}>
+            <div style={{ fontSize: 9, color: 'var(--blue)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>Boden</div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 40, fontWeight: 800, lineHeight: 1, color: intensityColor(ourIntensity) }}>
+              {ourIntensity}
             </div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 40, fontWeight: 800, lineHeight: 1,
-              color: intensityIndex >= 2.0 ? 'var(--teal)' : intensityIndex >= 1.5 ? 'var(--gold)' : 'var(--red)' }}>
-              {intensityIndex}
-            </div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{ourIntTotal} actions ÷ {oppShots} opp shots</div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
+          <div className="card" style={{ padding: '12px 14px', textAlign: 'center' }}>
+            <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>Opposition</div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 40, fontWeight: 800, lineHeight: 1, color: 'var(--text2)' }}>
+              {themIntensity}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>{themIntTotal} actions ÷ {ourShots} our shots</div>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: 14, marginBottom: 10 }}>
+          <div style={{ fontSize: 9, color: 'var(--blue)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Boden</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 12 }}>
             {[
-              ['Contact Tackles', intContactTackles, 'var(--blue)'],
-              ['Forced TO',       intForced,         'var(--teal)'],
-              ['Duels Won',       intDuels,          'var(--blue)'],
+              ['Contact Tackles', ourContact,   'var(--blue)'],
+              ['Forced TO',       ourForcedTO,  'var(--teal)'],
+              ['Duels Won',       ourDuelsWon,  'var(--blue)'],
+              ['KO Breaks',       ourBreaks,    'var(--teal)'],
             ].map(([label, val, color]) => (
               <div key={label} style={{ textAlign: 'center', background: 'rgba(26,51,86,0.25)', borderRadius: 7, padding: '8px 4px' }}>
+                <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color: val > 0 ? color : 'var(--text3)' }}>{val}</div>
+                <div style={{ fontSize: 8, color: 'var(--text3)', letterSpacing: 0.3, textTransform: 'uppercase' }}>{label}</div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Opposition</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
+            {[
+              ['Contact Tackles', themContact,   'var(--text2)'],
+              ['Forced TO',       themForcedTO,  'var(--text2)'],
+              ['Duels Won',       themDuelsWon,  'var(--text2)'],
+              ['KO Breaks',       themBreaks,    'var(--text2)'],
+            ].map(([label, val, color]) => (
+              <div key={label} style={{ textAlign: 'center', background: 'rgba(26,51,86,0.15)', borderRadius: 7, padding: '8px 4px' }}>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color: val > 0 ? color : 'var(--text3)' }}>{val}</div>
                 <div style={{ fontSize: 8, color: 'var(--text3)', letterSpacing: 0.3, textTransform: 'uppercase' }}>{label}</div>
               </div>
