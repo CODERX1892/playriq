@@ -1386,7 +1386,9 @@ const TREND_ROWS = [
   { key: 'possessions',          label: 'Possessions',      format: v => v,                          target: 40,    higher: true  },
   { key: 'attack_pct',           label: 'Poss → Atk %',     format: v => Math.round(v)+'%',      target: 90,   higher: true  },
   { key: 'shot_pct',             label: 'Atk → Shot %',     format: v => Math.round(v)+'%',      target: 75,  higher: true  },
-  { key: 'score_pct',            label: 'Shot → Score %',   format: v => Math.round(v)+'%',      target: 65,  higher: true  },
+  { key: 'score_pct',            label: 'Shot → Score %',   format: v => Math.round(v)+'%',      target: 70,  higher: true  },
+  { key: 'two_pt_score_pct',     label: '2pt Shot → Score %', format: v => v == null ? '—' : Math.round(v)+'%', target: 50,  higher: true,
+    compute: e => (e.two_point_shots > 0 ? (e.two_point_scores / e.two_point_shots * 100) : null) },
   { key: 'overall_shot_pct',     label: 'Overall Shot %',   format: v => Math.round(v)+'%',      target: 54.3, higher: true  },
   { key: 'shots_from_play',      label: 'Play Shots',       format: v => v,                          target: null              },
   { key: 'pct_from_play',        label: 'Play Conv %',      format: v => Math.round(v)+'%',      target: null              },
@@ -1552,11 +1554,13 @@ function TeamStatsTab({ teamStats }) {
               {TREND_ROWS.map((row, ri) => {
                 const vals = gamesWithData.map(m => {
                   const entry = teamStats.find(r => r.match_id === m && r.team === trendTeam)
-                  return entry?.[row.key] ?? null
+                  if (!entry) return null
+                  return row.compute ? row.compute(entry) : (entry[row.key] ?? null)
                 })
                 const usVals = trendTeam === 'them' ? gamesWithData.map(m => {
                   const us = teamStats.find(r => r.match_id === m && r.team === 'us')
-                  return us?.[row.key] ?? null
+                  if (!us) return null
+                  return row.compute ? row.compute(us) : (us[row.key] ?? null)
                 }) : null
                 const hasAny = vals.some(v => v != null)
                 if (!hasAny) return null
