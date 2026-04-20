@@ -14,7 +14,7 @@ import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tool
 
 // p60Key = per/60 field, rawKey = total field, null = already a ratio
 const METRICS = {
-  ipm:               { label: 'Avg Impact/Game', color: '#a78bfa', p60Key: 'ipm',           rawKey: 'total_impact' },
+  ipm:               { label: 'Total Impact', color: '#a78bfa', p60Key: 'ipm',           rawKey: 'total_impact' },
   attack_impact:     { label: 'Attack Impact',   color: '#f0b429', p60Key: 'attack_p60',     rawKey: 'attack_impact' },
   transition_impact: { label: 'Transition',      color: '#4a9eff', p60Key: 'transition_p60', rawKey: 'transition_impact' },
   defensive_impact:  { label: 'Defence',         color: '#3ecf8e', p60Key: 'defence_p60',    rawKey: 'defensive_impact' },
