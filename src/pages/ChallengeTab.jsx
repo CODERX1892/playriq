@@ -188,11 +188,11 @@ function SubmitForm({ playerName, onSubmitted, existingByMatch }) {
           placeholder="+2 or -1" disabled={atLimit} style={inputStyle} />
       </div>
 
-      {/* Hudl */}
+      {/* Video timestamp */}
       <div style={{ marginBottom: 10 }}>
-        <div style={labelStyle}>Hudl Timestamp (optional)</div>
+        <div style={labelStyle}>Video Timestamp (optional)</div>
         <input value={hudlUrl} onChange={e => setHudlUrl(e.target.value)}
-          placeholder="https://hudl.com/…" disabled={atLimit} style={inputStyle} />
+          placeholder="e.g. 12:34 or 1:02:15" disabled={atLimit} style={inputStyle} />
       </div>
 
       {/* Note */}
@@ -254,10 +254,9 @@ function HistoryRow({ c }) {
             </div>
           )}
           {c.hudl_url && (
-            <a href={c.hudl_url} target="_blank" rel="noopener noreferrer"
-              style={{ fontSize: 11, color: 'var(--blue)', textDecoration: 'none' }}>
-              View clip ↗
-            </a>
+            <div style={{ fontSize: 11, color: 'var(--blue)', marginTop: 3 }}>
+              @ {c.hudl_url}
+            </div>
           )}
           {c.admin_note && c.status === 'rejected' && (
             <div style={{ fontSize: 11, color: 'var(--red)', marginTop: 4, fontStyle: 'italic' }}>

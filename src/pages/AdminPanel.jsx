@@ -493,11 +493,8 @@ function PendingRow({ c, adminName, onApprove, onReject }) {
             </div>
           )}
           {c.hudl_url && (
-            <div style={{ marginTop: 5 }}>
-              <a href={c.hudl_url} target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: 11, color: 'var(--blue)', textDecoration: 'none' }}>
-                View clip ↗
-              </a>
+            <div style={{ fontSize: 11, color: 'var(--blue)', marginTop: 5 }}>
+              @ {c.hudl_url}
             </div>
           )}
           {isOther && (
