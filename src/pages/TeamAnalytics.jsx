@@ -90,18 +90,28 @@ function KOCard({ title, taken, cleanPct, breakPct, lostBreakPct, lostCleanPct, 
 
 export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
   const [analytics, setAnalytics] = useState({})
+  const [teamStats, setTeamStats] = useState({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.from('team_analytics').select('*').then(({ data }) => {
-      const map = {}
-      data?.forEach(r => { map[r.match_id] = r })
-      setAnalytics(map)
+    Promise.all([
+      supabase.from('team_analytics').select('*'),
+      supabase.from('team_stats').select('*').eq('team', 'us'),
+    ]).then(([ta, ts]) => {
+      const aMap = {}
+      ta.data?.forEach(r => { aMap[r.match_id] = r })
+      setAnalytics(aMap)
+
+      const tsMap = {}
+      ts.data?.forEach(r => { tsMap[r.match_id] = r })
+      setTeamStats(tsMap)
+
       setLoading(false)
     })
   }, [])
 
   const d = analytics[matchView]
+  const ts = teamStats[matchView]
   const matchPlayerStats = allStats?.filter(r => r.match_id === matchView) || []
 
   const ourPoss     = n(d?.our_possessions)
@@ -118,7 +128,7 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
   const opp1pt      = n(d?.opp_1pt)
   const oppPts      = n(d?.opp_score_pts)
 
-  // Score display — GAA format "G-P" where P = 2pt*2 + points (goals shown separately)
+  // Score display — GAA format "G-P" where P = 2pt*2 + points
   const ourDisplayPts = our2pt * 2 + our1pt
   const ourScoreMain  = ourGoals > 0 ? `${ourGoals}-${ourDisplayPts}` : `${ourDisplayPts}`
   const ourScoreSub   = `(${ourGoals > 0 ? `${ourGoals}-` : ''}${our2pt > 0 ? `${our2pt}-` : ''}${our1pt})`
@@ -127,17 +137,14 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
   const oppScoreMain  = oppGoals > 0 ? `${oppGoals}-${oppDisplayPts}` : `${oppDisplayPts}`
   const oppScoreSub   = `(${oppGoals > 0 ? `${oppGoals}-` : ''}${opp2pt > 0 ? `${opp2pt}-` : ''}${opp1pt})`
 
-  // Possession metrics
   const ourPossToAttack  = ourPoss > 0 ? Math.round(ourAttacks / ourPoss * 100) : 0
   const ourAttackToShot  = ourAttacks > 0 ? Math.round(ourShots / ourAttacks * 100) : 0
   const ourShotToScore   = ourShots > 0 ? Math.round(ourScores / ourShots * 100) : 0
   const ourProd          = ourPoss > 0 ? r1(ourPts * 10 / ourPoss) : 0
 
-  // Turnover ratio — stored directly from PDF chart
   const ourTurnoversLost = n(d?.our_turnovers_lost)
   const ourTORatio       = ourPoss > 0 ? Math.round(ourTurnoversLost / ourPoss * 100) : 0
 
-  // Source of shots
   const bodenFromOwnKO   = n(d?.boden_from_own_ko)
   const bodenFromOppKO   = n(d?.boden_from_opp_ko)
   const bodenFromTO      = n(d?.boden_from_turnover)
@@ -147,7 +154,6 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
   const oppFromTO        = n(d?.opp_from_turnover)
   const oppShotsTotal    = oppFromBodenKO + oppFromOppKO + oppFromTO
 
-  // KO battle — short+mid won clean / total taken
   const ourKOTaken          = n(d?.our_ko_taken)
   const ourShortClean       = n(d?.our_ko_short_won_clean)
   const ourMidClean         = n(d?.our_ko_mid_won_clean)
@@ -160,13 +166,16 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
   const oppShortMidClean    = oppShortClean + oppMidClean
   const oppKOBattlePct      = oppKOTaken > 0 ? Math.round(oppShortMidClean / oppKOTaken * 100) : 0
 
-  // Intensity Index
-  const intTackles  = matchPlayerStats.reduce((s, r) => s + n(r.tackles), 0)
-  const intForced   = matchPlayerStats.reduce((s, r) => s + n(r.forced_to_win), 0)
-  const intKickaway = matchPlayerStats.reduce((s, r) => s + n(r.kickaway_to_received), 0)
-  const intDuels    = matchPlayerStats.reduce((s, r) => s + n(r.defensive_duels_won), 0)
-  const intTotal    = intTackles + intForced + intKickaway + intDuels
-  const intensityIndex = oppShots > 0 ? r1(intTotal / oppShots) : 0
+  // ── INTENSITY INDEX ─────────────────────────────────────────────────
+  // Formula: (contact_tackles + forced_TO_from_player_data + duels_won) / opp_shots
+  // contact_tackles = team_stats.contact_tackles (from KPI sheet)
+  // forced_TO = SUM(player_stats.forced_to_win) — blocks roll into this per spec
+  // duels_won = SUM(player_stats.defensive_duels_won)
+  const intContactTackles = n(ts?.contact_tackles)
+  const intForced         = matchPlayerStats.reduce((s, r) => s + n(r.forced_to_win), 0)
+  const intDuels          = matchPlayerStats.reduce((s, r) => s + n(r.defensive_duels_won), 0)
+  const intTotal          = intContactTackles + intForced + intDuels
+  const intensityIndex    = oppShots > 0 ? r1(intTotal / oppShots) : 0
 
   return (
     <div className="fade-in">
@@ -243,12 +252,8 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
               ))}
             </div>
 
-            {/* Data rows.
-                NOTE: oSrc values for the opposition side use the PARSER's convention,
-                which stores opp-perspective: `opp_*_own_ko` = opp's scores from opp's own KO,
-                `opp_*_opp_ko` = opp's scores from opponent's (our) KO.
-                Row 1 "Boden KO" = opp shots off BB's KO -> read opp_*_opp_ko.
-                Row 2 "Opp KO"  = opp shots off their own KO -> read opp_*_own_ko. */}
+            {/* NOTE: oSrc values for the opposition side are swapped from bSrc because
+                `opp_*_own_ko` stores opp's scores from opp's own KO (opp perspective). */}
             {[
               { bLabel: 'Our KO',   bShots: bodenFromOwnKO, bSrc: 'own_ko',    oLabel: 'Boden KO', oShots: oppFromBodenKO, oSrc: 'opp_ko' },
               { bLabel: 'Opp KO',   bShots: bodenFromOppKO, bSrc: 'opp_ko',    oLabel: 'Opp KO',   oShots: oppFromOppKO,   oSrc: 'own_ko' },
@@ -358,7 +363,7 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)' }}>Intensity Index</div>
-              <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2 }}>Defensive actions ÷ opp shots · Target 2.0+</div>
+              <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2 }}>(Contact tackles + Forced TO + Duels won) ÷ opp shots · Target 2.0+</div>
               <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{intTotal} actions ÷ {oppShots} opp shots</div>
             </div>
             <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 40, fontWeight: 800, lineHeight: 1,
@@ -366,9 +371,11 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
               {intensityIndex}
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6 }}>
-            {[['Tackles', intTackles, 'var(--blue)'], ['Forced TO', intForced, 'var(--teal)'],
-              ['Kickaway TO', intKickaway, 'var(--teal)'], ['Duels Won', intDuels, 'var(--blue)']
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
+            {[
+              ['Contact Tackles', intContactTackles, 'var(--blue)'],
+              ['Forced TO',       intForced,         'var(--teal)'],
+              ['Duels Won',       intDuels,          'var(--blue)'],
             ].map(([label, val, color]) => (
               <div key={label} style={{ textAlign: 'center', background: 'rgba(26,51,86,0.25)', borderRadius: 7, padding: '8px 4px' }}>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color: val > 0 ? color : 'var(--text3)' }}>{val}</div>
