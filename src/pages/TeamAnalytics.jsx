@@ -147,22 +147,6 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
   const oppFromTO        = n(d?.opp_from_turnover)
   const oppShotsTotal    = oppFromBodenKO + oppFromOppKO + oppFromTO
 
-  // Source of scores — GAA format helper
-  const scoreRow = (team, src) => {
-    const g  = n(d?.[`${team}_goals_${src}`])
-    const t  = n(d?.[`${team}_2pt_${src}`])
-    const sc = n(d?.[`${team}_scores_${src}`])
-    const p  = Math.max(0, sc - g - t)
-    const pts = t * 2 + p
-    const main = (g > 0 || t > 0 || p > 0)
-      ? (g > 0 ? `${g}-${pts}` : `${pts}`)
-      : '—'
-    const sub = (g > 0 || t > 0 || p > 0)
-      ? `(${g > 0 ? `${g}-` : ''}${t > 0 ? `${t}-` : ''}${p})`
-      : ''
-    return { main, sub, shots: n(d?.[`${team === 'boden' ? 'boden' : 'opp'}_from_${src}`]) }
-  }
-
   // KO battle — short+mid won clean / total taken
   const ourKOTaken          = n(d?.our_ko_taken)
   const ourShortClean       = n(d?.our_ko_short_won_clean)
@@ -171,7 +155,7 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
   const ourKOBattlePct      = ourKOTaken > 0 ? Math.round(ourShortMidClean / ourKOTaken * 100) : 0
 
   const oppKOTaken          = n(d?.opp_ko_taken)
-  const oppShortClean       = n(d?.opp_ko_short_we_won_clean) // they won clean = KT Won Clean
+  const oppShortClean       = n(d?.opp_ko_short_we_won_clean)
   const oppMidClean         = n(d?.opp_ko_mid_we_won_clean)
   const oppShortMidClean    = oppShortClean + oppMidClean
   const oppKOBattlePct      = oppKOTaken > 0 ? Math.round(oppShortMidClean / oppKOTaken * 100) : 0
@@ -245,12 +229,10 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
         {bodenShotsTotal > 0 && <>
           <SectionHeader title="Source of Shots & Scores" color="var(--purple)" />
           <div className="card" style={{ overflow: 'hidden', marginBottom: 10 }}>
-            {/* Team headers */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
               <div style={{ padding: '7px 14px', fontSize: 10, color: 'var(--blue)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase' }}>Boden</div>
               <div style={{ padding: '7px 14px', fontSize: 10, color: 'var(--text3)', fontWeight: 700, letterSpacing: 1, textTransform: 'uppercase', borderLeft: '1px solid rgba(26,51,86,0.2)' }}>Opposition</div>
             </div>
-            {/* Col labels */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '1px solid rgba(26,51,86,0.15)' }}>
               {[false, true].map(isOpp => (
                 <div key={String(isOpp)} style={{ display: 'grid', gridTemplateColumns: '1fr 36px 72px', padding: '3px 14px', gap: 4, borderLeft: isOpp ? '1px solid rgba(26,51,86,0.2)' : 'none' }}>
@@ -261,10 +243,15 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
               ))}
             </div>
 
-            {/* Data rows */}
+            {/* Data rows.
+                NOTE: oSrc values for the opposition side use the PARSER's convention,
+                which stores opp-perspective: `opp_*_own_ko` = opp's scores from opp's own KO,
+                `opp_*_opp_ko` = opp's scores from opponent's (our) KO.
+                Row 1 "Boden KO" = opp shots off BB's KO -> read opp_*_opp_ko.
+                Row 2 "Opp KO"  = opp shots off their own KO -> read opp_*_own_ko. */}
             {[
-              { bLabel: 'Our KO',   bShots: bodenFromOwnKO, bSrc: 'own_ko',    oLabel: 'Boden KO', oShots: oppFromBodenKO, oSrc: 'own_ko' },
-              { bLabel: 'Opp KO',   bShots: bodenFromOppKO, bSrc: 'opp_ko',    oLabel: 'Opp KO',   oShots: oppFromOppKO,   oSrc: 'opp_ko' },
+              { bLabel: 'Our KO',   bShots: bodenFromOwnKO, bSrc: 'own_ko',    oLabel: 'Boden KO', oShots: oppFromBodenKO, oSrc: 'opp_ko' },
+              { bLabel: 'Opp KO',   bShots: bodenFromOppKO, bSrc: 'opp_ko',    oLabel: 'Opp KO',   oShots: oppFromOppKO,   oSrc: 'own_ko' },
               { bLabel: 'Turnover', bShots: bodenFromTO,    bSrc: 'turnover',  oLabel: 'Turnover', oShots: oppFromTO,      oSrc: 'turnover' },
             ].map(row => {
               const bg = n(d?.[`boden_goals_${row.bSrc}`])
