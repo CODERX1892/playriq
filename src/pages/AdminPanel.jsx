@@ -1,16 +1,36 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../contexts/AuthContext'
 import { MATCHES } from '../lib/utils'
 
 const POSITIONS = ['Forward', 'Defender', 'Midfield', 'Goalkeeper']
 const ROLES = ['Inside Forward', 'Half Forward', 'Midfielder', 'Half Back', 'Full Back', 'Goalkeeper']
 const USER_ROLES = ['analyst', 'coach', 'admin']
 
+// Column -> player-facing label. Keep in sync with STAT_GROUPS in ChallengeTab.jsx.
+const COLUMN_LABELS = {
+  one_pointer_scored: '1-Pointer Scored', two_pointer_scored: '2-Pointer Scored', goals_scored: 'Goal Scored',
+  one_pointer_scored_f: '1-Pointer Scored (Free)', two_pointer_scored_f: '2-Pointer Scored (Free)', goals_scored_f: 'Goal Scored (Free)',
+  one_pointer_wide: '1-Pointer Wide', two_pointer_wide: '2-Pointer Wide', goals_wide: 'Goal Wide',
+  simple_pass: 'Simple Pass', advance_pass: 'Advance Pass', simple_receive: 'Simple Receive', advance_receive: 'Advance Receive',
+  carries: 'Carry', kickaway_to_received: 'Kickaway Received', turnovers_kicked_away: 'Turnover (Kicked Away)',
+  turnovers_in_contact: 'Turnover In Contact', turnover_skill_error: 'Turnover (Skill Error)', drop_shorts: 'Drop Short',
+  tackles: 'Tackle', duels_contested: 'Duel Contested', defensive_duels_won: 'Duel Won', duels_lost: 'Duel Lost',
+  breach_1v1: '1v1 Breach', dne: 'DNE', forced_to_win: 'Forced Turnover Won',
+  free_conceded: 'Free Conceded', shot_free_conceded: 'Shot Free Conceded',
+  won_clean_p1_our: 'Our KO Won Clean (P1)', won_clean_p2_our: 'Our KO Won Clean (P2)', won_clean_p3_our: 'Our KO Won Clean (P3)',
+  won_break_our: 'Our KO Won Break', our_ko_contest_opp: 'Our KO Contested (Opp Won)', our_ko_contest_us: 'Our KO Contested (We Won)',
+  ko_target_won_clean: 'KO Target Won Clean', ko_target_won_break: 'KO Target Won Break',
+  ko_target_lost_clean: 'KO Target Lost Clean', ko_target_lost_contest: 'KO Target Lost Contest',
+}
+
 export default function AdminPanel() {
+  const { appUser } = useAuth()
   const [tab, setTab] = useState('players')
   const [players, setPlayers] = useState([])
   const [appUsers, setAppUsers] = useState([])
   const [matches, setMatches] = useState([])
+  const [challenges, setChallenges] = useState([])
   const [loading, setLoading] = useState(true)
   const [status, setStatus] = useState(null)
 
@@ -28,8 +48,9 @@ export default function AdminPanel() {
       supabase.from('players').select('name,position,role,email,pin,dob').order('name'),
       supabase.from('app_users').select('*').order('name'),
       supabase.from('matches').select('*').order('match_id'),
-    ]).then(([{ data: p }, { data: u }, { data: m }]) => {
-      setPlayers(p || []); setAppUsers(u || []); setMatches(m || [])
+      supabase.from('challenges').select('*').order('created_at', { ascending: false }),
+    ]).then(([{ data: p }, { data: u }, { data: m }, { data: c }]) => {
+      setPlayers(p || []); setAppUsers(u || []); setMatches(m || []); setChallenges(c || [])
       setLoading(false)
     })
   }, [])
@@ -98,6 +119,73 @@ export default function AdminPanel() {
     else showStatus('success', '✓ Staff PIN updated')
   }
 
+  // ── Challenges: approve / reject ────────────────────────────────────────
+  // Approve: if stat_column set, UPDATE player_stats (current + delta, clamped ≥ 0).
+  //          Then mark challenge approved. If no player_stats row exists, refuse.
+  //          If stat_column is NULL ("Other" path), skip the stat update — admin
+  //          approves the clip but stats aren't auto-edited.
+  const approveChallenge = async (c, adminName) => {
+    if (c.stat_column) {
+      const { data: statsRow, error: fetchErr } = await supabase
+        .from('player_stats')
+        .select(`id, ${c.stat_column}`)
+        .eq('player_name', c.player_name)
+        .eq('match_id', c.match_id)
+        .maybeSingle()
+
+      if (fetchErr) { showStatus('error', fetchErr.message); return }
+      if (!statsRow) {
+        showStatus('error', `No stats row for ${c.player_name} in ${c.match_id} — can't auto-update.`)
+        return
+      }
+
+      const current = Number(statsRow[c.stat_column]) || 0
+      const next = Math.max(0, current + c.delta)
+
+      const { error: updErr } = await supabase.from('player_stats')
+        .update({ [c.stat_column]: next })
+        .eq('id', statsRow.id)
+      if (updErr) { showStatus('error', updErr.message); return }
+    }
+
+    const { error: chErr } = await supabase.from('challenges')
+      .update({
+        status: 'approved',
+        reviewed_by: adminName,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', c.id)
+
+    if (chErr) { showStatus('error', chErr.message); return }
+
+    setChallenges(prev => prev.map(x => x.id === c.id
+      ? { ...x, status: 'approved', reviewed_by: adminName, reviewed_at: new Date().toISOString() }
+      : x))
+    showStatus('success',
+      c.stat_column
+        ? `✓ Approved — ${c.player_name} stats updated`
+        : `✓ Approved (no auto-update — Other stat)`)
+  }
+
+  const rejectChallenge = async (c, adminNote, adminName) => {
+    const { error } = await supabase.from('challenges')
+      .update({
+        status: 'rejected',
+        admin_note: adminNote || null,
+        reviewed_by: adminName,
+        reviewed_at: new Date().toISOString(),
+      })
+      .eq('id', c.id)
+
+    if (error) { showStatus('error', error.message); return }
+
+    setChallenges(prev => prev.map(x => x.id === c.id
+      ? { ...x, status: 'rejected', admin_note: adminNote || null,
+          reviewed_by: adminName, reviewed_at: new Date().toISOString() }
+      : x))
+    showStatus('success', `✓ Rejected`)
+  }
+
   if (loading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><div className="spinner" /></div>
 
   return (
@@ -110,7 +198,7 @@ export default function AdminPanel() {
 
       {/* Sub tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-        {['players', 'matches', 'users'].map(t => (
+        {['players', 'matches', 'users', 'challenges'].map(t => (
           <button key={t} onClick={() => setTab(t)}
             style={{ padding: '7px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${t === tab ? 'var(--gold)' : 'var(--border)'}`, background: t === tab ? 'var(--gold-dim)' : 'var(--bg2)', color: t === tab ? 'var(--gold)' : 'var(--text3)', fontFamily: 'Barlow, sans-serif' }}>
             {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -257,6 +345,16 @@ export default function AdminPanel() {
           </div>
         </div>
       )}
+
+      {/* CHALLENGES */}
+      {tab === 'challenges' && (
+        <ChallengesQueue
+          challenges={challenges}
+          adminName={appUser?.name || 'admin'}
+          onApprove={approveChallenge}
+          onReject={rejectChallenge}
+        />
+      )}
     </div>
   )
 }
@@ -302,5 +400,195 @@ function PinResetButton({ playerName, onReset }) {
       style={{ fontSize: 10, padding: '3px 8px', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 5, color: 'var(--text3)', cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
       Reset PIN
     </button>
+  )
+}
+
+// ── Challenges review queue ──────────────────────────────────────────────
+function ChallengesQueue({ challenges, adminName, onApprove, onReject }) {
+  const pending  = challenges.filter(c => c.status === 'pending')
+  const reviewed = challenges.filter(c => c.status !== 'pending')
+
+  if (challenges.length === 0) {
+    return (
+      <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text3)' }}>
+        <div style={{ fontSize: 24, marginBottom: 8 }}>📬</div>
+        <div style={{ fontSize: 13 }}>No challenges submitted yet.</div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div className="card" style={{ overflow: 'hidden', marginBottom: 14 }}>
+        <div className="card-header">
+          <span style={{ color: 'var(--gold)' }}>Pending ({pending.length})</span>
+        </div>
+        {pending.length === 0 ? (
+          <div style={{ padding: '20px 14px', textAlign: 'center', color: 'var(--text3)', fontSize: 12 }}>
+            Nothing waiting for review.
+          </div>
+        ) : (
+          pending.map(c => (
+            <PendingRow key={c.id} c={c} adminName={adminName} onApprove={onApprove} onReject={onReject} />
+          ))
+        )}
+      </div>
+
+      {reviewed.length > 0 && (
+        <div className="card" style={{ overflow: 'hidden' }}>
+          <div className="card-header">
+            <span style={{ color: 'var(--text3)' }}>Reviewed ({reviewed.length})</span>
+          </div>
+          {reviewed.map(c => <ReviewedRow key={c.id} c={c} />)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function statDisplay(c) {
+  return c.stat_column ? (COLUMN_LABELS[c.stat_column] || c.stat_column) : c.stat_label
+}
+
+function PendingRow({ c, adminName, onApprove, onReject }) {
+  const [rejecting, setRejecting] = useState(false)
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const sign = c.delta > 0 ? '+' : ''
+  const isOther = !c.stat_column
+
+  const doApprove = async () => { setBusy(true); await onApprove(c, adminName); setBusy(false) }
+  const doReject  = async () => {
+    setBusy(true); await onReject(c, note.trim(), adminName); setBusy(false)
+    setRejecting(false); setNote('')
+  }
+
+  return (
+    <div style={{ padding: '12px 14px', borderTop: '1px solid rgba(26,51,86,0.3)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 3 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{c.player_name}</span>
+            <span style={{ fontSize: 11, color: 'var(--text3)' }}>·</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>{c.match_id}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, color: 'var(--text2)' }}>{statDisplay(c)}</span>
+            {isOther && (
+              <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 3,
+                background: 'rgba(240,180,41,0.12)', color: 'var(--gold)',
+                border: '1px solid var(--gold)', textTransform: 'uppercase', letterSpacing: 1 }}>
+                Other
+              </span>
+            )}
+            <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 800,
+              color: c.delta > 0 ? 'var(--teal)' : 'var(--red)' }}>
+              {sign}{c.delta}
+            </span>
+          </div>
+          {c.player_note && (
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 5, fontStyle: 'italic' }}>
+              &ldquo;{c.player_note}&rdquo;
+            </div>
+          )}
+          {c.hudl_url && (
+            <div style={{ marginTop: 5 }}>
+              <a href={c.hudl_url} target="_blank" rel="noopener noreferrer"
+                style={{ fontSize: 11, color: 'var(--blue)', textDecoration: 'none' }}>
+                View clip ↗
+              </a>
+            </div>
+          )}
+          {isOther && (
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 6 }}>
+              Note: approving "Other" challenges does not auto-update player_stats.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {!rejecting ? (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button onClick={doApprove} disabled={busy}
+            style={{ flex: 1, padding: '7px 10px', background: 'rgba(62,207,142,0.12)',
+              border: '1px solid var(--teal)', borderRadius: 6, color: 'var(--teal)',
+              fontSize: 12, fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer',
+              fontFamily: 'Barlow, sans-serif', opacity: busy ? 0.5 : 1 }}>
+            ✓ Approve
+          </button>
+          <button onClick={() => setRejecting(true)} disabled={busy}
+            style={{ flex: 1, padding: '7px 10px', background: 'rgba(240,96,96,0.1)',
+              border: '1px solid var(--red)', borderRadius: 6, color: 'var(--red)',
+              fontSize: 12, fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer',
+              fontFamily: 'Barlow, sans-serif', opacity: busy ? 0.5 : 1 }}>
+            ✕ Reject
+          </button>
+        </div>
+      ) : (
+        <div>
+          <input value={note} onChange={e => setNote(e.target.value)}
+            placeholder="Reason (optional)" autoFocus
+            style={{ width: '100%', padding: '7px 10px', background: 'var(--bg3)',
+              border: '1px solid var(--border)', borderRadius: 6, color: 'var(--text)',
+              fontSize: 12, fontFamily: 'Barlow, sans-serif', outline: 'none', marginBottom: 6 }} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button onClick={doReject} disabled={busy}
+              style={{ flex: 1, padding: '7px 10px', background: 'rgba(240,96,96,0.12)',
+                border: '1px solid var(--red)', borderRadius: 6, color: 'var(--red)',
+                fontSize: 12, fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer',
+                fontFamily: 'Barlow, sans-serif', opacity: busy ? 0.5 : 1 }}>
+              Confirm Reject
+            </button>
+            <button onClick={() => { setRejecting(false); setNote('') }} disabled={busy}
+              style={{ padding: '7px 12px', background: 'none', border: '1px solid var(--border)',
+                borderRadius: 6, color: 'var(--text3)', fontSize: 12, cursor: 'pointer',
+                fontFamily: 'Barlow, sans-serif' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ReviewedRow({ c }) {
+  const sign = c.delta > 0 ? '+' : ''
+  const statusColor = c.status === 'approved' ? 'var(--teal)' : 'var(--red)'
+  const reviewedDate = c.reviewed_at ? new Date(c.reviewed_at).toLocaleDateString() : ''
+  return (
+    <div style={{ padding: '10px 14px', borderTop: '1px solid rgba(26,51,86,0.3)', opacity: 0.75 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text2)' }}>{c.player_name}</span>
+            <span style={{ fontSize: 11, color: 'var(--text3)' }}>·</span>
+            <span style={{ fontSize: 11, color: 'var(--text3)' }}>{c.match_id}</span>
+            <span style={{ fontSize: 11, color: 'var(--text3)' }}>·</span>
+            <span style={{ fontSize: 11, color: 'var(--text2)' }}>{statDisplay(c)}</span>
+            <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 13, fontWeight: 700,
+              color: c.delta > 0 ? 'var(--teal)' : 'var(--red)' }}>
+              {sign}{c.delta}
+            </span>
+          </div>
+          {c.admin_note && (
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3, fontStyle: 'italic' }}>
+              {c.admin_note}
+            </div>
+          )}
+          {c.reviewed_by && (
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>
+              by {c.reviewed_by} · {reviewedDate}
+            </div>
+          )}
+        </div>
+        <div style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4,
+          background: `${statusColor}1a`, color: statusColor, border: `1px solid ${statusColor}`,
+          whiteSpace: 'nowrap', textTransform: 'uppercase', letterSpacing: 1 }}>
+          {c.status}
+        </div>
+      </div>
+    </div>
   )
 }

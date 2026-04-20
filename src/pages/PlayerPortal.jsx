@@ -11,6 +11,7 @@ import PlayerReflection from './PlayerReflection'
 import PrivacyPolicy from './PrivacyPolicy'
 import TeamStatsTab from './TeamStats'
 import TeamAnalytics from './TeamAnalytics'
+import ChallengeTab from './ChallengeTab'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const TEAM_AVGS = {
@@ -36,7 +37,7 @@ export default function PlayerPortal() {
   const [teamStats, setTeamStats] = useState([])
   const [allStats, setAllStats] = useState([])
   const [matchView, setMatchView] = useState('AFL 1')
-  const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'team', 'analytics', 'goals', 'edge', 'glossary']
+  const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'challenge', 'team', 'analytics', 'goals', 'edge', 'glossary']
 
   useEffect(() => {
     Promise.all([
@@ -86,17 +87,24 @@ export default function PlayerPortal() {
         </button>
       </div>
 
-      {/* Tabs — two rows of 5 */}
+      {/* Tabs — three rows: 4+4+3 */}
       <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
-          {TABS.slice(0, 5).map(t => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          {TABS.slice(0, 4).map(t => (
             <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
               {t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', borderTop: '1px solid rgba(26,51,86,0.3)' }}>
-          {TABS.slice(5).map(t => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderTop: '1px solid rgba(26,51,86,0.3)' }}>
+          {TABS.slice(4, 8).map(t => (
+            <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
+              {t.charAt(0).toUpperCase() + t.slice(1)}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', borderTop: '1px solid rgba(26,51,86,0.3)' }}>
+          {TABS.slice(8).map(t => (
             <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
               {t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
@@ -111,6 +119,7 @@ export default function PlayerPortal() {
         {tab === 'transition' && <TransitionTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} />}
         {tab === 'defence' && <DefenceTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} />}
         {tab === 'matches' && <MatchesTab stats={stats} />}
+        {tab === 'challenge' && <ChallengeTab player={player} />}
         {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
         {tab === 'analytics' && <TeamAnalytics allStats={allStats} matchView={matchView} setMatchView={setMatchView} />}
         {tab === 'goals' && <PlayerReflection player={player} stats={stats} />}
