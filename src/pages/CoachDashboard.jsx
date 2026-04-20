@@ -1389,7 +1389,6 @@ const TREND_ROWS = [
   { key: 'score_pct',            label: 'Shot → Score %',   format: v => Math.round(v)+'%',      target: 70,  higher: true  },
   { key: 'two_pt_score_pct',     label: '2pt Shot → Score %', format: v => v == null ? '—' : Math.round(v)+'%', target: 50,  higher: true,
     compute: e => (e.two_point_shots > 0 ? (e.two_point_scores / e.two_point_shots * 100) : null) },
-  { key: 'overall_shot_pct',     label: 'Overall Shot %',   format: v => Math.round(v)+'%',      target: 54.3, higher: true  },
   { key: 'shots_from_play',      label: 'Play Shots',       format: v => v,                          target: null              },
   { key: 'pct_from_play',        label: 'Play Conv %',      format: v => Math.round(v)+'%',      target: null              },
   { key: 'shots_from_frees',     label: 'Free Shots',       format: v => v,                          target: null              },
