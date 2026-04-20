@@ -9,6 +9,8 @@ import ConsentScreen from './ConsentScreen'
 import Glossary from './Glossary'
 import PlayerReflection from './PlayerReflection'
 import PrivacyPolicy from './PrivacyPolicy'
+import TeamStatsTab from './TeamStats'
+import TeamAnalytics from './TeamAnalytics'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const TEAM_AVGS = {
@@ -31,15 +33,22 @@ export default function PlayerPortal() {
   const [tab, setTab] = useState('home')
   const [consent, setConsent] = useState(null) // null=loading, false=needed, object=given
   const [matchFilter, setMatchFilter] = useState('all')
-  const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'goals', 'edge', 'glossary']
+  const [teamStats, setTeamStats] = useState([])
+  const [allStats, setAllStats] = useState([])
+  const [matchView, setMatchView] = useState('AFL 1')
+  const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'team', 'analytics', 'goals', 'edge', 'glossary']
 
   useEffect(() => {
     Promise.all([
       supabase.from('player_stats').select('*').eq('player_name', player.name),
       supabase.from('player_consent').select('*').eq('player_name', player.name).maybeSingle(),
-    ]).then(([{ data: statsData }, { data: consentData }]) => {
+      supabase.from('team_stats').select('*'),
+      supabase.from('player_stats').select('*'),
+    ]).then(([{ data: statsData }, { data: consentData }, { data: ts }, { data: allStatsData }]) => {
       setStats(statsData || [])
       setConsent(consentData && consentData.privacy_agreed ? consentData : false)
+      setTeamStats(ts || [])
+      setAllStats(allStatsData || [])
       setLoading(false)
     })
   }, [player.name])
@@ -77,22 +86,21 @@ export default function PlayerPortal() {
         </button>
       </div>
 
-      {/* Tabs — two rows of 4/3 so nothing is hidden */}
+      {/* Tabs — two rows of 5 */}
       <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
-          {TABS.slice(0, 4).map(t => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
+          {TABS.slice(0, 5).map(t => (
             <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
               {t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', borderTop: '1px solid rgba(26,51,86,0.3)' }}>
-          {TABS.slice(4).map(t => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', borderTop: '1px solid rgba(26,51,86,0.3)' }}>
+          {TABS.slice(5).map(t => (
             <button key={t} className={`tab${tab === t ? ' active' : ''}`} onClick={() => setTab(t)}>
               {t.charAt(0).toUpperCase() + t.slice(1)}
             </button>
           ))}
-          {Array(4 - TABS.slice(4).length).fill(null).map((_, i) => <div key={i} />)}
         </div>
       </div>
 
@@ -103,6 +111,8 @@ export default function PlayerPortal() {
         {tab === 'transition' && <TransitionTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} />}
         {tab === 'defence' && <DefenceTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} />}
         {tab === 'matches' && <MatchesTab stats={stats} />}
+        {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
+        {tab === 'analytics' && <TeamAnalytics allStats={allStats} matchView={matchView} setMatchView={setMatchView} />}
         {tab === 'goals' && <PlayerReflection player={player} stats={stats} />}
         {tab === 'edge' && <PlayrIQEdge stats={stats} player={player} />}
         {tab === 'glossary' && <Glossary />}
