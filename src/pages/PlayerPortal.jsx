@@ -36,6 +36,7 @@ export default function PlayerPortal() {
   const [matchFilter, setMatchFilter] = useState('all')
   const [teamStats, setTeamStats] = useState([])
   const [allStats, setAllStats] = useState([])
+  const [allPlayers, setAllPlayers] = useState([])
   const [matchView, setMatchView] = useState('AFL 1')
   const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'challenge', 'team', 'analytics', 'goals', 'edge', 'glossary']
 
@@ -45,11 +46,13 @@ export default function PlayerPortal() {
       supabase.from('player_consent').select('*').eq('player_name', player.name).maybeSingle(),
       supabase.from('team_stats').select('*'),
       supabase.from('player_stats').select('*'),
-    ]).then(([{ data: statsData }, { data: consentData }, { data: ts }, { data: allStatsData }]) => {
+      supabase.from('players').select('name, position'),
+    ]).then(([{ data: statsData }, { data: consentData }, { data: ts }, { data: allStatsData }, { data: ap }]) => {
       setStats(statsData || [])
       setConsent(consentData && consentData.privacy_agreed ? consentData : false)
       setTeamStats(ts || [])
       setAllStats(allStatsData || [])
+      setAllPlayers(ap || [])
       setLoading(false)
     })
   }, [player.name])
@@ -114,7 +117,7 @@ export default function PlayerPortal() {
 
       {/* Content */}
       <div style={{ padding: 14 }}>
-        {tab === 'home' && <HomeTab rows={rows} stats={stats} player={player} mc={mc} allMc={allMc} posColor={posColor} />}
+        {tab === 'home' && <HomeTab rows={rows} stats={stats} player={player} mc={mc} allMc={allMc} posColor={posColor} allStats={allStats} allPlayers={allPlayers} />}
         {tab === 'attack' && <AttackTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} />}
         {tab === 'transition' && <TransitionTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} />}
         {tab === 'defence' && <DefenceTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} />}
@@ -139,17 +142,81 @@ export default function PlayerPortal() {
 }
 
 // ─── HOME TAB ───────────────────────────────────────────────────────────────
-function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
+// Position → bucket for benchmark comparison
+const POS_BUCKET = {
+  'Forward':    'Forward',
+  'Defender':   'Back',
+  'Midfield':   'Midfield',
+  'Goalkeeper': 'Goalkeeper',
+}
+const MIN_QUALIFYING_MINS = 60     // player-games under this are excluded
+const MIN_BUCKET_SIZE     = 3      // hide benchmark if fewer qualifying players
+
+// Compute /60min rate for a set of rows (only rows with ≥ 60 mins count).
+// Returns { rate, qualified } or { rate: null, qualified: 0 } if nothing qualifies.
+function per60(rows, field) {
+  const q = rows.filter(r => n(r.total_minutes) >= MIN_QUALIFYING_MINS)
+  if (q.length === 0) return { rate: null, qualified: 0 }
+  const totalImpact = q.reduce((s, r) => s + n(r[field]), 0)
+  const totalMins   = q.reduce((s, r) => s + n(r.total_minutes), 0)
+  if (totalMins === 0) return { rate: null, qualified: 0 }
+  return { rate: r1(totalImpact / totalMins * 60), qualified: q.length }
+}
+
+// Best /60 across all players in a position bucket (this season).
+// Returns null if fewer than MIN_BUCKET_SIZE players in that bucket have ≥1 qualifying game.
+function bestInBucket(bucket, field, allStats, allPlayers) {
+  const playersInBucket = allPlayers.filter(p => POS_BUCKET[p.position] === bucket)
+  const byPlayer = playersInBucket.map(p => {
+    const theirRows = allStats.filter(r => r.player_name === p.name)
+    return per60(theirRows, field)
+  }).filter(x => x.rate !== null)
+
+  if (byPlayer.length < MIN_BUCKET_SIZE) return null
+  return Math.max(...byPlayer.map(x => x.rate))
+}
+
+function InfoChip({ label, active, onClick, color }) {
+  return (
+    <button onClick={onClick}
+      style={{
+        fontSize: 9, padding: '3px 8px', borderRadius: 10,
+        border: `1px solid ${active ? color : 'var(--border)'}`,
+        background: active ? `${color}1a` : 'var(--bg3)',
+        color: active ? color : 'var(--text3)',
+        cursor: 'pointer', fontFamily: 'Barlow, sans-serif',
+        letterSpacing: 0.5, textTransform: 'uppercase',
+        display: 'inline-flex', alignItems: 'center', gap: 4
+      }}>
+      ⓘ {label}
+    </button>
+  )
+}
+
+function HomeTab({ rows, stats, player, mc, allMc, posColor, allStats, allPlayers }) {
   const [chipView, setChipView] = useState('p60')
+  const [openInfo, setOpenInfo] = useState(null)   // which ⓘ popover is open: 'total'|'attack'|'transition'|'defence'|null
+
   const p1s = sf(rows, 'one_pointer_scored'), f1s = sf(rows, 'one_pointer_scored_f')
   const p2s = sf(rows, 'two_pointer_scored'), f2s = sf(rows, 'two_pointer_scored_f')
   const gs = sf(rows, 'goals_scored'), fgs = sf(rows, 'goals_scored_f')
   const tPl = p1s + p2s * 2 + gs * 3, tFr = f1s + f2s * 2 + fgs * 3, tot = tPl + tFr
-  const ti = r1(rows.reduce((s, r) => s + n(r.total_impact), 0))
-  const ai = r1(rows.reduce((s, r) => s + n(r.attack_impact), 0))
-  const tri = r1(rows.reduce((s, r) => s + n(r.transition_impact), 0))
-  const di = r1(rows.reduce((s, r) => s + n(r.defensive_impact), 0))
+
+  // /60 rates for the 4 impact metrics (≥60min games only)
+  const ti  = per60(rows, 'total_impact')
+  const ai  = per60(rows, 'attack_impact')
+  const tri = per60(rows, 'transition_impact')
+  const di  = per60(rows, 'defensive_impact')
   const mins = rows.reduce((s, r) => s + n(r.total_minutes), 0)
+
+  // Benchmarks — best /60 in this player's position bucket (this season)
+  const bucket = POS_BUCKET[player.position] || null
+  const bench = bucket ? {
+    total:      bestInBucket(bucket, 'total_impact',       allStats, allPlayers),
+    attack:     bestInBucket(bucket, 'attack_impact',      allStats, allPlayers),
+    transition: bestInBucket(bucket, 'transition_impact',  allStats, allPlayers),
+    defence:    bestInBucket(bucket, 'defensive_impact',   allStats, allPlayers),
+  } : { total: null, attack: null, transition: null, defence: null }
 
   const totalAtt = (sf(rows,'one_pointer_scored')+sf(rows,'one_pointer_wide')+sf(rows,'one_pointer_drop_short_block')) + sf(rows, 'one_pointer_attempts_f') +
     sf(rows, 'two_pointer_attempts') + sf(rows, 'two_pointer_attempts_f') +
@@ -188,7 +255,6 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
               {dob && <span className="tag"><b>{dob}</b></span>}
               <span className="tag">Games <b>{allMc}</b></span>
               <span className="tag">Mins <b>{mins}</b></span>
-              {mins > 0 && <span className="tag">Impact/60min <b style={{ color: 'var(--purple)' }}>{r1(ti / mins * 60)}</b></span>}
             </div>
           </div>
         </div>
@@ -197,13 +263,35 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor }) {
       {/* Impact + Points */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 13 }}>
         <div className="card" style={{ padding: 13, textAlign: 'center' }}>
-          <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>Total Impact</div>
-          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 36, fontWeight: 800, color: impactColor(ti), lineHeight: 1 }}>{ti || '0'}</div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 9, marginTop: 6 }}>
-            <span style={{ fontSize: 10, color: 'var(--gold)' }}>A:{ai}</span>
-            <span style={{ fontSize: 10, color: 'var(--blue)' }}>T:{tri}</span>
-            <span style={{ fontSize: 10, color: 'var(--teal)' }}>D:{di}</span>
+          <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
+            Total Impact <span style={{ color: 'var(--text3)', letterSpacing: 0.5 }}>/60min</span>
           </div>
+          <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 36, fontWeight: 800, color: ti.rate != null ? impactColor(ti.rate) : 'var(--text3)', lineHeight: 1 }}>
+            {ti.rate != null ? ti.rate : '—'}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 9, marginTop: 6 }}>
+            <span style={{ fontSize: 10, color: 'var(--gold)' }}>A:{ai.rate != null ? ai.rate : '—'}</span>
+            <span style={{ fontSize: 10, color: 'var(--blue)' }}>T:{tri.rate != null ? tri.rate : '—'}</span>
+            <span style={{ fontSize: 10, color: 'var(--teal)' }}>D:{di.rate != null ? di.rate : '—'}</span>
+          </div>
+          {/* ⓘ benchmark toggles */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
+            <InfoChip label="Total"   active={openInfo === 'total'}      onClick={() => setOpenInfo(openInfo === 'total'      ? null : 'total')}      color="var(--purple)" />
+            <InfoChip label="Attack"  active={openInfo === 'attack'}     onClick={() => setOpenInfo(openInfo === 'attack'     ? null : 'attack')}     color="var(--gold)" />
+            <InfoChip label="Trans"   active={openInfo === 'transition'} onClick={() => setOpenInfo(openInfo === 'transition' ? null : 'transition')} color="var(--blue)" />
+            <InfoChip label="Defence" active={openInfo === 'defence'}    onClick={() => setOpenInfo(openInfo === 'defence'    ? null : 'defence')}    color="var(--teal)" />
+          </div>
+          {openInfo && (
+            <div style={{ marginTop: 8, padding: '7px 9px', background: 'rgba(26,51,86,0.35)', borderRadius: 6, fontSize: 10, color: 'var(--text2)', lineHeight: 1.4 }}>
+              {bucket ? (
+                bench[openInfo] != null
+                  ? <>Best {bucket} this season: <b style={{ color: 'var(--text)' }}>{bench[openInfo]}</b> <span style={{ color: 'var(--text3)' }}>/60min</span></>
+                  : <span style={{ color: 'var(--text3)' }}>Not enough {bucket} data yet</span>
+              ) : (
+                <span style={{ color: 'var(--text3)' }}>No benchmark available</span>
+              )}
+            </div>
+          )}
         </div>
         <div className="card" style={{ padding: 13, textAlign: 'center' }}>
           <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>Total Points</div>
