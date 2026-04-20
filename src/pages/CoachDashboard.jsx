@@ -1301,14 +1301,14 @@ function TurnoversTab({ allStats, players }) {
 // ─── TEAM STATS TAB ───────────────────────────────────────────────────────────
 const TARGETS = {
   possessions:        { label: 'Possessions',       target: 40,    higher: true,  format: v => v },
-  possession_pct:     { label: 'Poss → Attack %',   target: 0.9,   higher: true,  format: v => Math.round(v*100)+'%' },
-  attack_pct:         { label: 'Attack → Shot %',   target: 0.75,  higher: true,  format: v => Math.round(v*100)+'%' },
-  shot_pct:           { label: 'Shot → Score %',    target: 0.65,  higher: true,  format: v => Math.round(v*100)+'%' },
-  overall_shot_pct:   { label: 'Overall Shot %',    target: 0.543, higher: true,  format: v => Math.round(v*100)+'%' },
-  pct_from_play:      { label: 'Play Conv %',       target: null,  higher: true,  format: v => Math.round(v*100)+'%' },
-  pct_from_frees:     { label: 'Free Conv %',       target: null,  higher: true,  format: v => Math.round(v*100)+'%' },
-  ko_overall_win_pct: { label: 'KO Win %',          target: 0.66,  higher: true,  format: v => Math.round(v*100)+'%' },
-  turnover_ratio:     { label: 'TO Ratio',          target: 0.3,   higher: false, format: v => Math.round(v*100)+'%' },
+  possession_pct:     { label: 'Poss → Attack %',   target: 90,   higher: true,  format: v => Math.round(v)+'%' },
+  attack_pct:         { label: 'Attack → Shot %',   target: 75,  higher: true,  format: v => Math.round(v)+'%' },
+  shot_pct:           { label: 'Shot → Score %',    target: 65,  higher: true,  format: v => Math.round(v)+'%' },
+  overall_shot_pct:   { label: 'Overall Shot %',    target: 54.3, higher: true,  format: v => Math.round(v)+'%' },
+  pct_from_play:      { label: 'Play Conv %',       target: null,  higher: true,  format: v => Math.round(v)+'%' },
+  pct_from_frees:     { label: 'Free Conv %',       target: null,  higher: true,  format: v => Math.round(v)+'%' },
+  ko_overall_win_pct: { label: 'KO Win %',          target: 66,  higher: true,  format: v => Math.round(v)+'%' },
+  turnover_ratio:     { label: 'TO Ratio',          target: 30,   higher: false, format: v => Math.round(v)+'%' },
   intensity_index:    { label: 'Intensity Index',   target: 1.14,  higher: true,  format: v => v?.toFixed(2) },
 }
 
@@ -1320,9 +1320,9 @@ const SECTIONS = [
       { key: 'attacks',        label: 'Attacks',       format: v => v },
       { key: 'shots',          label: 'Shots',         format: v => v },
       { key: 'scores',         label: 'Scores',        format: v => v },
-      { key: 'possession_pct', label: 'Poss → Atk %',  format: v => Math.round(v*100)+'%' },
-      { key: 'attack_pct',     label: 'Atk → Shot %',  format: v => Math.round(v*100)+'%' },
-      { key: 'shot_pct',       label: 'Shot → Score %',format: v => Math.round(v*100)+'%' },
+      { key: 'possession_pct', label: 'Poss → Atk %',  format: v => Math.round(v)+'%' },
+      { key: 'attack_pct',     label: 'Atk → Shot %',  format: v => Math.round(v)+'%' },
+      { key: 'shot_pct',       label: 'Shot → Score %',format: v => Math.round(v)+'%' },
     ]
   },
   {
@@ -1330,11 +1330,11 @@ const SECTIONS = [
     rows: [
       { key: 'shots_from_play',  label: 'Play Shots' },
       { key: 'scores_from_play', label: 'Play Scores' },
-      { key: 'pct_from_play',    label: 'Play Conv %',  format: v => v != null ? Math.round(v*100)+'%' : '—' },
+      { key: 'pct_from_play',    label: 'Play Conv %',  format: v => v != null ? Math.round(v)+'%' : '—' },
       { key: 'shots_from_frees', label: 'Free Shots' },
       { key: 'scores_from_frees',label: 'Free Scores' },
-      { key: 'pct_from_frees',   label: 'Free Conv %',  format: v => v != null ? Math.round(v*100)+'%' : '—' },
-      { key: 'overall_shot_pct', label: 'Overall %',    format: v => v != null ? Math.round(v*100)+'%' : '—' },
+      { key: 'pct_from_frees',   label: 'Free Conv %',  format: v => v != null ? Math.round(v)+'%' : '—' },
+      { key: 'overall_shot_pct', label: 'Overall %',    format: v => v != null ? Math.round(v)+'%' : '—' },
     ]
   },
   {
@@ -1343,8 +1343,8 @@ const SECTIONS = [
       { key: 'ko_total',          label: 'Total KOs' },
       { key: 'ko_won',            label: 'Won' },
       { key: 'ko_lost',           label: 'Lost' },
-      { key: 'ko_won_pct',        label: 'Won %',   format: v => v != null ? Math.round(v*100)+'%' : '—' },
-      { key: 'ko_overall_win_pct',label: 'Win % (Overall)', format: v => v != null ? Math.round(v*100)+'%' : '—' },
+      { key: 'ko_won_pct',        label: 'Won %',   format: v => v != null ? Math.round(v)+'%' : '—' },
+      { key: 'ko_overall_win_pct',label: 'Win % (Overall)', format: v => v != null ? Math.round(v)+'%' : '—' },
     ]
   },
   {
@@ -1361,7 +1361,7 @@ const SECTIONS = [
       { key: 'turnovers_lost_forced',   label: 'Forced Lost' },
       { key: 'turnovers_lost_unforced', label: 'Unforced Lost' },
       { key: 'turnovers_lost_total',    label: 'Total Lost' },
-      { key: 'turnover_ratio',          label: 'TO Ratio', format: v => v != null ? Math.round(v*100)+'%' : '—' },
+      { key: 'turnover_ratio',          label: 'TO Ratio', format: v => v != null ? Math.round(v)+'%' : '—' },
     ]
   },
 ]
@@ -1382,15 +1382,15 @@ function fmt(val, key) {
 // Trend table KPIs — rows shown across all games
 const TREND_ROWS = [
   { key: 'possessions',          label: 'Possessions',      format: v => v,                          target: 40,    higher: true  },
-  { key: 'possession_pct',       label: 'Poss → Atk %',     format: v => Math.round(v*100)+'%',      target: 0.9,   higher: true  },
-  { key: 'attack_pct',           label: 'Atk → Shot %',     format: v => Math.round(v*100)+'%',      target: 0.75,  higher: true  },
-  { key: 'shot_pct',             label: 'Shot → Score %',   format: v => Math.round(v*100)+'%',      target: 0.65,  higher: true  },
-  { key: 'overall_shot_pct',     label: 'Overall Shot %',   format: v => Math.round(v*100)+'%',      target: 0.543, higher: true  },
+  { key: 'possession_pct',       label: 'Poss → Atk %',     format: v => Math.round(v)+'%',      target: 90,   higher: true  },
+  { key: 'attack_pct',           label: 'Atk → Shot %',     format: v => Math.round(v)+'%',      target: 75,  higher: true  },
+  { key: 'shot_pct',             label: 'Shot → Score %',   format: v => Math.round(v)+'%',      target: 65,  higher: true  },
+  { key: 'overall_shot_pct',     label: 'Overall Shot %',   format: v => Math.round(v)+'%',      target: 54.3, higher: true  },
   { key: 'shots_from_play',      label: 'Play Shots',       format: v => v,                          target: null              },
-  { key: 'pct_from_play',        label: 'Play Conv %',      format: v => Math.round(v*100)+'%',      target: null              },
+  { key: 'pct_from_play',        label: 'Play Conv %',      format: v => Math.round(v)+'%',      target: null              },
   { key: 'shots_from_frees',     label: 'Free Shots',       format: v => v,                          target: null              },
-  { key: 'pct_from_frees',       label: 'Free Conv %',      format: v => Math.round(v*100)+'%',      target: null              },
-  { key: 'ko_overall_win_pct',   label: 'Our KO Win %',     format: v => Math.round(v*100)+'%', target: 0.66, higher: true  },
+  { key: 'pct_from_frees',       label: 'Free Conv %',      format: v => Math.round(v)+'%',      target: null              },
+  { key: 'ko_overall_win_pct',   label: 'Our KO Win %',     format: v => Math.round(v)+'%', target: 66, higher: true  },
   { key: 'ko_short_won',    label: 'Our KO Short Won', format: v => v, target: null },
   { key: 'ko_short_total',  label: 'Our KO Short Tot', format: v => v, target: null },
   { key: 'ko_mid_won',      label: 'Our KO Mid Won',   format: v => v, target: null },
