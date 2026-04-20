@@ -1301,9 +1301,10 @@ function TurnoversTab({ allStats, players }) {
 // ─── TEAM STATS TAB ───────────────────────────────────────────────────────────
 const TARGETS = {
   possessions:        { label: 'Possessions',       target: 40,    higher: true,  format: v => v },
-  possession_pct:     { label: 'Poss → Attack %',   target: 90,   higher: true,  format: v => Math.round(v)+'%' },
-  attack_pct:         { label: 'Attack → Shot %',   target: 75,  higher: true,  format: v => Math.round(v)+'%' },
-  shot_pct:           { label: 'Shot → Score %',    target: 65,  higher: true,  format: v => Math.round(v)+'%' },
+  possession_pct:     { label: 'Poss Share %',      target: null, higher: true,  format: v => Math.round(v)+'%' },
+  attack_pct:         { label: 'Poss → Atk %',      target: 90,   higher: true,  format: v => Math.round(v)+'%' },
+  shot_pct:           { label: 'Atk → Shot %',      target: 75,   higher: true,  format: v => Math.round(v)+'%' },
+  score_pct:          { label: 'Shot → Score %',    target: 65,   higher: true,  format: v => Math.round(v)+'%' },
   overall_shot_pct:   { label: 'Overall Shot %',    target: 54.3, higher: true,  format: v => Math.round(v)+'%' },
   pct_from_play:      { label: 'Play Conv %',       target: null,  higher: true,  format: v => Math.round(v)+'%' },
   pct_from_frees:     { label: 'Free Conv %',       target: null,  higher: true,  format: v => Math.round(v)+'%' },
@@ -1320,9 +1321,10 @@ const SECTIONS = [
       { key: 'attacks',        label: 'Attacks',       format: v => v },
       { key: 'shots',          label: 'Shots',         format: v => v },
       { key: 'scores',         label: 'Scores',        format: v => v },
-      { key: 'possession_pct', label: 'Poss → Atk %',  format: v => Math.round(v)+'%' },
-      { key: 'attack_pct',     label: 'Atk → Shot %',  format: v => Math.round(v)+'%' },
-      { key: 'shot_pct',       label: 'Shot → Score %',format: v => Math.round(v)+'%' },
+      { key: 'possession_pct', label: 'Poss Share %',  format: v => Math.round(v)+'%' },
+      { key: 'attack_pct',     label: 'Poss → Atk %',  format: v => Math.round(v)+'%' },
+      { key: 'shot_pct',       label: 'Atk → Shot %',  format: v => Math.round(v)+'%' },
+      { key: 'score_pct',      label: 'Shot → Score %',format: v => Math.round(v)+'%' },
     ]
   },
   {
@@ -1382,9 +1384,9 @@ function fmt(val, key) {
 // Trend table KPIs — rows shown across all games
 const TREND_ROWS = [
   { key: 'possessions',          label: 'Possessions',      format: v => v,                          target: 40,    higher: true  },
-  { key: 'possession_pct',       label: 'Poss → Atk %',     format: v => Math.round(v)+'%',      target: 90,   higher: true  },
-  { key: 'attack_pct',           label: 'Atk → Shot %',     format: v => Math.round(v)+'%',      target: 75,  higher: true  },
-  { key: 'shot_pct',             label: 'Shot → Score %',   format: v => Math.round(v)+'%',      target: 65,  higher: true  },
+  { key: 'attack_pct',           label: 'Poss → Atk %',     format: v => Math.round(v)+'%',      target: 90,   higher: true  },
+  { key: 'shot_pct',             label: 'Atk → Shot %',     format: v => Math.round(v)+'%',      target: 75,  higher: true  },
+  { key: 'score_pct',            label: 'Shot → Score %',   format: v => Math.round(v)+'%',      target: 65,  higher: true  },
   { key: 'overall_shot_pct',     label: 'Overall Shot %',   format: v => Math.round(v)+'%',      target: 54.3, higher: true  },
   { key: 'shots_from_play',      label: 'Play Shots',       format: v => v,                          target: null              },
   { key: 'pct_from_play',        label: 'Play Conv %',      format: v => Math.round(v)+'%',      target: null              },
