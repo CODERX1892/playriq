@@ -113,12 +113,19 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
   const our1pt      = n(d?.our_1pt)
   const ourPts      = n(d?.our_score_pts)
   const oppShots    = n(d?.opp_shots)
+  const oppGoals    = n(d?.opp_goals)
+  const opp2pt      = n(d?.opp_2pt)
+  const opp1pt      = n(d?.opp_1pt)
   const oppPts      = n(d?.opp_score_pts)
 
-  // Score display — "1-16" large, "(1-2-12)" small
-  const ourDisplayPts = ourGoals * 3 + our2pt * 2 + our1pt
+  // Score display — GAA format "G-P" where P = 2pt*2 + points (goals shown separately)
+  const ourDisplayPts = our2pt * 2 + our1pt
   const ourScoreMain  = ourGoals > 0 ? `${ourGoals}-${ourDisplayPts}` : `${ourDisplayPts}`
   const ourScoreSub   = `(${ourGoals > 0 ? `${ourGoals}-` : ''}${our2pt > 0 ? `${our2pt}-` : ''}${our1pt})`
+
+  const oppDisplayPts = opp2pt * 2 + opp1pt
+  const oppScoreMain  = oppGoals > 0 ? `${oppGoals}-${oppDisplayPts}` : `${oppDisplayPts}`
+  const oppScoreSub   = `(${oppGoals > 0 ? `${oppGoals}-` : ''}${opp2pt > 0 ? `${opp2pt}-` : ''}${opp1pt})`
 
   // Possession metrics
   const ourPossToAttack  = ourPoss > 0 ? Math.round(ourAttacks / ourPoss * 100) : 0
@@ -146,7 +153,7 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
     const t  = n(d?.[`${team}_2pt_${src}`])
     const sc = n(d?.[`${team}_scores_${src}`])
     const p  = Math.max(0, sc - g - t)
-    const pts = g * 3 + t * 2 + p
+    const pts = t * 2 + p
     const main = (g > 0 || t > 0 || p > 0)
       ? (g > 0 ? `${g}-${pts}` : `${pts}`)
       : '—'
@@ -216,8 +223,8 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
           </div>
           <div className="card" style={{ padding: '12px 14px', textAlign: 'center' }}>
             <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>Opposition</div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 36, fontWeight: 800, color: 'var(--text2)', lineHeight: 1 }}>{oppPts}</div>
-            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>pts</div>
+            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 36, fontWeight: 800, color: 'var(--text2)', lineHeight: 1 }}>{oppScoreMain}</div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>{oppScoreSub}</div>
           </div>
         </div>
 
@@ -264,7 +271,7 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
               const bt = n(d?.[`boden_2pt_${row.bSrc}`])
               const bsc = n(d?.[`boden_scores_${row.bSrc}`])
               const bp = Math.max(0, bsc - bg - bt)
-              const bPts = bg*3 + bt*2 + bp
+              const bPts = bt*2 + bp
               const bMain = bsc > 0 ? (bg > 0 ? `${bg}-${bPts}` : `${bPts}`) : '—'
               const bSub  = bsc > 0 ? `(${bg > 0 ? `${bg}-` : ''}${bt > 0 ? `${bt}-` : ''}${bp})` : ''
 
@@ -272,7 +279,7 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
               const ot = n(d?.[`opp_2pt_${row.oSrc}`])
               const osc = n(d?.[`opp_scores_${row.oSrc}`])
               const op = Math.max(0, osc - og - ot)
-              const oPts = og*3 + ot*2 + op
+              const oPts = ot*2 + op
               const oMain = osc > 0 ? (og > 0 ? `${og}-${oPts}` : `${oPts}`) : '—'
               const oSub  = osc > 0 ? `(${og > 0 ? `${og}-` : ''}${ot > 0 ? `${ot}-` : ''}${op})` : ''
 
@@ -305,7 +312,7 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
                 <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 800, color: 'var(--blue)', textAlign: 'center' }}>{bodenShotsTotal}</span>
                 <div style={{ textAlign: 'center' }}>
                   <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 800, color: 'var(--teal)' }}>
-                    {ourGoals > 0 ? `${ourGoals}-${ourDisplayPts}` : ourDisplayPts}
+                    {ourScoreMain}
                   </div>
                   <div style={{ fontSize: 9, color: 'var(--text3)' }}>{ourScoreSub}</div>
                 </div>
@@ -314,7 +321,8 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text3)' }}>Total</span>
                 <span style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 800, color: 'var(--text2)', textAlign: 'center' }}>{oppShotsTotal}</span>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 800, color: 'var(--red)' }}>{oppPts}</div>
+                  <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 800, color: 'var(--red)' }}>{oppScoreMain}</div>
+                  <div style={{ fontSize: 9, color: 'var(--text3)' }}>{oppScoreSub}</div>
                 </div>
               </div>
             </div>
