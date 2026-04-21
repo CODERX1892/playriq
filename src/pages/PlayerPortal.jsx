@@ -118,9 +118,9 @@ export default function PlayerPortal() {
       {/* Content */}
       <div style={{ padding: 14 }}>
         {tab === 'home' && <HomeTab rows={rows} stats={stats} player={player} mc={mc} allMc={allMc} posColor={posColor} allStats={allStats} allPlayers={allPlayers} />}
-        {tab === 'attack' && <AttackTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} />}
-        {tab === 'transition' && <TransitionTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} />}
-        {tab === 'defence' && <DefenceTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} />}
+        {tab === 'attack' && <AttackTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} player={player} allStats={allStats} allPlayers={allPlayers} />}
+        {tab === 'transition' && <TransitionTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} player={player} allStats={allStats} allPlayers={allPlayers} />}
+        {tab === 'defence' && <DefenceTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} player={player} allStats={allStats} allPlayers={allPlayers} />}
         {tab === 'matches' && <MatchesTab stats={stats} />}
         {tab === 'challenge' && <ChallengeTab player={player} />}
         {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
@@ -189,6 +189,57 @@ function InfoChip({ label, active, onClick, color }) {
       }}>
       ⓘ {label}
     </button>
+  )
+}
+
+// Shared "impact card" used at the top of Attack / Transition / Defence tabs.
+// - When matchFilter === 'all': big number = season /60 rate, no subline
+// - When a specific match is filtered: big number = raw impact for that game, subline = /60 rate for that game
+// - Benchmark (tappable ⓘ) is always the season best /60 in the player's bucket
+function ImpactCard({ label, color, impactField, rows, seasonRows, player, allStats, allPlayers, matchFilter }) {
+  const [openInfo, setOpenInfo] = useState(false)
+  const isAll = matchFilter === 'all'
+
+  const seasonRate = per60(seasonRows, impactField)           // always the season /60
+  const filteredRate = per60(rows, impactField)               // /60 for the current filter (all or one game)
+  const rawTotal = r1(rows.reduce((s, r) => s + n(r[impactField]), 0))
+
+  const bucket = POS_BUCKET[player.position] || null
+  const bench = bucket ? bestInBucket(bucket, impactField, allStats, allPlayers) : null
+
+  const displayValue = isAll
+    ? (seasonRate.rate != null ? seasonRate.rate : '—')
+    : rawTotal
+  const displayColor = (isAll && seasonRate.rate == null) ? 'var(--text3)' : color
+
+  return (
+    <div className="card" style={{ padding: 13, marginBottom: 13, textAlign: 'center' }}>
+      <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
+        {label}{isAll && <span style={{ color: 'var(--text3)', letterSpacing: 0.5 }}> /60min</span>}
+      </div>
+      <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 40, fontWeight: 800, color: displayColor, lineHeight: 1 }}>
+        {displayValue}
+      </div>
+      {!isAll && filteredRate.rate != null && (
+        <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>
+          /60: <b style={{ color: color }}>{filteredRate.rate}</b>
+        </div>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: 8 }}>
+        <InfoChip label={label.replace(' Impact', '')} active={openInfo} onClick={() => setOpenInfo(v => !v)} color={color} />
+      </div>
+      {openInfo && (
+        <div style={{ marginTop: 8, padding: '7px 9px', background: 'rgba(26,51,86,0.35)', borderRadius: 6, fontSize: 10, color: 'var(--text2)', lineHeight: 1.4 }}>
+          {bucket ? (
+            bench != null
+              ? <>Best {bucket} this season: <b style={{ color: 'var(--text)' }}>{bench}</b> <span style={{ color: 'var(--text3)' }}>/60min</span></>
+              : <span style={{ color: 'var(--text3)' }}>Not enough {bucket} data yet</span>
+          ) : (
+            <span style={{ color: 'var(--text3)' }}>No benchmark available</span>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -403,7 +454,7 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor, allStats, allPlayer
 }
 
 // ─── ATTACK TAB ──────────────────────────────────────────────────────────────
-function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
+function AttackTab({ rows, mc, matchFilter, setMatchFilter, stats, player, allStats, allPlayers }) {
   const p1s = sf(rows, 'one_pointer_scored'), p1w = sf(rows, 'one_pointer_wide'), p1ds = sf(rows, 'one_pointer_drop_short_block'); const p1a = p1s + p1w + p1ds
   const p2s = sf(rows, 'two_pointer_scored'), p2w = sf(rows, 'two_pointer_wide'), p2ds = sf(rows, 'two_pointer_drop_short_block'); const p2a = p2s + p2w + p2ds
   const gs = sf(rows, 'goals_scored'), gw = sf(rows, 'goals_wide'), gds = sf(rows, 'goal_drop_short_block'); const ga = gs + gw + gds
@@ -411,7 +462,6 @@ function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
   const f2a = sf(rows, 'two_pointer_attempts_f'), f2s = sf(rows, 'two_pointer_scored_f')
   const fga = sf(rows, 'goal_attempts_f'), fgs = sf(rows, 'goals_scored_f')
   const tp = p1s + f1s + (p2s + f2s) * 2 + (gs + fgs) * 3
-  const ai = r1(rows.reduce((s, r) => s + n(r.attack_impact), 0))
   const totalScored = p1s + f1s + p2s + f2s + gs + fgs
   const totalAtt = p1a + f1a + p2a + f2a + ga + fga
   const overallPct = pct(totalScored, totalAtt)
@@ -434,12 +484,17 @@ function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
   return (
     <div className="fade-in">
       <MatchFilterPills matchFilter={matchFilter} setMatchFilter={setMatchFilter} />
-      {/* Banner */}
+
+      {/* Impact card */}
+      <ImpactCard label="Attack Impact" color="var(--gold)" impactField="attack_impact"
+        rows={rows} seasonRows={stats} player={player}
+        allStats={allStats} allPlayers={allPlayers} matchFilter={matchFilter} />
+
+      {/* Points banner */}
       <div style={{ background: 'linear-gradient(135deg,#1a1205,#251a08)', border: '1px solid #3d2e0a', borderRadius: 11, padding: 13, marginBottom: 13, textAlign: 'center' }}>
         <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 3 }}>Total Points</div>
         <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 44, fontWeight: 800, color: 'var(--gold)', lineHeight: 1 }}>{tp}</div>
         <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 5 }}>
-          Attack Impact: <b style={{ color: 'var(--gold)' }}>{ai}</b>&nbsp;&nbsp;·&nbsp;&nbsp;
           Shooting: <b style={{ color: pctColor }}>{overallPct}%</b>
         </div>
       </div>
@@ -509,8 +564,7 @@ function AttackTab({ rows, mc, matchFilter, setMatchFilter }) {
 }
 
 // ─── TRANSITION TAB ──────────────────────────────────────────────────────────
-function TransitionTab({ rows, mc, matchFilter, setMatchFilter, stats }) {
-  const ti = r1(rows.reduce((s, r) => s + n(r.transition_impact), 0))
+function TransitionTab({ rows, mc, matchFilter, setMatchFilter, stats, player, allStats, allPlayers }) {
   const matchCount = [...new Set(rows.map(r => r.match_id))].length
 
   // Get all stats for this player across all matches (for breakdown)
@@ -540,7 +594,9 @@ function TransitionTab({ rows, mc, matchFilter, setMatchFilter, stats }) {
   return (
     <div className="fade-in">
       <MatchFilterPills matchFilter={matchFilter} setMatchFilter={setMatchFilter} />
-      <ImpactBanner label="Transition Impact" value={ti} color="var(--blue)" mc={matchCount} bg="linear-gradient(135deg,#071828,#0a2038)" border="#0f3560" />
+      <ImpactCard label="Transition Impact" color="var(--blue)" impactField="transition_impact"
+        rows={rows} seasonRows={stats} player={player}
+        allStats={allStats} allPlayers={allPlayers} matchFilter={matchFilter} />
       <StatGroup title="Passing" badge="distribution" color="var(--blue)" rows={passRows.map(r => ({ label: r.label, field: r.field, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} matchRows={stats} />
       <StatGroup title="Kickouts — Ours" badge="restart" color="var(--teal)" rows={koRows.map(r => ({ label: r.label, field: r.field, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} matchRows={stats} />
       <StatGroup title="Turnovers" badge="possession losses" color="var(--red)" rows={toRows.map(r => ({ label: r.label, field: r.field, avg: r.avg, teamAvg: r.teamAvg, total: r.total }))} matchRows={stats} />
@@ -550,8 +606,7 @@ function TransitionTab({ rows, mc, matchFilter, setMatchFilter, stats }) {
 }
 
 // ─── DEFENCE TAB ─────────────────────────────────────────────────────────────
-function DefenceTab({ rows, mc, matchFilter, setMatchFilter, stats }) {
-  const di = r1(rows.reduce((s, r) => s + n(r.defensive_impact), 0))
+function DefenceTab({ rows, mc, matchFilter, setMatchFilter, stats, player, allStats, allPlayers }) {
   const matchCount = [...new Set(rows.map(r => r.match_id))].length
   const y = sf(rows, 'yellow'), b = sf(rows, 'black'), rd = sf(rows, 'red')
 
@@ -580,7 +635,9 @@ function DefenceTab({ rows, mc, matchFilter, setMatchFilter, stats }) {
   return (
     <div className="fade-in">
       <MatchFilterPills matchFilter={matchFilter} setMatchFilter={setMatchFilter} />
-      <ImpactBanner label="Defensive Impact" value={di} color="var(--teal)" mc={matchCount} bg="linear-gradient(135deg,#071a10,#0a2518)" border="#0f3a22" />
+      <ImpactCard label="Defensive Impact" color="var(--teal)" impactField="defensive_impact"
+        rows={rows} seasonRows={stats} player={player}
+        allStats={allStats} allPlayers={allPlayers} matchFilter={matchFilter} />
 
       {/* Discipline */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 11 }}>
