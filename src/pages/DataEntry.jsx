@@ -125,15 +125,8 @@ const COL_GROUPS = [
       { key: 'shots_conceded', label: 'Con' },
     ]
   },
-  {
-    label: 'Impact', color: '#f0b429', decimal: true,
-    cols: [
-      { key: 'attack_impact', label: 'Atk' },
-      { key: 'transition_impact', label: 'Tran' },
-      { key: 'defensive_impact', label: 'Def' },
-      { key: 'total_impact', label: 'Tot' },
-    ]
-  },
+  // Impact columns removed — calculated automatically on save by the
+  // player_stats_set_impact trigger from raw stats × impact_weights.
 ]
 
 const ALL_COLS = COL_GROUPS.flatMap(g => g.cols.map(c => ({ ...c, groupColor: g.color, decimal: g.decimal })))
