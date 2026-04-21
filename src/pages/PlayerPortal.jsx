@@ -149,31 +149,30 @@ const POS_BUCKET = {
   'Midfield':   'Midfield',
   'Goalkeeper': 'Goalkeeper',
 }
-const MIN_QUALIFYING_MINS = 60     // player-games under this are excluded
-const MIN_BUCKET_SIZE     = 3      // hide benchmark if fewer qualifying players
+const MIN_SEASON_MINS = 120    // players below this aren't eligible for the benchmark
+const MIN_BUCKET_SIZE = 3      // hide benchmark if fewer eligible players in bucket
 
-// Compute /60min rate for a set of rows (only rows with ≥ 60 mins count).
-// Returns { rate, qualified } or { rate: null, qualified: 0 } if nothing qualifies.
+// Season /60 rate = sum(impact) / sum(minutes) * 60 across ALL the player's games.
+// No per-game filter — every minute played counts.
+// Returns { rate, mins }. rate is null if total mins is 0.
 function per60(rows, field) {
-  const q = rows.filter(r => n(r.total_minutes) >= MIN_QUALIFYING_MINS)
-  if (q.length === 0) return { rate: null, qualified: 0 }
-  const totalImpact = q.reduce((s, r) => s + n(r[field]), 0)
-  const totalMins   = q.reduce((s, r) => s + n(r.total_minutes), 0)
-  if (totalMins === 0) return { rate: null, qualified: 0 }
-  return { rate: r1(totalImpact / totalMins * 60), qualified: q.length }
+  const totalImpact = rows.reduce((s, r) => s + n(r[field]), 0)
+  const totalMins   = rows.reduce((s, r) => s + n(r.total_minutes), 0)
+  if (totalMins === 0) return { rate: null, mins: 0 }
+  return { rate: r1(totalImpact / totalMins * 60), mins: totalMins }
 }
 
-// Best /60 across all players in a position bucket (this season).
-// Returns null if fewer than MIN_BUCKET_SIZE players in that bucket have ≥1 qualifying game.
+// Best season /60 rate in a position bucket.
+// Only counts players with ≥ MIN_SEASON_MINS total season minutes.
+// Returns null if fewer than MIN_BUCKET_SIZE eligible players.
 function bestInBucket(bucket, field, allStats, allPlayers) {
   const playersInBucket = allPlayers.filter(p => POS_BUCKET[p.position] === bucket)
-  const byPlayer = playersInBucket.map(p => {
-    const theirRows = allStats.filter(r => r.player_name === p.name)
-    return per60(theirRows, field)
-  }).filter(x => x.rate !== null)
+  const eligible = playersInBucket
+    .map(p => per60(allStats.filter(r => r.player_name === p.name), field))
+    .filter(x => x.rate !== null && x.mins >= MIN_SEASON_MINS)
 
-  if (byPlayer.length < MIN_BUCKET_SIZE) return null
-  return Math.max(...byPlayer.map(x => x.rate))
+  if (eligible.length < MIN_BUCKET_SIZE) return null
+  return Math.max(...eligible.map(x => x.rate))
 }
 
 function InfoChip({ label, active, onClick, color }) {
@@ -264,7 +263,7 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor, allStats, allPlayer
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 13 }}>
         <div className="card" style={{ padding: 13, textAlign: 'center' }}>
           <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
-            Total Impact <span style={{ color: 'var(--text3)', letterSpacing: 0.5 }}>/60min</span>
+            Peak Impact <span style={{ color: 'var(--text3)', letterSpacing: 0.5 }}>/60min</span>
           </div>
           <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 36, fontWeight: 800, color: ti.rate != null ? impactColor(ti.rate) : 'var(--text3)', lineHeight: 1 }}>
             {ti.rate != null ? ti.rate : '—'}
@@ -285,7 +284,7 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor, allStats, allPlayer
             <div style={{ marginTop: 8, padding: '7px 9px', background: 'rgba(26,51,86,0.35)', borderRadius: 6, fontSize: 10, color: 'var(--text2)', lineHeight: 1.4 }}>
               {bucket ? (
                 bench[openInfo] != null
-                  ? <>Best {bucket} this season: <b style={{ color: 'var(--text)' }}>{bench[openInfo]}</b> <span style={{ color: 'var(--text3)' }}>/60min</span></>
+                  ? <>Best {bucket} peak this season: <b style={{ color: 'var(--text)' }}>{bench[openInfo]}</b> <span style={{ color: 'var(--text3)' }}>/60min</span></>
                   : <span style={{ color: 'var(--text3)' }}>Not enough {bucket} data yet</span>
               ) : (
                 <span style={{ color: 'var(--text3)' }}>No benchmark available</span>
