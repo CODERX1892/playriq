@@ -581,13 +581,29 @@ function TransitionTab({ rows, mc, matchFilter, setMatchFilter, stats, player, a
     ['advance_pass', 'Advance Passes'], ['advance_receive', 'Advance Receives'], ['carries', 'Carries'],
   ], mc, TEAM_AVGS)
 
-  const koRows = buildStatRows(rows, [
+  // Kickouts display:
+  // • Won Clean P1/P2/P3 = straight from won_clean_p*_our (ko_target_won_clean
+  //   is already tagged as a clean win in those columns by the XML).
+  // • Won Break = straight from won_break_our.
+  // • KO Contest Won = target didn't catch clean but break went our way
+  //   = our_ko_contest_us + ko_target_won_break
+  // • KO Contest Lost = target didn't catch clean, break went to them
+  //   = our_ko_contest_opp + ko_target_lost_clean + ko_target_lost_contest
+  const koCleanRows = buildStatRows(rows, [
     ['won_clean_p1_our', 'Won Clean P1 (Ours)'], ['won_clean_p2_our', 'Won Clean P2 (Ours)'],
     ['won_clean_p3_our', 'Won Clean P3 (Ours)'], ['won_break_our', 'Won Break (Ours)'],
-    ['our_ko_contest_opp', 'KO Contest Lost'], ['our_ko_contest_us', 'KO Contest Won'],
-    ['ko_target_won_clean', 'KO Target Won Clean'], ['ko_target_won_break', 'KO Target Won Break'],
-    ['ko_target_lost_clean', 'KO Target Lost Clean'], ['ko_target_lost_contest', 'KO Target Lost Contest'],
   ], mc, TEAM_AVGS)
+
+  const contestWonTotal  = sf(rows, 'our_ko_contest_us')  + sf(rows, 'ko_target_won_break')
+  const contestLostTotal = sf(rows, 'our_ko_contest_opp') + sf(rows, 'ko_target_lost_clean') + sf(rows, 'ko_target_lost_contest')
+  const contestWonTeamAvg  = (TEAM_AVGS?.our_ko_contest_us  ?? 0) + (TEAM_AVGS?.ko_target_won_break    ?? 0)
+  const contestLostTeamAvg = (TEAM_AVGS?.our_ko_contest_opp ?? 0) + (TEAM_AVGS?.ko_target_lost_clean   ?? 0) + (TEAM_AVGS?.ko_target_lost_contest ?? 0)
+
+  const koRows = [
+    ...koCleanRows,
+    { field: 'our_ko_contest_us',  label: 'KO Contest Won',  total: contestWonTotal,  avg: mc > 0 ? r1(contestWonTotal / mc)  : 0, teamAvg: r1(contestWonTeamAvg) },
+    { field: 'our_ko_contest_opp', label: 'KO Contest Lost', total: contestLostTotal, avg: mc > 0 ? r1(contestLostTotal / mc) : 0, teamAvg: r1(contestLostTeamAvg) },
+  ]
 
   const toRows = buildStatRows(rows, [
     ['turnovers_in_contact', 'TOs in Contact'], ['turnover_skill_error', 'TO Skill Error'],
