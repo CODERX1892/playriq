@@ -56,7 +56,9 @@ export default function AnalystDashboard() {
     return players.map(p => {
       const rows = allStats.filter(r => r.player_name === p.name && (matchFilter === 'all' || r.match_id === matchFilter))
       if (!rows.length) return null
-      const mc = [...new Set(rows.map(r => r.match_id))].length || 1
+      // Bench appearances (0 mins) don't count as a "game played"
+      const playedRows = rows.filter(r => n(r.total_minutes) > 0)
+      const mc = [...new Set(playedRows.map(r => r.match_id))].length || 1
       const mins = rows.reduce((s, r) => s + n(r.total_minutes), 0)
       if (!mins) return null
       const ti = r1(rows.reduce((s, r) => s + n(r.total_impact), 0))

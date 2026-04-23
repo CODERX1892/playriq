@@ -74,7 +74,10 @@ export default function CoachDashboard() {
     return players.map(p => {
       const rows = allStats.filter(r => r.player_name === p.name && (filter === 'all' || r.match_id === filter))
       if (!rows.length) return null
-      const mc = [...new Set(rows.map(r => r.match_id))].length || 1
+      // Only count a match toward "games played" if the player had minutes on the pitch.
+      // Bench appearances (total_minutes === 0) shouldn't inflate the games count.
+      const playedRows = rows.filter(r => n(r.total_minutes) > 0)
+      const mc = [...new Set(playedRows.map(r => r.match_id))].length || 1
       const mins = rows.reduce((s, r) => s + n(r.total_minutes), 0)
       if (!mins) return null
       const ti = r1(rows.reduce((s, r) => s + n(r.total_impact), 0))
@@ -85,9 +88,14 @@ export default function CoachDashboard() {
       const p2s = sf(rows, 'two_pointer_scored') + sf(rows, 'two_pointer_scored_f')
       const gs2 = sf(rows, 'goals_scored') + sf(rows, 'goals_scored_f')
       const pts = p1s + p2s * 2 + gs2 * 3
-      const att = sf(rows, 'one_pointer_attempts') + sf(rows, 'one_pointer_attempts_f') +
-        sf(rows, 'two_pointer_attempts') + sf(rows, 'two_pointer_attempts_f') +
-        sf(rows, 'goal_attempts') + sf(rows, 'goal_attempts_f')
+      // From-play attempts = scored + wide + drop-short (a drop-short counts as an
+      // unsuccessful shot, same as a wide). Frees keep their stored _attempts_f count
+      // because there are no _wide_f / _drop_short_f columns to derive from.
+      const att =
+        sf(rows, 'one_pointer_scored') + sf(rows, 'one_pointer_wide') + sf(rows, 'one_pointer_drop_short_block') +
+        sf(rows, 'two_pointer_scored') + sf(rows, 'two_pointer_wide') + sf(rows, 'two_pointer_drop_short_block') +
+        sf(rows, 'goals_scored')       + sf(rows, 'goals_wide')       + sf(rows, 'goal_drop_short_block') +
+        sf(rows, 'one_pointer_attempts_f') + sf(rows, 'two_pointer_attempts_f') + sf(rows, 'goal_attempts_f')
       return {
         name: p.name, position: p.position, mc, mins,
         total_impact: ti, attack_impact: ai, transition_impact: tri, defensive_impact: di,
@@ -120,9 +128,9 @@ export default function CoachDashboard() {
         assists_p60: mins > 0 ? r1((sf(rows,'assists_shots')+sf(rows,'assists_goals')+sf(rows,'assists_2pt')) / mins * 60) : 0,
         // EV per shot from play and frees
         ev_play: (() => {
-          const p1s=sf(rows,'one_pointer_scored'),p1a=sf(rows,'one_pointer_attempts')
-          const p2s=sf(rows,'two_pointer_scored'),p2a=sf(rows,'two_pointer_attempts')
-          const gs=sf(rows,'goals_scored'),ga=sf(rows,'goal_attempts')
+          const p1s=sf(rows,'one_pointer_scored'), p1a = p1s + sf(rows,'one_pointer_wide') + sf(rows,'one_pointer_drop_short_block')
+          const p2s=sf(rows,'two_pointer_scored'), p2a = p2s + sf(rows,'two_pointer_wide') + sf(rows,'two_pointer_drop_short_block')
+          const gs =sf(rows,'goals_scored'),       ga  =  gs + sf(rows,'goals_wide')       + sf(rows,'goal_drop_short_block')
           const att=p1a+p2a+ga
           return att>0 ? Math.round((p1s*1+p2s*2+gs*3)/att*100)/100 : 0
         })(),
@@ -360,10 +368,13 @@ function SquadTab({ squadStats, matchFilter, setMatchFilter, posFilter, setPosFi
 // ─── PLAYER DETAIL VIEW ──────────────────────────────────────────────────────
 function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
   const [selectedMatch, setSelectedMatch] = useState(null)
+  const [expandedStat, setExpandedStat] = useState(null)
   const playerRows = allStats.filter(r => r.player_name === name)
   const player = players.find(p => p.name === name) || {}
   const posColor = POS_COLORS[player.position] || 'var(--text2)'
-  const mc = [...new Set(playerRows.map(r => r.match_id))].length
+  // Games played = matches where the player was on the pitch. Bench appearances
+  // (total_minutes === 0) don't count.
+  const mc = [...new Set(playerRows.filter(r => n(r.total_minutes) > 0).map(r => r.match_id))].length
   const mins = playerRows.reduce((s, r) => s + n(r.total_minutes), 0)
 
   const ai = r1(playerRows.reduce((s, r) => s + n(r.attack_impact), 0))
@@ -371,17 +382,20 @@ function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
   const di = r1(playerRows.reduce((s, r) => s + n(r.defensive_impact), 0))
   const tot = r1(playerRows.reduce((s, r) => s + n(r.total_impact), 0))
 
-  // Shooting
+  // Shooting — from-play attempts = scored + wide + drop-short (a drop-short
+  // is an unsuccessful attempt, same as a wide)
   const p1s = playerRows.reduce((s,r) => s+n(r.one_pointer_scored),0)
   const p1w = playerRows.reduce((s,r) => s+n(r.one_pointer_wide),0)
   const p1ds = playerRows.reduce((s,r) => s+n(r.one_pointer_drop_short_block),0)
   const p1a = p1s+p1w+p1ds
   const p2s = playerRows.reduce((s,r) => s+n(r.two_pointer_scored),0)
   const p2w = playerRows.reduce((s,r) => s+n(r.two_pointer_wide),0)
-  const p2a = p2s+p2w
+  const p2ds = playerRows.reduce((s,r) => s+n(r.two_pointer_drop_short_block),0)
+  const p2a = p2s+p2w+p2ds
   const gs = playerRows.reduce((s,r) => s+n(r.goals_scored),0)
   const gw = playerRows.reduce((s,r) => s+n(r.goals_wide),0)
-  const ga = gs+gw
+  const gds = playerRows.reduce((s,r) => s+n(r.goal_drop_short_block),0)
+  const ga = gs+gw+gds
   const f1s = playerRows.reduce((s,r) => s+n(r.one_pointer_scored_f),0)
   const f1a = playerRows.reduce((s,r) => s+n(r.one_pointer_attempts_f),0)
   const f2s = playerRows.reduce((s,r) => s+n(r.two_pointer_scored_f),0)
@@ -420,8 +434,6 @@ function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
     const r = playerRows.find(row => row.match_id === selectedMatch)
     if (r) return <PlayerMatchDrillDown r={r} players={players} matchView={selectedMatch} onBack={() => setSelectedMatch(null)} />
   }
-
-  const [expandedStat, setExpandedStat] = useState(null)
 
   const statRow = (label, val, color, perGame = true, field = null) => val > 0 ? (
     <div>
@@ -1199,10 +1211,10 @@ function KickoutsTab({ allStats, players }) {
             </tr>
             <tr style={{ background: 'var(--bg3)' }}>
               <th style={kth}></th>
-              {['P1','P2','P3','Break','C.Opp','C.Us'].map(l => (
+              {['P1','P2','P3','Break','C.Lost','C.Won'].map(l => (
                 <th key={l} style={{ ...kth, color: 'var(--teal)', borderLeft: '1px solid rgba(26,51,86,0.4)', fontWeight: 400 }}>{l}</th>
               ))}
-              {['P1','P2','P3','Break','C.Opp','C.Us'].map(l => (
+              {['P1','P2','P3','Break','C.Lost','C.Won'].map(l => (
                 <th key={'t'+l} style={{ ...kth, color: 'var(--purple)', borderLeft: '1px solid rgba(26,51,86,0.4)', fontWeight: 400 }}>{l}</th>
               ))}
             </tr>

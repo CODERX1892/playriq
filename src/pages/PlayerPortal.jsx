@@ -58,8 +58,10 @@ export default function PlayerPortal() {
   }, [player.name])
 
   const rows = matchFilter === 'all' ? stats : stats.filter(r => r.match_id === matchFilter)
-  const mc = [...new Set(rows.map(r => r.match_id))].length || 1
-  const allMc = [...new Set(stats.map(r => r.match_id))].length
+  // "Games played" means matches where the player actually took the pitch.
+  // Bench appearances (0 mins) shouldn't count.
+  const mc = [...new Set(rows.filter(r => n(r.total_minutes) > 0).map(r => r.match_id))].length || 1
+  const allMc = [...new Set(stats.filter(r => n(r.total_minutes) > 0).map(r => r.match_id))].length
 
   const posColor = POS_COLORS[player.position] || 'var(--text2)'
 
@@ -268,9 +270,13 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor, allStats, allPlayer
     defence:    bestInBucket(bucket, 'defensive_impact',   allStats, allPlayers),
   } : { total: null, attack: null, transition: null, defence: null }
 
-  const totalAtt = (sf(rows,'one_pointer_scored')+sf(rows,'one_pointer_wide')+sf(rows,'one_pointer_drop_short_block')) + sf(rows, 'one_pointer_attempts_f') +
-    sf(rows, 'two_pointer_attempts') + sf(rows, 'two_pointer_attempts_f') +
-    sf(rows, 'goal_attempts') + sf(rows, 'goal_attempts_f')
+  // From-play attempts derived from scored + wide + drop-short (so a miss really means a miss,
+  // whether it went wide or was blocked/saved/short). Frees keep their stored _attempts_f count.
+  const totalAtt =
+    sf(rows,'one_pointer_scored') + sf(rows,'one_pointer_wide') + sf(rows,'one_pointer_drop_short_block') +
+    sf(rows,'two_pointer_scored') + sf(rows,'two_pointer_wide') + sf(rows,'two_pointer_drop_short_block') +
+    sf(rows,'goals_scored')       + sf(rows,'goals_wide')       + sf(rows,'goal_drop_short_block') +
+    sf(rows,'one_pointer_attempts_f') + sf(rows,'two_pointer_attempts_f') + sf(rows,'goal_attempts_f')
   const totalScored = p1s + f1s + p2s + f2s + gs + fgs
   const shootPct = pct(totalScored, totalAtt)
   const pctColor = shootPct >= 60 ? 'var(--teal)' : shootPct >= 45 ? 'var(--gold)' : 'var(--red)'
@@ -578,7 +584,7 @@ function TransitionTab({ rows, mc, matchFilter, setMatchFilter, stats, player, a
   const koRows = buildStatRows(rows, [
     ['won_clean_p1_our', 'Won Clean P1 (Ours)'], ['won_clean_p2_our', 'Won Clean P2 (Ours)'],
     ['won_clean_p3_our', 'Won Clean P3 (Ours)'], ['won_break_our', 'Won Break (Ours)'],
-    ['our_ko_contest_opp', 'KO Contest (Opp)'], ['our_ko_contest_us', 'KO Contest (Us)'],
+    ['our_ko_contest_opp', 'KO Contest Lost'], ['our_ko_contest_us', 'KO Contest Won'],
     ['ko_target_won_clean', 'KO Target Won Clean'], ['ko_target_won_break', 'KO Target Won Break'],
     ['ko_target_lost_clean', 'KO Target Lost Clean'], ['ko_target_lost_contest', 'KO Target Lost Contest'],
   ], mc, TEAM_AVGS)
@@ -629,7 +635,7 @@ function DefenceTab({ rows, mc, matchFilter, setMatchFilter, stats, player, allS
   const koOppRows = buildStatRows(rows, [
     ['won_clean_p1_opp', 'Won Clean P1 (Opp KO)'], ['won_clean_p2_opp', 'Won Clean P2 (Opp KO)'],
     ['won_clean_p3_opp', 'Won Clean P3 (Opp KO)'], ['won_break_opp', 'Won Break (Opp KO)'],
-    ['their_ko_contest_opp', 'Their KO Contest (Opp)'], ['their_ko_contest_us', 'Their KO Contest (Us)'],
+    ['their_ko_contest_opp', 'KO Contest Lost'], ['their_ko_contest_us', 'KO Contest Won'],
   ], mc, TEAM_AVGS)
 
   return (
