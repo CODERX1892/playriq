@@ -581,13 +581,51 @@ function TransitionTab({ rows, mc, matchFilter, setMatchFilter, stats, player, a
     ['advance_pass', 'Advance Passes'], ['advance_receive', 'Advance Receives'], ['carries', 'Carries'],
   ], mc, TEAM_AVGS)
 
-  const koRows = buildStatRows(rows, [
+  // Build all 10 KO rows with buildStatRows (safe — same shape as everywhere else),
+  // then collapse the last 6 into 2 combined Contest rows. The combined rows reuse
+  // the same field shape that buildStatRows produced, so StatGroup doesn't choke
+  // on missing fields.
+  const koAll = buildStatRows(rows, [
     ['won_clean_p1_our', 'Won Clean P1 (Ours)'], ['won_clean_p2_our', 'Won Clean P2 (Ours)'],
     ['won_clean_p3_our', 'Won Clean P3 (Ours)'], ['won_break_our', 'Won Break (Ours)'],
-    ['our_ko_contest_opp', 'KO Contest Lost'], ['our_ko_contest_us', 'KO Contest Won'],
-    ['ko_target_won_clean', 'KO Target Won Clean'], ['ko_target_won_break', 'KO Target Won Break'],
-    ['ko_target_lost_clean', 'KO Target Lost Clean'], ['ko_target_lost_contest', 'KO Target Lost Contest'],
+    ['our_ko_contest_us', 'KO Contest Won'], ['ko_target_won_break', '_ContestWonExtra'],
+    ['our_ko_contest_opp', 'KO Contest Lost'], ['ko_target_lost_clean', '_ContestLostExtra1'], ['ko_target_lost_contest', '_ContestLostExtra2'],
   ], mc, TEAM_AVGS)
+
+  // Pull out the individual pieces
+  const contestWonBase     = koAll.find(r => r.label === 'KO Contest Won')
+  const contestWonExtra    = koAll.find(r => r.label === '_ContestWonExtra')
+  const contestLostBase    = koAll.find(r => r.label === 'KO Contest Lost')
+  const contestLostExtra1  = koAll.find(r => r.label === '_ContestLostExtra1')
+  const contestLostExtra2  = koAll.find(r => r.label === '_ContestLostExtra2')
+
+  // Helper: safely add a numeric field from one row into another
+  const addField = (base, extra, key) => {
+    if (!base || !extra) return base?.[key]
+    const a = typeof base[key] === 'number' ? base[key] : 0
+    const b = typeof extra[key] === 'number' ? extra[key] : 0
+    return a + b
+  }
+
+  const contestWon = contestWonBase ? {
+    ...contestWonBase,
+    total:   addField(contestWonBase, contestWonExtra, 'total'),
+    avg:     mc > 0 ? r1((addField(contestWonBase, contestWonExtra, 'total') || 0) / mc) : 0,
+    teamAvg: r1((contestWonBase.teamAvg || 0) + (contestWonExtra?.teamAvg || 0)),
+  } : null
+
+  const contestLost = contestLostBase ? {
+    ...contestLostBase,
+    total:   (contestLostBase.total || 0) + (contestLostExtra1?.total || 0) + (contestLostExtra2?.total || 0),
+    avg:     mc > 0 ? r1(((contestLostBase.total || 0) + (contestLostExtra1?.total || 0) + (contestLostExtra2?.total || 0)) / mc) : 0,
+    teamAvg: r1((contestLostBase.teamAvg || 0) + (contestLostExtra1?.teamAvg || 0) + (contestLostExtra2?.teamAvg || 0)),
+  } : null
+
+  const koRows = [
+    ...koAll.filter(r => !r.label.startsWith('_') && r.label !== 'KO Contest Won' && r.label !== 'KO Contest Lost'),
+    contestWon,
+    contestLost,
+  ].filter(Boolean)
 
   const toRows = buildStatRows(rows, [
     ['turnovers_in_contact', 'TOs in Contact'], ['turnover_skill_error', 'TO Skill Error'],
@@ -635,7 +673,7 @@ function DefenceTab({ rows, mc, matchFilter, setMatchFilter, stats, player, allS
   const koOppRows = buildStatRows(rows, [
     ['won_clean_p1_opp', 'Won Clean P1 (Opp KO)'], ['won_clean_p2_opp', 'Won Clean P2 (Opp KO)'],
     ['won_clean_p3_opp', 'Won Clean P3 (Opp KO)'], ['won_break_opp', 'Won Break (Opp KO)'],
-    ['their_ko_contest_opp', 'KO Contest Lost'], ['their_ko_contest_us', 'KO Contest Won'],
+    ['their_ko_contest_opp', 'Their KO Contest (Opp)'], ['their_ko_contest_us', 'Their KO Contest (Us)'],
   ], mc, TEAM_AVGS)
 
   return (
