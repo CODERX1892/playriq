@@ -16,6 +16,67 @@ const METRICS = {
   forced_to: { label: 'Forced TO', color: '#3ecf8e' },
 }
 
+const MATRIX_CATEGORIES = {
+  impact: {
+    label: 'Impact',
+    metrics: [
+      { key: 'total_impact',      label: 'Total Impact', color: '#a78bfa' },
+      { key: 'attack_impact',     label: 'Attack',       color: '#f0b429' },
+      { key: 'transition_impact', label: 'Transition',   color: '#4a9eff' },
+      { key: 'defensive_impact',  label: 'Defence',      color: '#3ecf8e' },
+    ]
+  },
+  attack: {
+    label: 'Attack',
+    metrics: [
+      { key: '_pts',     label: 'Points',  color: '#f0b429', compute: r => n(r.one_pointer_scored)+n(r.one_pointer_scored_f)+(n(r.two_pointer_scored)+n(r.two_pointer_scored_f))*2+(n(r.goals_scored)+n(r.goals_scored_f))*3 },
+      { key: '_shots',   label: 'Shots',   color: '#f0b429', compute: r => (n(r.one_pointer_scored)+n(r.one_pointer_wide)+n(r.one_pointer_drop_short_block))+n(r.one_pointer_attempts_f)+(n(r.two_pointer_scored)+n(r.two_pointer_wide)+n(r.two_pointer_drop_short_block))+n(r.two_pointer_attempts_f)+(n(r.goals_scored)+n(r.goals_wide)+n(r.goal_drop_short_block))+n(r.goal_attempts_f) },
+      { key: '_assists', label: 'Assists', color: '#a78bfa', compute: r => n(r.assists_shots)+n(r.assists_goals)+n(r.assists_2pt) },
+    ]
+  },
+  transition: {
+    label: 'Transition',
+    metrics: [
+      { key: 'simple_pass',           label: 'Simple Pass',    color: '#4a9eff' },
+      { key: 'simple_receive',        label: 'Simple Receive', color: '#4a9eff' },
+      { key: 'advance_pass',          label: 'Advance Pass',   color: '#4a9eff' },
+      { key: 'advance_receive',       label: 'Advance Receive',color: '#4a9eff' },
+      { key: 'carries',               label: 'Carries',        color: '#4a9eff' },
+      { key: 'turnovers_in_contact',  label: 'TO Contact',     color: '#f06060' },
+      { key: 'turnover_skill_error',  label: 'TO Skill',       color: '#f06060' },
+      { key: 'turnovers_kicked_away', label: 'TO Kickaway',    color: '#f06060' },
+      { key: 'acceptable_turnovers',  label: 'Acceptable TO',  color: '#f0b429' },
+      { key: 'drop_shorts',           label: 'Drop Shorts',    color: '#f0b429' },
+    ]
+  },
+  defence: {
+    label: 'Defence',
+    metrics: [
+      { key: 'tackles',              label: 'Tackles',      color: '#4a9eff' },
+      { key: 'forced_to_win',        label: 'Forced TO',    color: '#3ecf8e' },
+      { key: 'kickaway_to_received', label: 'Kickaway TO',  color: '#3ecf8e' },
+      { key: 'defensive_duels_won',  label: 'Duels Won',    color: '#3ecf8e' },
+      { key: 'breach_1v1',           label: 'Breach 1v1',   color: '#f06060' },
+      { key: 'dne',                  label: 'DNE',          color: '#f06060' },
+    ]
+  },
+  kickouts: {
+    label: 'Kickouts',
+    metrics: [
+      { key: 'won_clean_p1_our',       label: 'Our P1',           color: '#3ecf8e' },
+      { key: 'won_clean_p2_our',       label: 'Our P2',           color: '#3ecf8e' },
+      { key: 'won_clean_p3_our',       label: 'Our P3',           color: '#3ecf8e' },
+      { key: 'won_break_our',          label: 'Our Break',        color: '#3ecf8e' },
+      { key: 'ko_target_won_break',    label: 'Our Contest Won',  color: '#3ecf8e' },
+      { key: 'ko_target_lost_contest', label: 'Our Contest Lost', color: '#f06060' },
+      { key: 'won_clean_p1_opp',       label: 'Opp P1',           color: '#f06060' },
+      { key: 'won_clean_p2_opp',       label: 'Opp P2',           color: '#f06060' },
+      { key: 'won_clean_p3_opp',       label: 'Opp P3',           color: '#f06060' },
+      { key: 'won_break_opp',          label: 'Opp Break',        color: '#f06060' },
+    ]
+  },
+}
+
 export default function AnalystDashboard() {
   const { appUser, logout } = useAuth()
   const [tab, setTab] = useState('squad')
@@ -26,6 +87,8 @@ export default function AnalystDashboard() {
   const [matchFilter, setMatchFilter] = useState('all')
   const [metric, setMetric] = useState('total_impact')
   const [matchView, setMatchView] = useState('AFL 1')
+  const [matrixCat, setMatrixCat] = useState('impact')
+  const [matrixMetric, setMatrixMetric] = useState('total_impact')
   const [publishing, setPublishing] = useState(false)
   const [pubStatus, setPubStatus] = useState(null)
 
@@ -102,9 +165,9 @@ export default function AnalystDashboard() {
 
       {/* Tabs */}
       <div className="tabs" style={{ top: 61 }}>
-        {['squad', 'match', 'entry'].map(t => (
+        {['squad', 'matrix', 'match', 'entry'].map(t => (
           <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'entry' ? 'Enter Data' : t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'entry' ? 'Enter Data' : t === 'matrix' ? 'Matrix' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -139,6 +202,7 @@ export default function AnalystDashboard() {
         </div>
 
         {tab === 'squad' && <AnalystSquadTab squadStats={squadStats} matchFilter={matchFilter} setMatchFilter={setMatchFilter} metric={metric} setMetric={setMetric} />}
+        {tab === 'matrix' && <AnalystMatrixTab allStats={allStats} players={players} matrixCat={matrixCat} setMatrixCat={setMatrixCat} matrixMetric={matrixMetric} setMatrixMetric={setMatrixMetric} />}
         {tab === 'match' && <AnalystMatchTab allStats={allStats} players={players} matchView={matchView} setMatchView={setMatchView} />}
         {tab === 'entry' && <DataEntry analystName={appUser.name} />}
       </div>
@@ -252,6 +316,141 @@ function AnalystMatchTab({ allStats, players, matchView, setMatchView }) {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+// ─── ANALYST MATRIX TAB ─────────────────────────────────────────────────────
+// Rows = players, Cols = matches, Cells = chosen metric per player-match.
+// Category tabs narrow 30 metrics into 5 buckets.
+function AnalystMatrixTab({ allStats, players, matrixCat, setMatrixCat, matrixMetric, setMatrixMetric }) {
+  const cat = MATRIX_CATEGORIES[matrixCat] || MATRIX_CATEGORIES.impact
+  const metricDef = cat.metrics.find(m => m.key === matrixMetric) || cat.metrics[0]
+  const color = metricDef.color || 'var(--blue)'
+
+  const pickCat = (catKey) => {
+    setMatrixCat(catKey)
+    const c = MATRIX_CATEGORIES[catKey]
+    if (c && !c.metrics.find(m => m.key === matrixMetric)) {
+      setMatrixMetric(c.metrics[0].key)
+    }
+  }
+
+  const getValue = (playerName, matchId) => {
+    const row = allStats.find(r => r.player_name === playerName && r.match_id === matchId)
+    if (!row) return null
+    if (n(row.total_minutes) === 0) return null
+    if (metricDef.compute) return metricDef.compute(row)
+    return n(row[metricDef.key])
+  }
+
+  const rows = players.map(p => {
+    const vals = MATCHES.map(m => getValue(p.name, m))
+    const total = vals.reduce((s, v) => s + (v || 0), 0)
+    const played = vals.filter(v => v !== null).length
+    return { name: p.name, position: p.position, vals, total, played }
+  }).filter(r => r.played > 0)
+   .sort((a, b) => b.total - a.total)
+
+  const allPositive = rows.flatMap(r => r.vals.filter(v => v !== null && v > 0))
+  const maxVal = allPositive.length ? Math.max(...allPositive) : 1
+
+  const cellStyle = (val) => {
+    if (val === null || val === undefined) return { color: 'var(--text3)', background: 'transparent' }
+    if (val === 0) return { color: 'var(--text3)', background: 'rgba(26,51,86,0.12)' }
+    const intensity = Math.min(1, val / maxVal)
+    const hex = color.replace('#', '')
+    const r = parseInt(hex.slice(0, 2), 16)
+    const g = parseInt(hex.slice(2, 4), 16)
+    const b = parseInt(hex.slice(4, 6), 16)
+    return {
+      color: intensity > 0.5 ? '#fff' : color,
+      background: `rgba(${r},${g},${b},${0.08 + intensity * 0.45})`,
+      fontWeight: 700,
+    }
+  }
+
+  const fmt = (v) => {
+    if (v === null || v === undefined) return '—'
+    if (v === 0) return '0'
+    return Number.isInteger(v) ? v : r1(v)
+  }
+
+  return (
+    <div className="fade-in">
+      {/* Category tabs */}
+      <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 5, marginBottom: 10, scrollbarWidth: 'none' }}>
+        {Object.entries(MATRIX_CATEGORIES).map(([k, c]) => (
+          <button key={k} onClick={() => pickCat(k)}
+            style={{ padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 700, cursor: 'pointer',
+              border: `1px solid ${k === matrixCat ? 'var(--blue)' : 'var(--border)'}`,
+              background: k === matrixCat ? 'rgba(74,158,255,0.12)' : 'var(--bg2)',
+              color: k === matrixCat ? 'var(--blue)' : 'var(--text3)',
+              whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'Barlow, sans-serif' }}>
+            {c.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Metric pills */}
+      <div style={{ display: 'flex', gap: 5, overflowX: 'auto', paddingBottom: 5, marginBottom: 12, scrollbarWidth: 'none' }}>
+        {cat.metrics.map(m => (
+          <button key={m.key} onClick={() => setMatrixMetric(m.key)}
+            style={{ padding: '5px 11px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+              border: `1px solid ${m.key === matrixMetric ? m.color : 'var(--border)'}`,
+              background: m.key === matrixMetric ? 'rgba(255,255,255,0.04)' : 'var(--bg2)',
+              color: m.key === matrixMetric ? m.color : 'var(--text3)',
+              whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'Barlow, sans-serif' }}>
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Matrix table */}
+      {rows.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text3)', fontSize: 12 }}>
+          No data for this metric yet
+        </div>
+      ) : (
+        <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg2)' }}>
+          <table style={{ borderCollapse: 'collapse', minWidth: 'max-content', width: '100%' }}>
+            <thead>
+              <tr style={{ background: 'var(--bg3)' }}>
+                <th style={{ padding: '8px 10px', fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--text2)', textAlign: 'left', borderBottom: '1px solid var(--border)', minWidth: 140, position: 'sticky', left: 0, background: 'var(--bg3)', zIndex: 2 }}>Player</th>
+                {MATCHES.map(m => (
+                  <th key={m} style={{ padding: '8px 10px', fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color: 'var(--text2)', textAlign: 'center', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', minWidth: 60 }}>
+                    <div>{m.replace('AFL ', 'G')}</div>
+                    <div style={{ fontSize: 8, fontWeight: 400, color: 'var(--text3)', marginTop: 2 }}>{OPP[m]?.split(' ')[0]}</div>
+                  </th>
+                ))}
+                <th style={{ padding: '8px 10px', fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', color, textAlign: 'center', borderBottom: '1px solid var(--border)', borderLeft: '1px solid var(--border)', minWidth: 60 }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => {
+                const posColor = POS_COLORS[r.position] || 'var(--text2)'
+                const rowBg = i % 2 === 0 ? 'var(--bg2)' : 'var(--bg3)'
+                return (
+                  <tr key={r.name} style={{ borderBottom: '1px solid rgba(26,51,86,0.2)' }}>
+                    <td style={{ padding: '7px 10px', fontSize: 12, whiteSpace: 'nowrap', position: 'sticky', left: 0, background: rowBg, zIndex: 1 }}>
+                      <div style={{ fontWeight: 600, color: 'var(--text1)' }}>{r.name}</div>
+                      <div style={{ fontSize: 9, color: posColor, marginTop: 1 }}>{r.position}</div>
+                    </td>
+                    {r.vals.map((v, vi) => (
+                      <td key={vi} style={{ padding: '7px 10px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 15, textAlign: 'center', borderLeft: '1px solid rgba(26,51,86,0.3)', ...cellStyle(v) }}>
+                        {fmt(v)}
+                      </td>
+                    ))}
+                    <td style={{ padding: '7px 10px', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 800, textAlign: 'center', borderLeft: '1px solid var(--border)', color, background: 'rgba(26,51,86,0.25)' }}>
+                      {r.total > 0 ? (Number.isInteger(r.total) ? r.total : r1(r.total)) : '—'}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
