@@ -3,6 +3,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { MATCHES, OPP, n, r1, pct, impactColor } from '../lib/utils'
 import DataEntry from './DataEntry'
+import TeamStatsTab from './TeamStats'
+import TeamAnalytics from './TeamAnalytics'
 
 const POS_COLORS = { Forward: '#f0b429', Defender: '#4a9eff', Midfield: '#3ecf8e', Goalkeeper: '#a78bfa' }
 
@@ -89,6 +91,7 @@ export default function AnalystDashboard() {
   const [matchView, setMatchView] = useState('AFL 1')
   const [matrixCat, setMatrixCat] = useState('impact')
   const [matrixMetric, setMatrixMetric] = useState('total_impact')
+  const [teamStats, setTeamStats] = useState([])
   const [publishing, setPublishing] = useState(false)
   const [pubStatus, setPubStatus] = useState(null)
 
@@ -97,12 +100,14 @@ export default function AnalystDashboard() {
       supabase.from('player_stats').select('*'),
       supabase.from('players').select('name,position'),
       supabase.from('match_status').select('*'),
-    ]).then(([{ data: stats }, { data: pls }, { data: ms }]) => {
+      supabase.from('team_stats').select('*'),
+    ]).then(([{ data: stats }, { data: pls }, { data: ms }, { data: ts }]) => {
       setAllStats(stats || [])
       setPlayers(pls || [])
       const msMap = {}
       if (ms) ms.forEach(m => { msMap[m.match_id] = m })
       setMatchStatuses(msMap)
+      setTeamStats(ts || [])
       setLoading(false)
     })
   }, [])
@@ -165,9 +170,9 @@ export default function AnalystDashboard() {
 
       {/* Tabs */}
       <div className="tabs" style={{ top: 61 }}>
-        {['squad', 'matrix', 'match', 'entry'].map(t => (
+        {['squad', 'matrix', 'match', 'team', 'analytics', 'entry'].map(t => (
           <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'entry' ? 'Enter Data' : t === 'matrix' ? 'Matrix' : t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'entry' ? 'Enter Data' : t === 'matrix' ? 'Matrix' : t === 'analytics' ? 'Analytics' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -204,6 +209,8 @@ export default function AnalystDashboard() {
         {tab === 'squad' && <AnalystSquadTab squadStats={squadStats} matchFilter={matchFilter} setMatchFilter={setMatchFilter} metric={metric} setMetric={setMetric} />}
         {tab === 'matrix' && <AnalystMatrixTab allStats={allStats} players={players} matrixCat={matrixCat} setMatrixCat={setMatrixCat} matrixMetric={matrixMetric} setMatrixMetric={setMatrixMetric} />}
         {tab === 'match' && <AnalystMatchTab allStats={allStats} players={players} matchView={matchView} setMatchView={setMatchView} />}
+        {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
+        {tab === 'analytics' && <TeamAnalytics allStats={allStats} matchView={matchView} setMatchView={setMatchView} />}
         {tab === 'entry' && <DataEntry analystName={appUser.name} />}
       </div>
     </div>
