@@ -123,7 +123,7 @@ export default function PlayerPortal() {
         {tab === 'attack' && <AttackTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} player={player} allStats={allStats} allPlayers={allPlayers} />}
         {tab === 'transition' && <TransitionTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} player={player} allStats={allStats} allPlayers={allPlayers} />}
         {tab === 'defence' && <DefenceTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} player={player} allStats={allStats} allPlayers={allPlayers} />}
-        {tab === 'matches' && <MatchesTab stats={stats} player={player} />}
+        {tab === 'matches' && <MatchesTab stats={stats} />}
         {tab === 'challenge' && <ChallengeTab player={player} />}
         {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
         {tab === 'analytics' && <TeamAnalytics allStats={allStats} matchView={matchView} setMatchView={setMatchView} />}
@@ -702,14 +702,7 @@ function DefenceTab({ rows, mc, matchFilter, setMatchFilter, stats, player, allS
 }
 
 // ─── MATCHES TAB ─────────────────────────────────────────────────────────────
-function MatchesTab({ stats, player }) {
-  const [selectedMatch, setSelectedMatch] = useState(null)
-
-  if (selectedMatch) {
-    const r = stats.find(s => s.match_id === selectedMatch)
-    if (r) return <PlayerMatchDrillDown r={r} player={player} matchView={selectedMatch} onBack={() => setSelectedMatch(null)} />
-  }
-
+function MatchesTab({ stats }) {
   return (
     <div className="fade-in">
       <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>All Matches</div>
@@ -721,14 +714,6 @@ function MatchesTab({ stats, player }) {
             <div style={{ background: 'var(--bg3)', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div><div style={{ fontSize: 13, fontWeight: 700 }}>{m}</div><div style={{ fontSize: 10, color: 'var(--text3)' }}>{OPP[m]}</div></div>
               <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>Did not play</div>
-            </div>
-          </div>
-        )
-        if (n(r.total_minutes) === 0) return (
-          <div key={m} className="card" style={{ overflow: 'hidden', marginBottom: 12 }}>
-            <div style={{ background: 'var(--bg3)', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div><div style={{ fontSize: 13, fontWeight: 700 }}>{m}</div><div style={{ fontSize: 10, color: 'var(--text3)' }}>{OPP[m]}</div></div>
-              <div style={{ fontSize: 11, color: 'var(--text3)', fontStyle: 'italic' }}>Bench</div>
             </div>
           </div>
         )
@@ -758,11 +743,10 @@ function MatchesTab({ stats, player }) {
         const hasTO = toNeg + dropShorts > 0
         const hasDef = forcedTO + kickawayTO + dne > 0
         return (
-          <div key={m} className="card" style={{ overflow: 'hidden', marginBottom: 12, cursor: 'pointer' }}
-               onClick={() => setSelectedMatch(m)}>
+          <div key={m} className="card" style={{ overflow: 'hidden', marginBottom: 12 }}>
             {/* Header */}
             <div style={{ background: 'var(--bg3)', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
-              <div><div style={{ fontSize: 13, fontWeight: 700 }}>{m}</div><div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>{OPP[m]} · tap for full detail</div></div>
+              <div><div style={{ fontSize: 13, fontWeight: 700 }}>{m}</div><div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>{OPP[m]}</div></div>
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase' }}>Impact</div>
                 <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, color: impactColor(imp) }}>{imp}</div>
@@ -988,204 +972,6 @@ function ShootTable({ title, badge, rows }) {
           </div>
         )
       })}
-    </div>
-  )
-}
-
-// ─── PLAYER MATCH DRILL-DOWN ─────────────────────────────────────────────────
-// Same detail view the coach sees, adapted for the player's own portal.
-function PlayerMatchDrillDown({ r, player, matchView, onBack }) {
-  const ppos = player?.position || ''
-  const posColor = POS_COLORS[ppos] || 'var(--text2)'
-  const imp = r1(n(r.total_impact))
-  const ai = r1(n(r.attack_impact)), ti = r1(n(r.transition_impact)), di = r1(n(r.defensive_impact))
-
-  // Shooting — from-play attempts derived from scored + wide + drop-short
-  const p1s = n(r.one_pointer_scored), p1w = n(r.one_pointer_wide), p1ds = n(r.one_pointer_drop_short_block)
-  const p1a = p1s + p1w + p1ds
-  const p2s = n(r.two_pointer_scored), p2w = n(r.two_pointer_wide), p2ds = n(r.two_pointer_drop_short_block)
-  const p2a = p2s + p2w + p2ds
-  const gs = n(r.goals_scored), gw = n(r.goals_wide), gds = n(r.goal_drop_short_block)
-  const ga = gs + gw + gds
-  const f1s = n(r.one_pointer_scored_f), f1a = n(r.one_pointer_attempts_f)
-  const f2s = n(r.two_pointer_scored_f), f2a = n(r.two_pointer_attempts_f)
-  const fgs = n(r.goals_scored_f), fga = n(r.goal_attempts_f)
-  const totalAtt = p1a + f1a + p2a + f2a + ga + fga
-  const totalScored = p1s + f1s + p2s + f2s + gs + fgs
-  const pts = p1s + f1s + (p2s + f2s) * 2 + (gs + fgs) * 3
-  const shootPct = totalAtt > 0 ? Math.round((totalScored / totalAtt) * 100) : 0
-  const assists = n(r.assists_shots) + n(r.assists_goals) + n(r.assists_2pt)
-
-  // Kickouts — roll up same way as Transition tab
-  const koOursClean = n(r.won_clean_p1_our) + n(r.won_clean_p2_our) + n(r.won_clean_p3_our)
-  const koOursBreak = n(r.won_break_our)
-  const koContestWon = n(r.our_ko_contest_us) + n(r.ko_target_won_break)
-  const koContestLost = n(r.our_ko_contest_opp) + n(r.ko_target_lost_clean) + n(r.ko_target_lost_contest)
-  const koOppClean = n(r.won_clean_p1_opp) + n(r.won_clean_p2_opp) + n(r.won_clean_p3_opp)
-  const koOppBreak = n(r.won_break_opp)
-
-  // Defence
-  const forcedTO = n(r.forced_to_win)
-  const kickawayTO = n(r.kickaway_to_received)
-  const tackles = n(r.tackles)
-  const dne = n(r.dne)
-  const breach = n(r.breach_1v1)
-  const duelsWon = n(r.defensive_duels_won)
-  const duelsLost = n(r.duels_lost)
-  const duelsContested = n(r.duels_contested)
-
-  // Turnovers lost
-  const toContact = n(r.turnovers_in_contact)
-  const toKickaway = n(r.turnovers_kicked_away)
-  const toSkill = n(r.turnover_skill_error)
-  const dropShorts = n(r.drop_shorts)
-
-  const section = (title, color, items) => {
-    const hasData = items.some(([,v]) => v > 0)
-    if (!hasData) return null
-    return (
-      <div className="card" style={{ overflow: 'hidden', marginBottom: 11 }}>
-        <div className="card-header"><span style={{ color }}>{title}</span></div>
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(items.length, 4)}, 1fr)`, padding: '10px 14px', gap: 8 }}>
-          {items.map(([label, val, c]) => (
-            <div key={label} style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 24, fontWeight: 800, color: val > 0 ? (c || color) : 'var(--text3)', lineHeight: 1 }}>{val > 0 ? val : '—'}</div>
-              <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 0.5, textTransform: 'uppercase', marginTop: 3 }}>{label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="fade-in">
-      {/* Back button */}
-      <button onClick={onBack}
-        style={{ background: 'none', border: 'none', color: 'var(--blue)', fontSize: 12, cursor: 'pointer', fontFamily: 'Barlow, sans-serif', padding: 0, marginBottom: 14 }}>
-        ← Back to all matches
-      </button>
-
-      {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg,#0a1628,#0d1f3c)', border: '1px solid var(--border)', borderRadius: 13, padding: '14px 16px', marginBottom: 14 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 22, fontWeight: 800, lineHeight: 1 }}>{matchView}</div>
-            <div style={{ fontSize: 10, color: posColor, marginTop: 4 }}>vs {OPP[matchView]} · {n(r.total_minutes)} mins</div>
-          </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 36, fontWeight: 800, color: impactColor(imp), lineHeight: 1 }}>{imp}</div>
-            <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 }}>Total Impact</div>
-          </div>
-        </div>
-        {/* Impact breakdown */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(26,51,86,0.4)' }}>
-          {[['Attack', ai, 'var(--gold)'], ['Transition', ti, 'var(--blue)'], ['Defence', di, 'var(--teal)']].map(([l, v, c]) => (
-            <div key={l} style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 20, fontWeight: 700, color: c }}>{v}</div>
-              <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase' }}>{l}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Shooting */}
-      {totalAtt > 0 && (
-        <div className="card" style={{ overflow: 'hidden', marginBottom: 11 }}>
-          <div className="card-header">
-            <span style={{ color: 'var(--gold)' }}>Shooting</span>
-            <span style={{ color: shootPct >= 60 ? 'var(--teal)' : shootPct >= 45 ? 'var(--gold)' : 'var(--red)', fontFamily: 'Barlow Condensed, sans-serif', fontSize: 16, fontWeight: 700 }}>{shootPct}%</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 28px 28px 28px 28px 34px 34px', gap: 2, padding: '5px 13px 3px', borderBottom: '1px solid rgba(26,51,86,0.3)' }}>
-            {['Type','Att','Scr','Wde','DS','%','EV'].map((h, i) => (
-              <div key={h} style={{ fontSize: 9, color: ['var(--text3)','var(--text2)','var(--teal)','var(--red)','var(--gold)','var(--text3)','var(--purple)'][i], textAlign: i > 0 ? 'center' : 'left', textTransform: 'uppercase', letterSpacing: 1 }}>{h}</div>
-            ))}
-          </div>
-          {[
-            ['1pt Play', p1a, p1s, p1w, p1ds, 1],
-            ['2pt Play', p2a, p2s, p2w, p2ds, 2],
-            ['Goal Play', ga, gs, gw, gds, 3],
-            f1a > 0 ? ['1pt Free', f1a, f1s, 0, 0, 1] : null,
-            f2a > 0 ? ['2pt Free', f2a, f2s, 0, 0, 2] : null,
-            fga > 0 ? ['Goal Free', fga, fgs, 0, 0, 3] : null,
-          ].filter(Boolean).filter(([,att]) => att > 0).map(([label, att, scr, wide, ds, shotPts]) => {
-            const pct2 = att > 0 ? Math.round((scr / att) * 100) : 0
-            const pc = pct2 >= 60 ? 'var(--teal)' : pct2 >= 40 ? 'var(--gold)' : 'var(--red)'
-            const ev = att > 0 ? Math.round((scr * shotPts / att) * 100) / 100 : null
-            const evc = ev === null ? 'var(--text3)' : ev >= shotPts * 0.65 ? 'var(--teal)' : ev >= shotPts * 0.45 ? 'var(--gold)' : 'var(--red)'
-            return (
-              <div key={label} style={{ display: 'grid', gridTemplateColumns: '1fr 28px 28px 28px 28px 34px 34px', gap: 2, padding: '7px 13px', borderTop: '1px solid rgba(26,51,86,0.25)', alignItems: 'center' }}>
-                <div style={{ fontSize: 12, color: 'var(--text2)' }}>{label}</div>
-                <div style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center' }}>{att}</div>
-                <div style={{ fontSize: 12, color: 'var(--teal)', textAlign: 'center' }}>{scr}</div>
-                <div style={{ fontSize: 12, color: 'var(--red)', textAlign: 'center' }}>{wide || '—'}</div>
-                <div style={{ fontSize: 12, color: 'var(--gold)', textAlign: 'center' }}>{ds || '—'}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', color: att > 0 ? pc : 'var(--text3)' }}>{att > 0 ? `${pct2}%` : '—'}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, textAlign: 'center', color: evc }}>{ev !== null ? ev : '—'}</div>
-              </div>
-            )
-          })}
-          {assists > 0 && (
-            <div style={{ padding: '8px 13px', borderTop: '1px solid rgba(26,51,86,0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontSize: 12, color: 'var(--text2)' }}>Assists</div>
-              <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 18, fontWeight: 700, color: 'var(--purple)' }}>{assists}</div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Our Kickouts */}
-      {section('Our Kickouts', 'var(--teal)', [
-        ['Won Clean', koOursClean, 'var(--teal)'],
-        ['Won Break', koOursBreak, 'var(--teal)'],
-        ['Contest Won', koContestWon, 'var(--teal)'],
-        ['Contest Lost', koContestLost, 'var(--red)'],
-      ])}
-
-      {/* Their Kickouts */}
-      {section('Their Kickouts', 'var(--blue)', [
-        ['Won Clean', koOppClean, 'var(--blue)'],
-        ['Won Break', koOppBreak, 'var(--blue)'],
-      ])}
-
-      {/* Defence Won */}
-      {section('Defence — Won', 'var(--teal)', [
-        ['Forced TO', forcedTO, 'var(--teal)'],
-        ['Kickaway TO', kickawayTO, 'var(--teal)'],
-        ['Tackles', tackles, 'var(--blue)'],
-        ['Duels Won', duelsWon, 'var(--teal)'],
-      ])}
-
-      {/* Duels */}
-      {(duelsContested > 0 || duelsLost > 0) && section('Duels', 'var(--blue)', [
-        ['Contested', duelsContested, 'var(--blue)'],
-        ['Won', duelsWon, 'var(--teal)'],
-        ['Lost', duelsLost, 'var(--red)'],
-      ])}
-
-      {/* Defence — Conceded */}
-      {(dne > 0 || breach > 0) && section('Defence — Conceded', 'var(--red)', [
-        ['DNE', dne, 'var(--red)'],
-        ['Breach 1v1', breach, 'var(--red)'],
-      ])}
-
-      {/* Turnovers Lost */}
-      {section('Turnovers Lost', 'var(--red)', [
-        ['Contact', toContact, 'var(--red)'],
-        ['Kickaway', toKickaway, 'var(--red)'],
-        ['Skill Error', toSkill, 'var(--red)'],
-        ['Drop Shorts', dropShorts, 'var(--gold)'],
-      ])}
-
-      {/* Points total */}
-      {pts > 0 && (
-        <div style={{ textAlign: 'center', padding: '8px 0', color: 'var(--text3)', fontSize: 11 }}>
-          {p1s > 0 && <span style={{ marginRight: 10 }}>1pt: <b style={{ color: 'var(--blue)' }}>{p1s}</b></span>}
-          {p2s > 0 && <span style={{ marginRight: 10 }}>2pt: <b style={{ color: 'var(--purple)' }}>{p2s}</b></span>}
-          {gs > 0 && <span style={{ marginRight: 10 }}>Goals: <b style={{ color: 'var(--teal)' }}>{gs}</b></span>}
-          <span>Total: <b style={{ color: 'var(--gold)' }}>{pts}</b></span>
-        </div>
-      )}
     </div>
   )
 }
