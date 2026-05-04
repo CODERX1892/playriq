@@ -28,7 +28,7 @@ export default async function handler(req, res) {
   const emailsToSend = players.filter(p => p.email)
   let sent = 0
 
-  for (const player of emailsToSend) {
+  for (const player of emailsToSend) { await new Promise(r => setTimeout(r, 700));
     try {
       await fetch('https://api.resend.com/emails', {
         method: 'POST',
