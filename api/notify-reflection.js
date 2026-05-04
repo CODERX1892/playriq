@@ -29,17 +29,25 @@ export default async function handler(req, res) {
     const { data: match } = await supabase.from('matches').select('*').eq('match_id', matchId).single()
     if (!match) continue
 
-    const { data: stats } = await supabase.from('player_stats').select('player_name').eq('match_id', matchId)
-    if (!stats?.length) continue
+    // Use matchday_squad as the canonical squad list
+    const { data: squadRows } = await supabase
+      .from('matchday_squad').select('player_name').eq('match_id', matchId)
 
-    const playerNames = stats.map(s => s.player_name)
-    const { data: players } = await supabase.from('players').select('name, email').in('name', playerNames)
+    if (!squadRows?.length) {
+      matchSummaries.push({ match: matchId, skipped: 'no matchday squad selected' })
+      continue
+    }
+
+    const squadNames = squadRows.map(r => r.player_name)
+    const { data: players } = await supabase
+      .from('players').select('name, email')
+      .in('name', squadNames)
+      .not('email', 'is', null)
+
     if (!players?.length) continue
 
-    const emailsToSend = players.filter(p => p.email)
     let sent = 0
-
-    for (const player of emailsToSend) {
+    for (const player of players) {
       await new Promise(r => setTimeout(r, 700))
       try {
         await fetch('https://api.resend.com/emails', {
@@ -56,7 +64,7 @@ export default async function handler(req, res) {
       } catch(e) { console.error('Reflection email failed for', player.name, e) }
     }
     totalSent += sent
-    matchSummaries.push({ match: matchId, sent, total: emailsToSend.length })
+    matchSummaries.push({ match: matchId, sent, total: players.length })
   }
   res.json({ totalSent, matches: matchSummaries })
 }

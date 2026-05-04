@@ -25,8 +25,22 @@ export default async function handler(req, res) {
   if (!matches?.length) return res.json({ skipped: 'no match in next 24h window' })
 
   const match = matches[0]
-  const { data: players } = await supabase.from('players').select('name, email').not('email', 'is', null)
-  if (!players?.length) return res.json({ sent: 0, total: 0 })
+
+  // Get matchday squad for this match
+  const { data: squadRows } = await supabase
+    .from('matchday_squad').select('player_name').eq('match_id', match.match_id)
+
+  if (!squadRows?.length) {
+    return res.json({ skipped: 'no matchday squad selected for ' + match.match_id, hint: 'admin needs to pick squad in app' })
+  }
+
+  const squadNames = squadRows.map(r => r.player_name)
+  const { data: players } = await supabase
+    .from('players').select('name, email')
+    .in('name', squadNames)
+    .not('email', 'is', null)
+
+  if (!players?.length) return res.json({ sent: 0, total: 0, squad: squadNames.length })
 
   let sent = 0
   for (const player of players) {
@@ -45,5 +59,5 @@ export default async function handler(req, res) {
       sent++
     } catch(e) { console.error('Pre-match email failed for', player.name, e) }
   }
-  res.json({ sent, total: players.length, match: match.match_id })
+  res.json({ sent, total: players.length, squad: squadNames.length, match: match.match_id })
 }
