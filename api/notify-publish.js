@@ -43,7 +43,7 @@ export default async function handler(req, res) {
               <div style="font-size:13px;color:#3d5a7a;margin-bottom:24px">Ballyboden St Enda's · 2026</div>
               <div style="font-size:16px;margin-bottom:16px">Hi ${player.name.split(' ')[0]},</div>
               <div style="font-size:15px;color:#e8edf5;margin-bottom:8px">Your <strong style="color:#f0b429">${matchId}</strong> stats are now live.</div>
-              <div style="font-size:14px;color:#8ba8c8;margin-bottom:24px">vs ${match.opposition} · ${new Date(match.date).toLocaleDateString('en-IE', {day:'numeric',month:'long'})}</div>
+              <div style="font-size:14px;color:#8ba8c8;margin-bottom:24px">vs ${match.opposition} · ${new Date(match.match_date).toLocaleDateString('en-IE', {day:'numeric',month:'long'})}</div>
               <a href="https://playriq.io" style="display:block;background:#f0b429;color:#07111f;text-align:center;padding:14px;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;letter-spacing:1px">VIEW YOUR STATS →</a>
               <div style="font-size:11px;color:#3d5a7a;margin-top:20px;text-align:center">Login with your name and PIN at playriq.io</div>
             </div>
