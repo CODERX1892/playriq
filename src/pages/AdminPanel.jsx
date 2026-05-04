@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { MATCHES } from '../lib/utils'
+import SquadPicker from '../components/SquadPicker'
+
 
 const POSITIONS = ['Forward', 'Defender', 'Midfield', 'Goalkeeper']
 const ROLES = ['Inside Forward', 'Half Forward', 'Midfielder', 'Half Back', 'Full Back', 'Goalkeeper']
@@ -198,7 +200,7 @@ export default function AdminPanel() {
 
       {/* Sub tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-        {['players', 'matches', 'users', 'challenges'].map(t => (
+      {['players','matches','squad','users','challenges'].map(t => (
           <button key={t} onClick={() => setTab(t)}
             style={{ padding: '7px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${t === tab ? 'var(--gold)' : 'var(--border)'}`, background: t === tab ? 'var(--gold-dim)' : 'var(--bg2)', color: t === tab ? 'var(--gold)' : 'var(--text3)', fontFamily: 'Barlow, sans-serif' }}>
             {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -345,7 +347,9 @@ export default function AdminPanel() {
           </div>
         </div>
       )}
-
+{tab === 'squad' && (
+        <SquadPicker appUser={appUser} />
+      )}
       {/* CHALLENGES */}
       {tab === 'challenges' && (
         <ChallengesQueue
