@@ -34,7 +34,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          from: 'PlayrIQ <noreply@playriq.io>',
+          from: 'PlayrIQ <noreply@reset.playriq.io>',
           to: player.email,
           subject: `Your ${matchId} stats are live on PlayrIQ`,
           html: `
