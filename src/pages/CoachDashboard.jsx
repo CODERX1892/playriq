@@ -9,6 +9,7 @@ import Glossary from './Glossary'
 import PrivacyPolicy from './PrivacyPolicy'
 import AddMatch from './AddMatch'
 import CoachReflectionView from './CoachReflectionView'
+import PlayerForm from './PlayerForm'
 import TeamAnalytics from './TeamAnalytics'
 import TeamStatsTab from './TeamStats'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts'
@@ -194,8 +195,8 @@ export default function CoachDashboard() {
 
       {/* Tabs — two rows of 5 so nothing is hidden */}
       {(() => {
-        const COACH_TABS = ['squad', 'compare', 'match', 'team', 'analytics', 'kickouts', 'breach', 'turnovers', 'goals', 'entry', 'publish', 'admin', 'glossary']
-        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'breach' ? 'Breach' : t === 'goals' ? 'Goals' : t === 'analytics' ? 'Analytics' : t === 'team' ? 'Team' : t.charAt(0).toUpperCase() + t.slice(1)
+        const COACH_TABS = ['squad', 'compare', 'form', 'match', 'team', 'analytics', 'kickouts', 'breach', 'turnovers', 'goals', 'entry', 'publish', 'admin', 'glossary']
+        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'breach' ? 'Breach' : t === 'goals' ? 'Goals' : t === 'analytics' ? 'Analytics' : t === 'team' ? 'Team' : t === 'form' ? 'Form' : t.charAt(0).toUpperCase() + t.slice(1)
         return (
           <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
@@ -231,6 +232,7 @@ export default function CoachDashboard() {
           <CompareTab squadStats={squadStats} compareP1={compareP1} compareP2={compareP2}
             setCompareP1={setCompareP1} setCompareP2={setCompareP2} />
         )}
+        {tab === 'form' && <PlayerForm allStats={allStats} players={players} />}
         {tab === 'match' && (
           <MatchViewTab allStats={allStats} players={players} matchView={matchView} setMatchView={setMatchView} />
         )}
