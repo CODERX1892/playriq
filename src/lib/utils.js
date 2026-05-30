@@ -6,6 +6,12 @@ export const r1 = (v) => Math.round((v || 0) * 10) / 10
 export const pct = (s, t) => t > 0 ? Math.round(s / t * 100) : 0
 export const sf = (rows, field) => rows.reduce((s, r) => s + n(r[field]), 0)
 
+// Round number from a match_id like "AFL 9" → 9 (used to order matches chronologically)
+export const matchRound = (id) => {
+  const v = parseInt(String(id).trim().split(/\s+/).pop(), 10)
+  return Number.isNaN(v) ? Infinity : v
+}
+
 export const POS_COLORS = {
   Forward: '#f0b429',
   Defender: '#4a9eff',
@@ -54,10 +60,17 @@ export async function loadMatches() {
 
   if (error || !data?.length) return
 
-  _matchData = data
-  _matches = data.map(m => m.match_id)
+  // Sort by the round number in match_id ("AFL 9" → 9) rather than relying on
+  // match_date. Postgres sorts NULL match_date last on an ASC order, which pushed
+  // any match with a missing date (e.g. AFL 9) to the end — after AFL 10. Sorting
+  // on the round number is immune to missing/incorrect dates and always gives
+  // G1 → G2 → … → G9 → G10. (Still set match_date in the DB — the email crons read it.)
+  const sorted = [...data].sort((a, b) => matchRound(a.match_id) - matchRound(b.match_id))
+
+  _matchData = sorted
+  _matches = sorted.map(m => m.match_id)
   _opp = {}
-  data.forEach(m => { _opp[m.match_id] = m.opposition })
+  sorted.forEach(m => { _opp[m.match_id] = m.opposition })
 
   // Update exports
   MATCHES.length = 0

@@ -5,6 +5,7 @@ import { MATCHES, OPP, n, r1, pct, impactColor } from '../lib/utils'
 import DataEntry from './DataEntry'
 import TeamStatsTab from './TeamStats'
 import TeamAnalytics from './TeamAnalytics'
+import PlayerForm from './PlayerForm'
 
 const POS_COLORS = { Forward: '#f0b429', Defender: '#4a9eff', Midfield: '#3ecf8e', Goalkeeper: '#a78bfa' }
 
@@ -170,9 +171,9 @@ export default function AnalystDashboard() {
 
       {/* Tabs */}
       <div className="tabs" style={{ top: 61 }}>
-        {['squad', 'matrix', 'match', 'team', 'analytics', 'entry'].map(t => (
+        {['squad', 'matrix', 'form', 'match', 'team', 'analytics', 'entry'].map(t => (
           <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'entry' ? 'Enter Data' : t === 'matrix' ? 'Matrix' : t === 'analytics' ? 'Analytics' : t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'entry' ? 'Enter Data' : t === 'matrix' ? 'Matrix' : t === 'analytics' ? 'Analytics' : t === 'form' ? 'Form' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -207,6 +208,7 @@ export default function AnalystDashboard() {
         </div>
 
         {tab === 'squad' && <AnalystSquadTab squadStats={squadStats} matchFilter={matchFilter} setMatchFilter={setMatchFilter} metric={metric} setMetric={setMetric} />}
+        {tab === 'form' && <PlayerForm allStats={allStats} players={players} />}
         {tab === 'matrix' && <AnalystMatrixTab allStats={allStats} players={players} matrixCat={matrixCat} setMatrixCat={setMatrixCat} matrixMetric={matrixMetric} setMatrixMetric={setMatrixMetric} />}
         {tab === 'match' && <AnalystMatchTab allStats={allStats} players={players} matchView={matchView} setMatchView={setMatchView} />}
         {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
