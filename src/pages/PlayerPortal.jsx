@@ -8,6 +8,7 @@ import PlayrIQEdge from './PlayrIQEdge'
 import ConsentScreen from './ConsentScreen'
 import Glossary from './Glossary'
 import PlayerReflection from './PlayerReflection'
+import PerformanceReview from './PerformanceReview'
 import PrivacyPolicy from './PrivacyPolicy'
 import TeamStatsTab from './TeamStats'
 import TeamAnalytics from './TeamAnalytics'
@@ -38,7 +39,7 @@ export default function PlayerPortal() {
   const [allStats, setAllStats] = useState([])
   const [allPlayers, setAllPlayers] = useState([])
   const [matchView, setMatchView] = useState('AFL 1')
-  const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'challenge', 'team', 'analytics', 'goals', 'edge', 'glossary']
+  const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'challenge', 'team', 'analytics', 'goals', 'review', 'edge', 'glossary']
 
   useEffect(() => {
     Promise.all([
@@ -128,6 +129,7 @@ export default function PlayerPortal() {
         {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
         {tab === 'analytics' && <TeamAnalytics allStats={allStats} matchView={matchView} setMatchView={setMatchView} />}
         {tab === 'goals' && <PlayerReflection player={player} stats={stats} />}
+        {tab === 'review' && <PerformanceReview player={player} stats={stats} />}
         {tab === 'edge' && <PlayrIQEdge stats={stats} player={player} />}
         {tab === 'glossary' && <Glossary />}
         {tab === 'privacy' && <PrivacyPolicy />}

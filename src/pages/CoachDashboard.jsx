@@ -10,6 +10,7 @@ import PrivacyPolicy from './PrivacyPolicy'
 import AddMatch from './AddMatch'
 import CoachReflectionView from './CoachReflectionView'
 import PlayerForm from './PlayerForm'
+import CoachPerformanceReviews from './CoachPerformanceReviews'
 import TeamAnalytics from './TeamAnalytics'
 import TeamStatsTab from './TeamStats'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts'
@@ -52,6 +53,13 @@ export default function CoachDashboard() {
   const [publishing, setPublishing] = useState(false)
   const [pubStatus, setPubStatus] = useState(null)
   const [teamStats, setTeamStats] = useState([])
+  const [newReviews, setNewReviews] = useState(0)
+
+  // Count unseen performance reviews for the "new" dot on the Reviews tab
+  useEffect(() => {
+    supabase.from('performance_reviews').select('id', { count: 'exact', head: true }).eq('seen_by_coach', false)
+      .then(({ count }) => setNewReviews(count || 0))
+  }, [])
 
   useEffect(() => {
     Promise.all([
@@ -195,13 +203,18 @@ export default function CoachDashboard() {
 
       {/* Tabs — two rows of 5 so nothing is hidden */}
       {(() => {
-        const COACH_TABS = ['squad', 'compare', 'form', 'match', 'team', 'analytics', 'kickouts', 'breach', 'turnovers', 'goals', 'entry', 'publish', 'admin', 'glossary']
-        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'breach' ? 'Breach' : t === 'goals' ? 'Goals' : t === 'analytics' ? 'Analytics' : t === 'team' ? 'Team' : t === 'form' ? 'Form' : t.charAt(0).toUpperCase() + t.slice(1)
+        const COACH_TABS = ['squad', 'compare', 'form', 'reviews', 'match', 'team', 'analytics', 'kickouts', 'breach', 'turnovers', 'goals', 'entry', 'publish', 'admin', 'glossary']
+        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'breach' ? 'Breach' : t === 'goals' ? 'Goals' : t === 'analytics' ? 'Analytics' : t === 'team' ? 'Team' : t === 'form' ? 'Form' : t === 'reviews' ? 'Reviews' : t.charAt(0).toUpperCase() + t.slice(1)
         return (
           <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
               {COACH_TABS.slice(0, 5).map(t => (
-                <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>{label(t)}</button>
+                <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)} style={{ position: 'relative' }}>
+                  {label(t)}
+                  {t === 'reviews' && newReviews > 0 && (
+                    <span style={{ position: 'absolute', top: 6, right: 8, width: 7, height: 7, borderRadius: '50%', background: 'var(--red)' }} />
+                  )}
+                </button>
               ))}
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', borderTop: '1px solid rgba(26,51,86,0.3)' }}>
@@ -233,6 +246,7 @@ export default function CoachDashboard() {
             setCompareP1={setCompareP1} setCompareP2={setCompareP2} />
         )}
         {tab === 'form' && <PlayerForm allStats={allStats} players={players} />}
+        {tab === 'reviews' && <CoachPerformanceReviews />}
         {tab === 'match' && (
           <MatchViewTab allStats={allStats} players={players} matchView={matchView} setMatchView={setMatchView} />
         )}

@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { MATCHES } from '../lib/utils'
 import SquadPicker from '../components/SquadPicker'
+import PlayerForm from './PlayerForm'
 
 
 const POSITIONS = ['Forward', 'Defender', 'Midfield', 'Goalkeeper']
@@ -30,6 +31,7 @@ export default function AdminPanel() {
   const { appUser } = useAuth()
   const [tab, setTab] = useState('players')
   const [players, setPlayers] = useState([])
+  const [allStats, setAllStats] = useState([])
   const [appUsers, setAppUsers] = useState([])
   const [matches, setMatches] = useState([])
   const [challenges, setChallenges] = useState([])
@@ -44,6 +46,10 @@ export default function AdminPanel() {
   const [newUser, setNewUser] = useState({ name: '', email: '', pin: '', role: 'analyst' })
   // Edit player role
   const [editingRole, setEditingRole] = useState(null)
+  // Review windows + comms
+  const [reviewWindows, setReviewWindows] = useState([])
+  const [newWindowLabel, setNewWindowLabel] = useState('')
+  const [busy, setBusy] = useState('')
 
   useEffect(() => {
     Promise.all([
@@ -51,8 +57,10 @@ export default function AdminPanel() {
       supabase.from('app_users').select('*').order('name'),
       supabase.from('matches').select('*').order('match_id'),
       supabase.from('challenges').select('*').order('created_at', { ascending: false }),
-    ]).then(([{ data: p }, { data: u }, { data: m }, { data: c }]) => {
-      setPlayers(p || []); setAppUsers(u || []); setMatches(m || []); setChallenges(c || [])
+      supabase.from('player_stats').select('*'),
+      supabase.from('review_windows').select('*').order('id', { ascending: false }),
+    ]).then(([{ data: p }, { data: u }, { data: m }, { data: c }, { data: ps }, { data: rw }]) => {
+      setPlayers(p || []); setAppUsers(u || []); setMatches(m || []); setChallenges(c || []); setAllStats(ps || []); setReviewWindows(rw || [])
       setLoading(false)
     })
   }, [])
@@ -60,6 +68,62 @@ export default function AdminPanel() {
   const showStatus = (type, message) => {
     setStatus({ type, message })
     setTimeout(() => setStatus(null), 4000)
+  }
+
+  // Open a new review window (closes any currently open one first)
+  const openReviewWindow = async () => {
+    const label = newWindowLabel.trim()
+    if (!label) { showStatus('error', 'Enter a window name'); return }
+    setBusy('open')
+    await supabase.from('review_windows').update({ is_open: false }).eq('is_open', true)
+    const { data, error } = await supabase.from('review_windows').insert({ label, is_open: true }).select().single()
+    setBusy('')
+    if (error) { showStatus('error', error.message); return }
+    setReviewWindows(prev => [data, ...prev.map(w => ({ ...w, is_open: false }))])
+    setNewWindowLabel('')
+    showStatus('success', `✓ "${label}" opened`)
+  }
+
+  const closeReviewWindows = async () => {
+    setBusy('close')
+    await supabase.from('review_windows').update({ is_open: false }).eq('is_open', true)
+    setBusy('')
+    setReviewWindows(prev => prev.map(w => ({ ...w, is_open: false })))
+    showStatus('success', '✓ Review windows closed')
+  }
+
+  const emailReviewOpen = async (windowId) => {
+    setBusy('review-email')
+    try {
+      const r = await fetch('/api/notify-review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ windowId }) })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Failed')
+      showStatus('success', `✓ Review email sent to ${j.sent} player${j.sent === 1 ? '' : 's'}`)
+    } catch (e) { showStatus('error', e.message) }
+    setBusy('')
+  }
+
+  const emailAllPins = async () => {
+    if (!window.confirm('Email every player who has an email address their login PIN?')) return
+    setBusy('pins')
+    try {
+      const r = await fetch('/api/send-pins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Failed')
+      showStatus('success', `✓ PIN emailed to ${j.sent} player${j.sent === 1 ? '' : 's'}`)
+    } catch (e) { showStatus('error', e.message) }
+    setBusy('')
+  }
+
+  const emailPin = async (playerName) => {
+    setBusy('pin-' + playerName)
+    try {
+      const r = await fetch('/api/send-pins', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ playerName }) })
+      const j = await r.json()
+      if (!r.ok) throw new Error(j.error || 'Failed')
+      showStatus(j.sent ? 'success' : 'error', j.sent ? `✓ PIN emailed to ${playerName}` : `${playerName} has no email on file`)
+    } catch (e) { showStatus('error', e.message) }
+    setBusy('')
   }
 
   const addPlayer = async () => {
@@ -200,7 +264,7 @@ export default function AdminPanel() {
 
       {/* Sub tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-      {['players','matches','squad','users','challenges'].map(t => (
+      {['players','matches','squad','form','comms','users','challenges'].map(t => (
           <button key={t} onClick={() => setTab(t)}
             style={{ padding: '7px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${t === tab ? 'var(--gold)' : 'var(--border)'}`, background: t === tab ? 'var(--gold-dim)' : 'var(--bg2)', color: t === tab ? 'var(--gold)' : 'var(--text3)', fontFamily: 'Barlow, sans-serif' }}>
             {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -264,6 +328,11 @@ export default function AdminPanel() {
                   </button>
                 )}
                 <PinResetButton playerName={p.name} onReset={resetPin} />
+                <button onClick={() => emailPin(p.name)} disabled={!p.email || busy === 'pin-' + p.name}
+                  title={p.email ? 'Email this player their PIN' : 'No email on file'}
+                  style={{ fontSize: 10, padding: '3px 8px', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 5, color: p.email ? 'var(--gold)' : 'var(--text3)', cursor: p.email ? 'pointer' : 'not-allowed', fontFamily: 'Barlow, sans-serif', opacity: p.email ? 1 : 0.5, whiteSpace: 'nowrap' }}>
+                  {busy === 'pin-' + p.name ? '…' : 'Email PIN'}
+                </button>
               </div>
             ))}
           </div>
@@ -349,6 +418,71 @@ export default function AdminPanel() {
       )}
 {tab === 'squad' && (
         <SquadPicker appUser={appUser} />
+      )}
+      {tab === 'form' && (
+        <PlayerForm allStats={allStats} players={players} />
+      )}
+      {/* COMMS — review windows + player emails */}
+      {tab === 'comms' && (
+        <div>
+          {/* Review windows */}
+          <div className="card" style={{ padding: 14, marginBottom: 14 }}>
+            <div className="card-header" style={{ marginBottom: 12 }}><span style={{ color: 'var(--purple)' }}>Performance Review Windows</span></div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+              <input
+                value={newWindowLabel}
+                onChange={e => setNewWindowLabel(e.target.value)}
+                placeholder="e.g. Mid-Season Review 2026"
+                style={{ flex: 1, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'Barlow, sans-serif' }}
+              />
+              <button onClick={openReviewWindow} disabled={busy === 'open'}
+                style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--purple)', border: 'none', color: 'white', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Barlow, sans-serif', whiteSpace: 'nowrap' }}>
+                {busy === 'open' ? 'Opening…' : 'Open Window'}
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 12 }}>
+              Opening a new window closes any open one. Players submit against the open window until you close it.
+            </div>
+
+            {reviewWindows.length === 0 && (
+              <div style={{ fontSize: 12, color: 'var(--text3)', fontStyle: 'italic' }}>No review windows yet.</div>
+            )}
+            {reviewWindows.map(w => (
+              <div key={w.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderTop: '1px solid rgba(26,51,86,0.2)' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{w.label}</div>
+                  <div style={{ fontSize: 10, color: w.is_open ? 'var(--teal)' : 'var(--text3)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 }}>
+                    {w.is_open ? '● Open' : 'Closed'}
+                  </div>
+                </div>
+                {w.is_open && (
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button onClick={() => emailReviewOpen(w.id)} disabled={busy === 'review-email'}
+                      style={{ padding: '7px 12px', borderRadius: 7, background: 'var(--purple)', border: 'none', color: 'white', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
+                      {busy === 'review-email' ? 'Sending…' : 'Email Players'}
+                    </button>
+                    <button onClick={closeReviewWindows} disabled={busy === 'close'}
+                      style={{ padding: '7px 12px', borderRadius: 7, background: 'transparent', border: '1px solid var(--border)', color: 'var(--text3)', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
+                      Close
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* PIN resend */}
+          <div className="card" style={{ padding: 14, marginBottom: 14 }}>
+            <div className="card-header" style={{ marginBottom: 12 }}><span style={{ color: 'var(--gold)' }}>Login PINs</span></div>
+            <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 12, lineHeight: 1.5 }}>
+              Emails every player (who has an email on file) their current login PIN. Use this to get locked-out players back in.
+            </div>
+            <button onClick={emailAllPins} disabled={busy === 'pins'}
+              style={{ padding: '10px 18px', borderRadius: 8, background: 'var(--gold)', border: 'none', color: '#07111f', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>
+              {busy === 'pins' ? 'Sending…' : 'Email All Players Their PIN'}
+            </button>
+          </div>
+        </div>
       )}
       {/* CHALLENGES */}
       {tab === 'challenges' && (
