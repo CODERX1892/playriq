@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
-import { MATCHES, OPP, n, r1, pct, impactColor } from '../lib/utils'
+import { MATCHES, OPP, n, r1, pct, impactColor, inActiveComp } from '../lib/utils'
 import DataEntry from './DataEntry'
 import TeamStatsTab from './TeamStats'
 import TeamAnalytics from './TeamAnalytics'
@@ -57,7 +57,7 @@ const MATRIX_CATEGORIES = {
     metrics: [
       { key: 'tackles',              label: 'Tackles',      color: '#4a9eff' },
       { key: 'forced_to_win',        label: 'Forced TO',    color: '#3ecf8e' },
-      { key: 'kickaway_to_received', label: 'Kickaway TO',  color: '#3ecf8e' },
+      { key: 'kickaway_to_received', label: 'Interception TO',  color: '#3ecf8e' },
       { key: 'defensive_duels_won',  label: 'Duels Won',    color: '#3ecf8e' },
       { key: 'breach_1v1',           label: 'Breach 1v1',   color: '#f06060' },
       { key: 'dne',                  label: 'DNE',          color: '#f06060' },
@@ -103,12 +103,12 @@ export default function AnalystDashboard() {
       supabase.from('match_status').select('*'),
       supabase.from('team_stats').select('*'),
     ]).then(([{ data: stats }, { data: pls }, { data: ms }, { data: ts }]) => {
-      setAllStats(stats || [])
+      setAllStats((stats || []).filter(r => inActiveComp(r.match_id)))
       setPlayers(pls || [])
       const msMap = {}
       if (ms) ms.forEach(m => { msMap[m.match_id] = m })
       setMatchStatuses(msMap)
-      setTeamStats(ts || [])
+      setTeamStats((ts || []).filter(r => inActiveComp(r.match_id)))
       setLoading(false)
     })
   }, [])

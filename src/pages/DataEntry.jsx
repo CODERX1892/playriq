@@ -19,7 +19,7 @@ const COL_GROUPS = [
       { key: 'duels_lost', label: 'Lost' },
       { key: 'dne', label: 'DNE' },
       { key: 'forced_to_win', label: 'F.TO' },
-      { key: 'kickaway_to_received', label: 'K.TO' },
+      { key: 'kickaway_to_received', label: 'Int.TO' },
       { key: 'tackles', label: 'Tckl' },
       { key: 'breach_1v1', label: 'Brch' },
     ]

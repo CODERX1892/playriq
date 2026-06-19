@@ -28,7 +28,7 @@ const STAT_GROUPS = [
       ['simple_receive',        'Simple Receive'],
       ['advance_receive',       'Advance Receive'],
       ['carries',               'Carry'],
-      ['kickaway_to_received',  'Kickaway Received'],
+      ['kickaway_to_received',  'Interception TO Won'],
       ['turnovers_kicked_away', 'Turnover (Kicked Away)'],
       ['turnovers_in_contact',  'Turnover In Contact'],
       ['turnover_skill_error',  'Turnover (Skill Error)'],

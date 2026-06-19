@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import Avatar from '../components/Avatar'
-import { MATCHES, OPP, POS_COLORS, n, r1, pct, sf, impactColor, normalise } from '../lib/utils'
+import { MATCHES, OPP, POS_COLORS, n, r1, pct, sf, impactColor, normalise, inActiveComp } from '../lib/utils'
 import DataEntry from './DataEntry'
 import AdminPanel from './AdminPanel'
 import Glossary from './Glossary'
@@ -68,12 +68,12 @@ export default function CoachDashboard() {
       supabase.from('match_status').select('*'),
       supabase.from('team_stats').select('*'),
     ]).then(([{ data: stats }, { data: pls }, { data: ms }, { data: ts }]) => {
-      setAllStats(stats || [])
+      setAllStats((stats || []).filter(r => inActiveComp(r.match_id)))
       setPlayers(pls || [])
       const msMap = {}
       if (ms) ms.forEach(m => { msMap[m.match_id] = m })
       setMatchStatuses(msMap)
-      setTeamStats(ts || [])
+      setTeamStats((ts || []).filter(r => inActiveComp(r.match_id)))
       setLoading(false)
     })
   }, [])
@@ -576,7 +576,7 @@ function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
       {(tackles+forcedTO+kickawayTO+dne+breach+koOppBreak) > 0 && sectionCard('Defence', 'var(--teal)', <>
         {statRow('Tackles', tackles, 'var(--blue)', true, 'tackles')}
         {statRow('Forced TO Won', forcedTO, 'var(--teal)', true, 'forced_to_win')}
-        {statRow('Kickaway TO Won', kickawayTO, 'var(--teal)', true, 'kickaway_to_received')}
+        {statRow('Interception TO Won', kickawayTO, 'var(--teal)', true, 'kickaway_to_received')}
         {koOppBreak > 0 && statRow('Opp KO Break Won', koOppBreak, 'var(--teal)', true, 'won_break_opp')}
         {dne > 0 && statRow('DNE', dne, 'var(--red)', true, 'dne')}
         {breach > 0 && statRow('Breach 1v1', breach, 'var(--red)', true, 'breach_1v1')}
@@ -1051,7 +1051,7 @@ function PlayerMatchDrillDown({ r, players, matchView, onBack }) {
       {/* Defence Won */}
       {section('Defence — Won', 'var(--teal)', [
         ['Forced TO', forcedTO, 'var(--teal)'],
-        ['Kickaway TO', kickawayTO, 'var(--teal)'],
+        ['Interception TO', kickawayTO, 'var(--teal)'],
         ['Tackles', tackles, 'var(--blue)'],
         ['Duels Won', duelsWon, 'var(--teal)'],
       ])}
@@ -1294,7 +1294,7 @@ function TurnoversTab({ allStats, players }) {
             </tr>
             <tr style={{ background: 'var(--bg3)' }}>
               <th style={kth}></th>
-              {['Tackles','Forced TO','Kickaway TO'].map(l => <th key={l} style={{ ...kth, color: 'var(--teal)', borderLeft: '1px solid rgba(26,51,86,0.4)', fontWeight: 400 }}>{l}</th>)}
+              {['Tackles','Forced TO','Interception TO'].map(l => <th key={l} style={{ ...kth, color: 'var(--teal)', borderLeft: '1px solid rgba(26,51,86,0.4)', fontWeight: 400 }}>{l}</th>)}
               {['Contact','Skill Err','Kicked Away','Drop Shts','1pt DS','2pt DS','Goal DS'].map(l => <th key={l} style={{ ...kth, color: 'var(--red)', borderLeft: '1px solid rgba(26,51,86,0.4)', fontWeight: 400 }}>{l}</th>)}
             </tr>
           </thead>

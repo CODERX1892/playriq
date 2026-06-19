@@ -52,6 +52,58 @@ export let MATCHES = _matches
 export let OPP = _opp
 export let MATCH_DATA = _matchData
 
+// ─── COMPETITION FILTER ───────────────────────────────────────────────────────
+// MATCHES / OPP / MATCH_DATA above are the *visible* set — they reflect the active
+// competition filter. The full, unfiltered list lives in _allMatchData.
+//
+// Buckets: 'championship' = anything whose competition/match_type starts with
+// "champ" (or a match_id starting "SFC"). Everything else — League, Challenge,
+// blank — buckets as 'league'. So challenge games sit alongside league games.
+let _allMatchData = []
+let _compFilter = 'all'                       // 'all' | 'league' | 'championship'
+
+export const COMP_OF = {}                     // match_id -> 'league' | 'championship'
+export const ACTIVE_MATCH_IDS = new Set()     // match_ids currently visible
+
+const _normComp = (m) => {
+  const c = String(m?.competition || m?.match_type || '').toLowerCase()
+  if (c.startsWith('champ')) return 'championship'
+  if (String(m?.match_id || '').toUpperCase().startsWith('SFC')) return 'championship'
+  return 'league'
+}
+
+export const competitionOf = (matchId) => COMP_OF[matchId] || 'league'
+export const inActiveComp = (matchId) =>
+  _compFilter === 'all' || competitionOf(matchId) === _compFilter
+export const getCompFilter = () => _compFilter
+
+export function setCompFilter(f) {
+  _compFilter = (f === 'league' || f === 'championship') ? f : 'all'
+  _applyCompFilter()
+}
+
+// Re-derive the visible exports from _allMatchData + the active filter.
+function _applyCompFilter() {
+  // COMP_OF is built from the *full* list so competitionOf() works for any match.
+  Object.keys(COMP_OF).forEach(k => delete COMP_OF[k])
+  _allMatchData.forEach(m => { COMP_OF[m.match_id] = _normComp(m) })
+
+  const visible = _allMatchData.filter(
+    m => _compFilter === 'all' || _normComp(m) === _compFilter
+  )
+
+  ACTIVE_MATCH_IDS.clear()
+  visible.forEach(m => ACTIVE_MATCH_IDS.add(m.match_id))
+
+  MATCHES.length = 0
+  visible.forEach(m => MATCHES.push(m.match_id))
+
+  Object.keys(OPP).forEach(k => delete OPP[k])
+  visible.forEach(m => { OPP[m.match_id] = m.opposition })
+
+  MATCH_DATA.splice(0, MATCH_DATA.length, ...visible)
+}
+
 export async function loadMatches() {
   const { data, error } = await supabase
     .from('matches')
@@ -65,17 +117,8 @@ export async function loadMatches() {
   // any match with a missing date (e.g. AFL 9) to the end — after AFL 10. Sorting
   // on the round number is immune to missing/incorrect dates and always gives
   // G1 → G2 → … → G9 → G10. (Still set match_date in the DB — the email crons read it.)
-  const sorted = [...data].sort((a, b) => matchRound(a.match_id) - matchRound(b.match_id))
+  _allMatchData = [...data].sort((a, b) => matchRound(a.match_id) - matchRound(b.match_id))
 
-  _matchData = sorted
-  _matches = sorted.map(m => m.match_id)
-  _opp = {}
-  sorted.forEach(m => { _opp[m.match_id] = m.opposition })
-
-  // Update exports
-  MATCHES.length = 0
-  _matches.forEach(m => MATCHES.push(m))
-  Object.keys(OPP).forEach(k => delete OPP[k])
-  Object.assign(OPP, _opp)
-  MATCH_DATA.splice(0, MATCH_DATA.length, ..._matchData)
+  // Derive the visible exports from the current filter (defaults to 'all').
+  _applyCompFilter()
 }

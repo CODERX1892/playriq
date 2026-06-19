@@ -17,7 +17,7 @@ export default function AddMatch({ onMatchAdded }) {
 
   // Auto-suggest next match ID
   const suggestId = (competition) => {
-    const prefix = competition === 'Championship' ? 'SFC' : 'AFL'
+    const prefix = competition === 'Championship' ? 'SFC' : competition === 'Challenge' ? 'CHL' : 'AFL'
     const existing = MATCH_DATA.filter(m => m.match_id.startsWith(prefix))
     const nums = existing.map(m => parseInt(m.match_id.replace(prefix + ' ', '')) || 0)
     const next = Math.max(0, ...nums) + 1
@@ -68,7 +68,7 @@ export default function AddMatch({ onMatchAdded }) {
       <div style={{ marginBottom: 12 }}>
         <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 5 }}>Competition</div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {['League', 'Championship'].map(c => (
+          {['League', 'Challenge', 'Championship'].map(c => (
             <button key={c} onClick={() => handleCompetitionChange(c)}
               style={{ flex: 1, padding: '9px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${form.competition === c ? 'var(--blue)' : 'var(--border)'}`, background: form.competition === c ? 'rgba(74,158,255,0.12)' : 'var(--bg3)', color: form.competition === c ? 'var(--blue)' : 'var(--text3)', fontFamily: 'Barlow, sans-serif' }}>
               {c}

@@ -663,7 +663,7 @@ function DefenceTab({ rows, mc, matchFilter, setMatchFilter, stats, player, allS
 
   const defRows = buildStatRows(rows, [
     ['tackles', 'Tackles'], ['forced_to_win', 'Forced TO Won'],
-    ['kickaway_to_received', 'Kickaway TO Won'],
+    ['kickaway_to_received', 'Interception TO Won'],
     ['dne', 'Defensive Non-Engagement (DNE)'],
   ], mc, TEAM_AVGS)
 
@@ -798,7 +798,7 @@ function MatchesTab({ stats }) {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4 }}>
                   {[
                     ['Forced TO', forcedTO, 'var(--teal)'],
-                    ['Kickaway TO', kickawayTO, 'var(--teal)'],
+                    ['Interception TO', kickawayTO, 'var(--teal)'],
                     ['DNE', dne, dne > 0 ? 'var(--red)' : 'var(--text3)'],
                   ].map(([l, v, c]) => (
                     <div key={l} style={{ textAlign: 'center' }}>

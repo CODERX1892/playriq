@@ -16,7 +16,7 @@ const COLUMN_LABELS = {
   one_pointer_scored_f: '1-Pointer Scored (Free)', two_pointer_scored_f: '2-Pointer Scored (Free)', goals_scored_f: 'Goal Scored (Free)',
   one_pointer_wide: '1-Pointer Wide', two_pointer_wide: '2-Pointer Wide', goals_wide: 'Goal Wide',
   simple_pass: 'Simple Pass', advance_pass: 'Advance Pass', simple_receive: 'Simple Receive', advance_receive: 'Advance Receive',
-  carries: 'Carry', kickaway_to_received: 'Kickaway Received', turnovers_kicked_away: 'Turnover (Kicked Away)',
+  carries: 'Carry', kickaway_to_received: 'Interception TO Won', turnovers_kicked_away: 'Turnover (Kicked Away)',
   turnovers_in_contact: 'Turnover In Contact', turnover_skill_error: 'Turnover (Skill Error)', drop_shorts: 'Drop Short',
   tackles: 'Tackle', duels_contested: 'Duel Contested', defensive_duels_won: 'Duel Won', duels_lost: 'Duel Lost',
   breach_1v1: '1v1 Breach', dne: 'DNE', forced_to_win: 'Forced Turnover Won',

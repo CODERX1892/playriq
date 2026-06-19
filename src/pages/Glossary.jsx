@@ -14,7 +14,7 @@ const CATEGORIES = [
       { name: 'DNE', full: 'Defensive Non-Engagement', definition: 'Failure to apply expected defensive pressure in a contest situation, leading to a shot or assist to shot.', negative: true },
       { name: 'Tackles (no TO)', definition: 'Defensive contact that disrupts play but does not regain possession.' },
       { name: 'Forced TO Win', definition: 'Turnover directly created and secured through tackle or pressure.' },
-      { name: 'Kickaway TO Received', definition: 'Possession secured from opposition kickout without primary contest role.' },
+      { name: 'Interception TO Won', definition: 'Turnover won by intercepting an opposition kick or pass, rather than from a primary kickout contest.' },
     ]
   },
   {

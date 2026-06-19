@@ -18,7 +18,7 @@ const DYNAMIC_BENCHMARKS = {
     // Defence & workrate
     tackles:               { good: 3.0,  p90: 4.0,  lower_is_better: false, zero_target: false, warning: 3.0,  label: "Tackles per game" },
     forced_to_win:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Forced TOs Won per game" },
-    kickaway_to_received:  { good: 0.5,  p90: 1.0,  lower_is_better: false, zero_target: false, warning: 0.5,  label: "Kickaway TOs Won per game" },
+    kickaway_to_received:  { good: 0.5,  p90: 1.0,  lower_is_better: false, zero_target: false, warning: 0.5,  label: "Interception TOs Won per game" },
     // Opp kickouts
     won_clean_p1_opp:      { good: 0.5,  p90: 1.0,  lower_is_better: false, zero_target: false, warning: 0.5,  label: "Opp KO Clean Wins per game" },
     won_break_opp:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Opp KO Breaks per game" },
@@ -45,7 +45,7 @@ const DYNAMIC_BENCHMARKS = {
     // Defence
     tackles:               { good: 3.0,  p90: 4.0,  lower_is_better: false, zero_target: false, warning: 3.0,  label: "Tackles per game" },
     forced_to_win:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Forced TOs Won per game" },
-    kickaway_to_received:  { good: 0.5,  p90: 1.0,  lower_is_better: false, zero_target: false, warning: 0.5,  label: "Kickaway TOs Won per game" },
+    kickaway_to_received:  { good: 0.5,  p90: 1.0,  lower_is_better: false, zero_target: false, warning: 0.5,  label: "Interception TOs Won per game" },
     // Opp kickouts
     won_clean_p1_opp:      { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Opp KO Clean Wins per game" },
     won_break_opp:         { good: 1.0,  p90: 1.5,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Opp KO Breaks per game" },
@@ -68,7 +68,7 @@ const DYNAMIC_BENCHMARKS = {
     // Defence
     tackles:               { good: 3.0,  p90: 5.0,  lower_is_better: false, zero_target: false, warning: 3.0,  label: "Tackles per game" },
     forced_to_win:         { good: 1.0,  p90: 2.0,  lower_is_better: false, zero_target: false, warning: 1.0,  label: "Forced TOs Won per game" },
-    kickaway_to_received:  { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Kickaway TOs Won per game" },
+    kickaway_to_received:  { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Interception TOs Won per game" },
     dne:                   { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "DNE per game" },
     // Opp kickouts
     won_clean_p1_opp:      { good: 1.5,  p90: 2.0,  lower_is_better: false, zero_target: false, warning: 1.5,  label: "Opp KO Clean Wins per game" },
@@ -94,7 +94,7 @@ const DYNAMIC_BENCHMARKS = {
     // Defence
     tackles:               { good: 4.0,  p90: 6.0,  lower_is_better: false, zero_target: false, warning: 4.0,  label: "Tackles per game" },
     forced_to_win:         { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Forced TOs Won per game" },
-    kickaway_to_received:  { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Kickaway TOs Won per game" },
+    kickaway_to_received:  { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Interception TOs Won per game" },
     dne:                   { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "DNE per game" },
     breach_1v1:            { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "Breach 1v1 per game" },
     // Our kickouts — higher targets for half backs
@@ -118,7 +118,7 @@ const DYNAMIC_BENCHMARKS = {
     // Defence
     tackles:               { good: 4.0,  p90: 6.0,  lower_is_better: false, zero_target: false, warning: 4.0,  label: "Tackles per game" },
     forced_to_win:         { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Forced TOs Won per game" },
-    kickaway_to_received:  { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Kickaway TOs Won per game" },
+    kickaway_to_received:  { good: 2.0,  p90: 3.0,  lower_is_better: false, zero_target: false, warning: 2.0,  label: "Interception TOs Won per game" },
     dne:                   { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "DNE per game" },
     breach_1v1:            { good: 0.2,  p90: 0.1,  lower_is_better: true,  zero_target: false, warning: 0.2,  label: "Breach 1v1 per game" },
     // Our kickouts — full backs are primary targets
@@ -152,7 +152,7 @@ const ROLE_BENCHMARKS = {
       assists_shots:         { good: 1.0,  label: "Assists (3 scores) per game", higher_better: true  },
       tackles:               { good: 3.0,  label: "Tackles per game",            higher_better: true  },
       forced_to_win:         { good: 1.0,  label: "Forced TOs Won per game",     higher_better: true  },
-      kickaway_to_received:  { good: 0.5,  label: "Kickaway TOs Won per game",   higher_better: true  },
+      kickaway_to_received:  { good: 0.5,  label: "Interception TOs Won per game",   higher_better: true  },
       won_clean_p1_opp:      { good: 0.5,  label: "Opp KO Clean Wins per game",  higher_better: true  },
       won_break_opp:         { good: 1.0,  label: "Opp KO Breaks per game",      higher_better: true  },
       won_clean_p1_our:      { good: 0.5,  label: "Our KO Clean Wins per game",  higher_better: true  },
@@ -175,7 +175,7 @@ const ROLE_BENCHMARKS = {
       carries:               { good: 1.5,  label: "Carries per game",            higher_better: true  },
       tackles:               { good: 3.0,  label: "Tackles per game",            higher_better: true  },
       forced_to_win:         { good: 1.0,  label: "Forced TOs Won per game",     higher_better: true  },
-      kickaway_to_received:  { good: 0.5,  label: "Kickaway TOs Won per game",   higher_better: true  },
+      kickaway_to_received:  { good: 0.5,  label: "Interception TOs Won per game",   higher_better: true  },
       won_clean_p1_opp:      { good: 1.0,  label: "Opp KO Clean Wins per game",  higher_better: true  },
       won_break_opp:         { good: 1.0,  label: "Opp KO Breaks per game",      higher_better: true  },
       won_clean_p1_our:      { good: 1.0,  label: "Our KO Clean Wins per game",  higher_better: true  },
@@ -195,7 +195,7 @@ const ROLE_BENCHMARKS = {
       assists_shots:         { good: 2.0,  label: "Assists (3 scores) per game", higher_better: true  },
       tackles:               { good: 3.0,  label: "Tackles per game",            higher_better: true  },
       forced_to_win:         { good: 1.0,  label: "Forced TOs Won per game",     higher_better: true  },
-      kickaway_to_received:  { good: 2.0,  label: "Kickaway TOs Won per game",   higher_better: true  },
+      kickaway_to_received:  { good: 2.0,  label: "Interception TOs Won per game",   higher_better: true  },
       dne:                   { good: 0.2,  label: "DNE per game",                higher_better: false },
       won_clean_p1_opp:      { good: 1.5,  label: "Opp KO Clean Wins per game",  higher_better: true  },
       won_break_opp:         { good: 1.0,  label: "Opp KO Breaks per game",      higher_better: true  },
@@ -216,7 +216,7 @@ const ROLE_BENCHMARKS = {
       assists_shots:         { good: 2.0,  label: "Assists (3 scores) per game", higher_better: true  },
       tackles:               { good: 4.0,  label: "Tackles per game",            higher_better: true  },
       forced_to_win:         { good: 2.0,  label: "Forced TOs Won per game",     higher_better: true  },
-      kickaway_to_received:  { good: 2.0,  label: "Kickaway TOs Won per game",   higher_better: true  },
+      kickaway_to_received:  { good: 2.0,  label: "Interception TOs Won per game",   higher_better: true  },
       dne:                   { good: 0.2,  label: "DNE per game",                higher_better: false },
       breach_1v1:            { good: 0.2,  label: "Breach 1v1 per game",         higher_better: false },
       won_clean_p1_our:      { good: 2.0,  label: "Our KO Clean Wins per game",  higher_better: true  },
@@ -236,7 +236,7 @@ const ROLE_BENCHMARKS = {
       advance_pass:          { good: 1.0,  label: "Advance passes per game",     higher_better: true  },
       tackles:               { good: 4.0,  label: "Tackles per game",            higher_better: true  },
       forced_to_win:         { good: 2.0,  label: "Forced TOs Won per game",     higher_better: true  },
-      kickaway_to_received:  { good: 2.0,  label: "Kickaway TOs Won per game",   higher_better: true  },
+      kickaway_to_received:  { good: 2.0,  label: "Interception TOs Won per game",   higher_better: true  },
       dne:                   { good: 0.2,  label: "DNE per game",                higher_better: false },
       breach_1v1:            { good: 0.2,  label: "Breach 1v1 per game",         higher_better: false },
       won_clean_p1_our:      { good: 2.5,  label: "Our KO Clean Wins per game",  higher_better: true  },

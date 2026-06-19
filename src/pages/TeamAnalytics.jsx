@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { MATCHES, OPP, n, r1 } from '../lib/utils'
+import { MATCHES, OPP, n, r1, inActiveComp } from '../lib/utils'
 
 function SectionHeader({ title, color }) {
   return (
@@ -99,11 +99,11 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
       supabase.from('team_stats').select('*'),
     ]).then(([ta, ts]) => {
       const aMap = {}
-      ta.data?.forEach(r => { aMap[r.match_id] = r })
+      ta.data?.filter(r => inActiveComp(r.match_id)).forEach(r => { aMap[r.match_id] = r })
       setAnalytics(aMap)
 
       const tsMap = {}
-      ts.data?.forEach(r => { tsMap[`${r.match_id}|${r.team}`] = r })
+      ts.data?.filter(r => inActiveComp(r.match_id)).forEach(r => { tsMap[`${r.match_id}|${r.team}`] = r })
       setTeamStats(tsMap)
 
       setLoading(false)

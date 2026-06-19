@@ -24,7 +24,7 @@ const METRIC_LABELS = {
   two_pointer_scored: '2pt Scored', two_pointer_scored_f: '2pt Scored (free)', two_pointer_wide: '2pt Wide',
   black: 'Black Card', breach_1v1: 'Breach 1v1', defensive_duels_won: 'Duels Won', dne: 'DNE',
   duels_contested: 'Duels Contested', duels_lost: 'Duels Lost', forced_to_win: 'Forced TO Won',
-  free_conceded: 'Frees Conceded', kickaway_to_received: 'Kickaway TO Won', red: 'Red Card',
+  free_conceded: 'Frees Conceded', kickaway_to_received: 'Interception TO Won', red: 'Red Card',
   shot_free_conceded: 'Scoreable Free Conceded', shots_conceded: 'Goals Conceded', shots_saved: 'Saves',
   tackles: 'Tackles', their_ko_contest_opp: 'Opp-KO Contest Lost', their_ko_contest_us: 'Opp-KO Contest Won',
   two_pt_free_conceded: '2pt Free Conceded', won_clean_p1_opp: 'Opp-KO Clean', won_clean_p2_opp: 'Opp-KO Clean (P2)',
