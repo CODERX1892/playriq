@@ -66,7 +66,7 @@ export default function ScoutUpload({ onSaved }) {
         setSoAtt(String(shot_origins.att))
         setSoMid(String(shot_origins.mid))
         setSoDef(String(shot_origins.def))
-        setPdfStatus(`✓ Shots by third: ${shot_origins.att} att · ${shot_origins.mid} mid · ${shot_origins.def} def`)
+        setPdfStatus(`✓ Ball won by third: ${shot_origins.att} att · ${shot_origins.mid} mid · ${shot_origins.def} def`)
       } else {
         setPdfStatus("Couldn't find the shot-origin table — enter the three numbers below from PDF p22.")
       }
@@ -120,7 +120,7 @@ export default function ScoutUpload({ onSaved }) {
       </div>
 
       <div style={{ marginBottom: 10 }}>
-        <div style={lbl}>PDF File — optional (auto-fills shots by third)</div>
+        <div style={lbl}>PDF File — optional (auto-fills where they win the ball)</div>
         <input type="file" accept=".pdf" onChange={handlePDF} style={fieldBox} />
         {pdfStatus && <div style={{ fontSize: 11, color: pdfStatus.startsWith('✓') ? 'var(--teal)' : 'var(--text3)', marginTop: 5 }}>{pdfStatus}</div>}
       </div>
@@ -158,7 +158,7 @@ export default function ScoutUpload({ onSaved }) {
             </div>
           </div>
 
-          <div style={{ ...lbl, marginBottom: 5 }}>Their shots by third — from PDF (editable)</div>
+          <div style={{ ...lbl, marginBottom: 5 }}>Where they win the ball — by third, from PDF (editable)</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
             <input type="number" min="0" value={soAtt} onChange={e => setSoAtt(e.target.value)} placeholder="Attacking" style={fieldBox} />
             <input type="number" min="0" value={soMid} onChange={e => setSoMid(e.target.value)} placeholder="Middle" style={fieldBox} />

@@ -144,14 +144,14 @@ function Profile({ agg, totalGames }) {
         <Bar label="Turnover" value={agg.shot_sources.turnover.total} max={maxSrc} accent="var(--teal)" right={`${agg.shot_sources.turnover.perGame}/g`} />
       </Section>
 
-      {/* Where they shoot from (by third) */}
+      {/* Where they win the ball before shooting (by third) */}
       {agg.shot_origins && (
-        <Section title="Where they shoot from" hint={`by third · ${agg.shot_origins.games} game${agg.shot_origins.games > 1 ? 's' : ''}`}>
+        <Section title="Where they win the ball before shooting" hint={`by third · ${agg.shot_origins.games} game${agg.shot_origins.games > 1 ? 's' : ''}`}>
           <Bar label="Attacking 3rd" value={agg.shot_origins.att} max={agg.shot_origins.total} accent="var(--gold)" right={`${agg.shot_origins.att_pct}%`} />
           <Bar label="Middle 3rd" value={agg.shot_origins.mid} max={agg.shot_origins.total} accent="var(--gold)" right={`${agg.shot_origins.mid_pct}%`} />
           <Bar label="Defensive 3rd" value={agg.shot_origins.def} max={agg.shot_origins.total} accent="var(--gold)" right={`${agg.shot_origins.def_pct}%`} />
           <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>
-            Third the possession started in before they shot.
+            Third where they won possession that led to a shot — high defensive-3rd = they punish deep turnovers and break.
           </div>
         </Section>
       )}
