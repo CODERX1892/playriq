@@ -13,6 +13,7 @@ import PlayerForm from './PlayerForm'
 import CoachPerformanceReviews from './CoachPerformanceReviews'
 import TeamAnalytics from './TeamAnalytics'
 import TeamStatsTab from './TeamStats'
+import Scout from './Scout'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts'
 
 // p60Key = per/60 field, rawKey = total field, null = already a ratio
@@ -203,7 +204,7 @@ export default function CoachDashboard() {
 
       {/* Tabs — two rows of 5 so nothing is hidden */}
       {(() => {
-        const COACH_TABS = ['squad', 'compare', 'form', 'reviews', 'match', 'team', 'analytics', 'kickouts', 'breach', 'turnovers', 'goals', 'entry', 'publish', 'admin', 'glossary']
+        const COACH_TABS = ['squad', 'compare', 'form', 'reviews', 'match', 'team', 'analytics', 'scout', 'kickouts', 'breach', 'turnovers', 'goals', 'entry', 'publish', 'admin', 'glossary']
         const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'breach' ? 'Breach' : t === 'goals' ? 'Goals' : t === 'analytics' ? 'Analytics' : t === 'team' ? 'Team' : t === 'form' ? 'Form' : t === 'reviews' ? 'Reviews' : t.charAt(0).toUpperCase() + t.slice(1)
         return (
           <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
@@ -251,6 +252,7 @@ export default function CoachDashboard() {
           <MatchViewTab allStats={allStats} players={players} matchView={matchView} setMatchView={setMatchView} />
         )}
         {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
+        {tab === 'scout' && <Scout canLoad={true} />}
         {tab === 'kickouts' && <KickoutsTab allStats={allStats} players={players} />}
         {tab === 'turnovers' && <TurnoversTab allStats={allStats} players={players} />}
         {tab === 'entry' && <div><AddMatch onMatchAdded={() => window.location.reload()} /><DataEntry /></div>}

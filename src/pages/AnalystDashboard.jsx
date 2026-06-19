@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { MATCHES, OPP, n, r1, pct, impactColor, inActiveComp } from '../lib/utils'
 import DataEntry from './DataEntry'
 import TeamStatsTab from './TeamStats'
+import Scout from './Scout'
 import TeamAnalytics from './TeamAnalytics'
 import PlayerForm from './PlayerForm'
 
@@ -171,7 +172,7 @@ export default function AnalystDashboard() {
 
       {/* Tabs */}
       <div className="tabs" style={{ top: 61 }}>
-        {['squad', 'matrix', 'form', 'match', 'team', 'analytics', 'entry'].map(t => (
+        {['squad', 'matrix', 'form', 'match', 'team', 'analytics', 'scout', 'entry'].map(t => (
           <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>
             {t === 'entry' ? 'Enter Data' : t === 'matrix' ? 'Matrix' : t === 'analytics' ? 'Analytics' : t === 'form' ? 'Form' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
@@ -212,6 +213,7 @@ export default function AnalystDashboard() {
         {tab === 'matrix' && <AnalystMatrixTab allStats={allStats} players={players} matrixCat={matrixCat} setMatrixCat={setMatrixCat} matrixMetric={matrixMetric} setMatrixMetric={setMatrixMetric} />}
         {tab === 'match' && <AnalystMatchTab allStats={allStats} players={players} matchView={matchView} setMatchView={setMatchView} />}
         {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
+        {tab === 'scout' && <Scout canLoad={true} />}
         {tab === 'analytics' && <TeamAnalytics allStats={allStats} matchView={matchView} setMatchView={setMatchView} />}
         {tab === 'entry' && <DataEntry analystName={appUser.name} />}
       </div>

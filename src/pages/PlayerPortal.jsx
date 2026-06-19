@@ -11,6 +11,7 @@ import PlayerReflection from './PlayerReflection'
 import PerformanceReview from './PerformanceReview'
 import PrivacyPolicy from './PrivacyPolicy'
 import TeamStatsTab from './TeamStats'
+import Scout from './Scout'
 import TeamAnalytics from './TeamAnalytics'
 import ChallengeTab from './ChallengeTab'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
@@ -39,7 +40,7 @@ export default function PlayerPortal() {
   const [allStats, setAllStats] = useState([])
   const [allPlayers, setAllPlayers] = useState([])
   const [matchView, setMatchView] = useState('AFL 1')
-  const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'challenge', 'team', 'analytics', 'goals', 'review', 'edge', 'glossary']
+  const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'challenge', 'team', 'analytics', 'scout', 'goals', 'review', 'edge', 'glossary']
 
   useEffect(() => {
     Promise.all([
@@ -128,6 +129,7 @@ export default function PlayerPortal() {
         {tab === 'challenge' && <ChallengeTab player={player} />}
         {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
         {tab === 'analytics' && <TeamAnalytics allStats={allStats} matchView={matchView} setMatchView={setMatchView} />}
+        {tab === 'scout' && <Scout canLoad={false} />}
         {tab === 'goals' && <PlayerReflection player={player} stats={stats} />}
         {tab === 'review' && <PerformanceReview player={player} stats={stats} />}
         {tab === 'edge' && <PlayrIQEdge stats={stats} player={player} />}
