@@ -84,21 +84,23 @@ export function parseScoutXML(xmlText) {
     score_pts: goals * 3 + twopt * 2 + pts,
   }
 
-  // Per-player shooters
+  // Per-player shooters — threat broken out by type (play/free/2pt/goal)
   const sh = {}
   oppShots.forEach(e => {
     const p = e.labels.Player || 'Unknown'
     const o = e.labels.Outcome, d = e.labels.Description
-    const s = (sh[p] ||= { player: p, shots: 0, goals: 0, twopt: 0, pts: 0, wides: 0, frees: 0 })
+    const s = (sh[p] ||= { player: p, shots: 0, goals: 0, twopt: 0, pts: 0, wides: 0, frees: 0, play: 0 })
     s.shots++
     if (o === 'Goal') s.goals++
     else if (o === 'Two Points') s.twopt++
     else if (o === 'Point') s.pts++
     else if (WIDE_OUTCOMES.has(o)) s.wides++
     if (d === 'Free' || d === 'Penalty') s.frees++
+    else if (d === 'Play') s.play++
   })
   const shooters = Object.values(sh)
-    .map(s => ({ ...s, score_pts: s.goals * 3 + s.twopt * 2 + s.pts }))
+    .map(s => ({ ...s, scored: s.goals + s.twopt + s.pts, score_pts: s.goals * 3 + s.twopt * 2 + s.pts }))
+    .filter(s => s.player !== 'Unknown')
     .sort((a, b) => b.shots - a.shots)
 
   // Shot sources / outcomes / types

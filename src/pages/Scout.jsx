@@ -36,6 +36,41 @@ const Metric = ({ label, value, sub }) => (
   </div>
 )
 
+// One dangerman: volume bar + scored/shots + type chips (play/free/2pt/goal).
+function Chip({ label, n, color }) {
+  const on = n > 0
+  return (
+    <span style={{
+      fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 5,
+      background: on ? `color-mix(in srgb, ${color} 16%, transparent)` : 'var(--bg3)',
+      color: on ? color : 'var(--text3)', whiteSpace: 'nowrap',
+    }}>{label} {n}</span>
+  )
+}
+function ThreatRow({ s, max }) {
+  const w = max > 0 ? Math.round((s.shots / max) * 100) : 0
+  const conv = s.shots > 0 ? Math.round((s.scored / s.shots) * 100) : 0
+  return (
+    <div style={{ marginBottom: 11 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{s.player}</span>
+        <span style={{ fontSize: 11, color: 'var(--text2)' }}>
+          <b style={{ color: 'var(--gold)' }}>{s.scored}</b>/{s.shots} scored · {s.shots_pg}/g · {conv}%
+        </span>
+      </div>
+      <div style={{ height: 6, background: 'var(--bg3)', borderRadius: 4, overflow: 'hidden', marginBottom: 5 }}>
+        <div style={{ height: '100%', width: `${w}%`, background: 'var(--blue)', opacity: 0.8 }} />
+      </div>
+      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+        <Chip label="play" n={s.play} color="var(--blue)" />
+        <Chip label="free" n={s.frees} color="var(--teal)" />
+        <Chip label="2pt" n={s.twopt} color="var(--gold)" />
+        <Chip label="goal" n={s.goals} color="var(--red)" />
+      </div>
+    </div>
+  )
+}
+
 export default function Scout({ canLoad = false }) {
   const [rows, setRows] = useState(null)
   const [opp, setOpp] = useState(null)
@@ -125,15 +160,14 @@ function Profile({ agg, totalGames }) {
         </div>
       </Section>
 
-      {/* Dangermen — per game rates */}
-      <Section title="Dangermen" hint="shots · pts/game">
-        {agg.shooters.slice(0, 8).map(s => (
-          <Bar key={s.player} label={s.player} value={s.shots} max={maxShooter}
-            accent="var(--blue)"
-            right={`${s.shots_pg}/g · ${s.score_pts_pg}p${s.frees ? ` · ${s.frees}f` : ''}`} />
-        ))}
-        <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>
-          Bars = total shots; right = per-game shots · per-game points scored.
+      {/* Dangermen — threat broken out by type */}
+      <Section title="Dangermen" hint="scored / shots · type">
+        {agg.shooters.slice(0, 8).map(s => <ThreatRow key={s.player} s={s} max={maxShooter} />)}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--text3)', marginTop: 6 }}>
+          <span><b style={{ color: 'var(--blue)' }}>play</b> from open play</span>
+          <span><b style={{ color: 'var(--teal)' }}>free</b> frees/45s</span>
+          <span><b style={{ color: 'var(--gold)' }}>2pt</b> two-pointers</span>
+          <span><b style={{ color: 'var(--red)' }}>goal</b> goal attempts</span>
         </div>
       </Section>
 

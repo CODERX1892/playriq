@@ -65,7 +65,7 @@ export function aggregateOpponent(rows) {
   const sh = {}
   rows.forEach(r => {
     (r.profile?.shooters || []).forEach(s => {
-      const e = (sh[s.player] ||= { player: s.player, games: 0, shots: 0, score_pts: 0, frees: 0, goals: 0, twopt: 0, pts: 0, wides: 0 })
+      const e = (sh[s.player] ||= { player: s.player, games: 0, shots: 0, score_pts: 0, frees: 0, goals: 0, twopt: 0, pts: 0, wides: 0, play: 0, scored: 0 })
       e.games++
       e.shots += s.shots || 0
       e.score_pts += s.score_pts || 0
@@ -74,6 +74,8 @@ export function aggregateOpponent(rows) {
       e.twopt += s.twopt || 0
       e.pts += s.pts || 0
       e.wides += s.wides || 0
+      e.play += (s.play != null ? s.play : Math.max(0, (s.shots || 0) - (s.frees || 0)))
+      e.scored += (s.scored != null ? s.scored : (s.goals || 0) + (s.twopt || 0) + (s.pts || 0))
     })
   })
   const shooters = Object.values(sh).map(e => ({
