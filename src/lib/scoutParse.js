@@ -84,19 +84,25 @@ export function parseScoutXML(xmlText) {
     score_pts: goals * 3 + twopt * 2 + pts,
   }
 
-  // Per-player shooters — threat broken out by type (play/free/2pt/goal)
+  // Per-player shooters — scores broken out by type (1pt/2pt/goal) x source
+  // (play/free). Misses can't be typed (a wide doesn't say point-or-goal), so
+  // they're tracked only by source.
   const sh = {}
   oppShots.forEach(e => {
     const p = e.labels.Player || 'Unknown'
-    const o = e.labels.Outcome, d = e.labels.Description
-    const s = (sh[p] ||= { player: p, shots: 0, goals: 0, twopt: 0, pts: 0, wides: 0, frees: 0, play: 0 })
+    const o = e.labels.Outcome
+    const free = e.labels.Description === 'Free' || e.labels.Description === 'Penalty'
+    const src = free ? 'free' : 'play'
+    const s = (sh[p] ||= {
+      player: p, shots: 0, goals: 0, twopt: 0, pts: 0, wides: 0, frees: 0, play: 0,
+      pt: { play: 0, free: 0 }, tp: { play: 0, free: 0 }, gl: { play: 0, free: 0 }, miss: { play: 0, free: 0 },
+    })
     s.shots++
-    if (o === 'Goal') s.goals++
-    else if (o === 'Two Points') s.twopt++
-    else if (o === 'Point') s.pts++
-    else if (WIDE_OUTCOMES.has(o)) s.wides++
-    if (d === 'Free' || d === 'Penalty') s.frees++
-    else if (d === 'Play') s.play++
+    if (free) s.frees++; else s.play++
+    if (o === 'Goal') { s.goals++; s.gl[src]++ }
+    else if (o === 'Two Points') { s.twopt++; s.tp[src]++ }
+    else if (o === 'Point') { s.pts++; s.pt[src]++ }
+    else if (WIDE_OUTCOMES.has(o)) { s.wides++; s.miss[src]++ }
   })
   const shooters = Object.values(sh)
     .map(s => ({ ...s, scored: s.goals + s.twopt + s.pts, score_pts: s.goals * 3 + s.twopt * 2 + s.pts }))

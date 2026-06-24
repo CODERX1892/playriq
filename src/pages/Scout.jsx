@@ -28,6 +28,13 @@ function Bar({ label, sub, value, max, accent = 'var(--blue)', right }) {
   )
 }
 
+// GAA scoreline incl. two-pointers: 1 goal / 1 two-pointer / 10 points -> "1-1-10",
+// folding to "1-10" only when there are no two-pointers.
+function scoreline(goals, twopt, pts) {
+  const g = Math.round(goals || 0), t = Math.round(twopt || 0), p = Math.round(pts || 0)
+  return t > 0 ? `${g}-${t}-${p}` : `${g}-${p}`
+}
+
 const Metric = ({ label, value, sub }) => (
   <div style={{ background: 'var(--bg3)', borderRadius: 8, padding: '10px 12px' }}>
     <div style={{ fontSize: 11, color: 'var(--text3)' }}>{label}</div>
@@ -37,37 +44,115 @@ const Metric = ({ label, value, sub }) => (
 )
 
 // One dangerman: volume bar + scored/shots + type chips (play/free/2pt/goal).
-function Chip({ label, n, color }) {
-  const on = n > 0
+// One score-type line: "1-point  3 (2 play · 1 free)", dimmed if none scored.
+function ScoreLine({ label, color, bd }) {
+  const total = (bd?.play || 0) + (bd?.free || 0)
+  const on = total > 0
   return (
-    <span style={{
-      fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 5,
-      background: on ? `color-mix(in srgb, ${color} 16%, transparent)` : 'var(--bg3)',
-      color: on ? color : 'var(--text3)', whiteSpace: 'nowrap',
-    }}>{label} {n}</span>
+    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 11, opacity: on ? 1 : 0.4, marginBottom: 2 }}>
+      <span style={{ width: 56, color, fontWeight: 700 }}>{label}</span>
+      <span style={{ color: 'var(--text)', fontWeight: 700, width: 16 }}>{total}</span>
+      <span style={{ color: 'var(--text3)' }}>
+        {on ? `${bd.play} play${bd.free ? ` · ${bd.free} free` : ''}` : '—'}
+      </span>
+    </div>
   )
 }
 function ThreatRow({ s, max }) {
   const w = max > 0 ? Math.round((s.shots / max) * 100) : 0
   const conv = s.shots > 0 ? Math.round((s.scored / s.shots) * 100) : 0
+  const miss = s.miss || { play: 0, free: 0 }
+  const missTotal = (miss.play || 0) + (miss.free || 0)
   return (
-    <div style={{ marginBottom: 11 }}>
+    <div style={{ marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
         <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{s.player}</span>
         <span style={{ fontSize: 11, color: 'var(--text2)' }}>
           <b style={{ color: 'var(--gold)' }}>{s.scored}</b>/{s.shots} scored · {s.shots_pg}/g · {conv}%
         </span>
       </div>
-      <div style={{ height: 6, background: 'var(--bg3)', borderRadius: 4, overflow: 'hidden', marginBottom: 5 }}>
+      <div style={{ height: 6, background: 'var(--bg3)', borderRadius: 4, overflow: 'hidden', marginBottom: 7 }}>
         <div style={{ height: '100%', width: `${w}%`, background: 'var(--blue)', opacity: 0.8 }} />
       </div>
-      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-        <Chip label="play" n={s.play} color="var(--blue)" />
-        <Chip label="free" n={s.frees} color="var(--teal)" />
-        <Chip label="2pt" n={s.twopt} color="var(--gold)" />
-        <Chip label="goal" n={s.goals} color="var(--red)" />
-      </div>
+      <ScoreLine label="1-point" color="var(--blue)" bd={s.pt} />
+      <ScoreLine label="2-point" color="var(--gold)" bd={s.tp} />
+      <ScoreLine label="goal" color="var(--red)" bd={s.gl} />
+      {missTotal > 0 && (
+        <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 3 }}>
+          {missTotal} wide ({miss.play} play{miss.free ? ` · ${miss.free} free` : ''})
+        </div>
+      )}
     </div>
+  )
+}
+
+// Simplified vertical GAA pitch with three shaded zones (top -> bottom).
+// bands: [{label, value, pct}] x3. accent tints the shading by volume.
+function PitchBands({ bands, accent = 'var(--gold)', topTag, bottomTag }) {
+  const maxPct = Math.max(1, ...bands.map(b => b.pct))
+  const W = 200, H = 300, m = 8
+  const fW = W - m * 2, fH = H - m * 2, bH = fH / 3
+  const op = p => 0.1 + 0.8 * (p / maxPct)
+  const cx = W / 2
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: 230, display: 'block', margin: '0 auto' }}>
+      <rect x={m} y={m} width={fW} height={fH} fill="var(--bg3)" stroke="var(--border2)" strokeWidth="1.5" rx="3" />
+      {bands.map((b, i) => (
+        <rect key={i} x={m} y={m + i * bH} width={fW} height={bH} fill={accent} opacity={op(b.pct)} />
+      ))}
+      <line x1={m} y1={m + bH} x2={m + fW} y2={m + bH} stroke="var(--border2)" strokeWidth="1" opacity="0.55" />
+      <line x1={m} y1={m + 2 * bH} x2={m + fW} y2={m + 2 * bH} stroke="var(--border2)" strokeWidth="1" opacity="0.55" />
+      <circle cx={cx} cy={H / 2} r="15" fill="none" stroke="var(--border2)" strokeWidth="1" opacity="0.45" />
+      <rect x={cx - 13} y={m - 3} width="26" height="3" fill="var(--text3)" />
+      <rect x={cx - 24} y={m} width="48" height="15" fill="none" stroke="var(--border2)" strokeWidth="1" opacity="0.45" />
+      <rect x={cx - 13} y={H - m} width="26" height="3" fill="var(--text3)" />
+      <rect x={cx - 24} y={H - m - 15} width="48" height="15" fill="none" stroke="var(--border2)" strokeWidth="1" opacity="0.45" />
+      {bands.map((b, i) => (
+        <g key={'t' + i}>
+          <text x={cx} y={m + i * bH + bH / 2 - 1} textAnchor="middle" fontSize="15" fontWeight="800" fill="var(--text)">{b.pct}%</text>
+          <text x={cx} y={m + i * bH + bH / 2 + 13} textAnchor="middle" fontSize="9" fill="var(--text2)">{b.label} · {b.value}</text>
+        </g>
+      ))}
+      {topTag && <text x={cx} y={m + 11} textAnchor="middle" fontSize="8" fill="var(--text3)">{topTag}</text>}
+      {bottomTag && <text x={cx} y={H - m - 5} textAnchor="middle" fontSize="8" fill="var(--text3)">{bottomTag}</text>}
+    </svg>
+  )
+}
+
+// Scoring heatmap on the forward boxes. zones keyed by box number.
+// Rows top->bottom: full-forward (nearest goal) / half-forward / midfield.
+function ZoneHeatPitch({ zones, games }) {
+  const grid = [[15, 14, 13], [12, 11, 10], [9, 0, 8]]
+  const lineName = ['Full-forward', 'Half-forward', 'Midfield']
+  const maxTotal = Math.max(1, ...Object.values(zones).map(z => z.total || 0))
+  const W = 210, H = 280, m = 10, fW = W - 2 * m, fH = H - 2 * m
+  const cw = fW / 3, ch = fH / 3, cx = W / 2
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', maxWidth: 250, display: 'block', margin: '0 auto' }}>
+      <rect x={m} y={m} width={fW} height={fH} fill="var(--bg3)" stroke="var(--border2)" strokeWidth="1.5" rx="3" />
+      {grid.map((line, ri) => line.map((boxNo, ci) => {
+        const z = zones[String(boxNo)] || { total: 0 }
+        const x = m + ci * cw, y = m + ri * ch
+        const has = z.total > 0
+        const hue = has ? (z.pct / 100) * 120 : 0
+        const op = has ? 0.2 + 0.65 * (z.total / maxTotal) : 0
+        return (
+          <g key={boxNo}>
+            <rect x={x} y={y} width={cw} height={ch} fill={has ? `hsl(${hue} 68% 45%)` : 'transparent'} opacity={op} />
+            <rect x={x} y={y} width={cw} height={ch} fill="none" stroke="var(--border2)" strokeWidth="0.5" opacity="0.4" />
+            <text x={x + 4} y={y + 11} fontSize="8" fill="var(--text3)">{boxNo}</text>
+            {has && (
+              <>
+                <text x={x + cw / 2} y={y + ch / 2 + 2} textAnchor="middle" fontSize="14" fontWeight="800" fill="var(--text)">{z.pct}%</text>
+                <text x={x + cw / 2} y={y + ch / 2 + 14} textAnchor="middle" fontSize="8" fill="var(--text2)">{z.sc}/{z.total}{z.fr > 0 ? ` · ${z.fr}f` : ''}</text>
+              </>
+            )}
+          </g>
+        )
+      }))}
+      <rect x={cx - 14} y={m - 3} width="28" height="3" fill="var(--text3)" />
+      <text x={cx} y={H - 1} textAnchor="middle" fontSize="8" fill="var(--text3)">goal at top · {games} game{games > 1 ? 's' : ''}</text>
+    </svg>
   )
 }
 
@@ -95,6 +180,13 @@ export default function Scout({ canLoad = false }) {
     const next = row.included === false // currently excluded -> include
     setRows(rs => rs.map(r => r.id === row.id ? { ...r, included: next } : r))
     const { error: err } = await supabase.from('scout_matches').update({ included: next }).eq('id', row.id)
+    if (err) { setError(err.message); load() }
+  }
+
+  const deleteGame = async (row) => {
+    if (!window.confirm(`Delete this scouted game?\n\n${row.match_label || 'Game'}${row.match_date ? ` · ${row.match_date}` : ''}\n\nThis removes it from ${row.opponent}'s profile permanently.`)) return
+    setRows(rs => rs.filter(r => r.id !== row.id))
+    const { error: err } = await supabase.from('scout_matches').delete().eq('id', row.id)
     if (err) { setError(err.message); load() }
   }
 
@@ -127,7 +219,7 @@ export default function Scout({ canLoad = false }) {
               </div>
             )}
 
-          <GamesList games={oppRows} canLoad={canLoad} onToggle={toggleGame} />
+          <GamesList games={oppRows} canLoad={canLoad} onToggle={toggleGame} onDelete={deleteGame} />
         </>
       )}
     </div>
@@ -155,19 +247,16 @@ function Profile({ agg, totalGames }) {
       {/* Per-game headline */}
       <Section title="Per game" hint="averages across scouted games">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <Metric label="Scoreline" value={`${agg.perGame.goals}-${agg.perGame.pts}`} sub={`${agg.perGame.score_pts} pts/game`} />
+          <Metric label="Scoreline" value={scoreline(agg.perGame.goals, agg.perGame.twopt, agg.perGame.pts)} sub={`${agg.perGame.score_pts} pts/game`} />
           <Metric label="Shots / scores" value={`${agg.perGame.shots}`} sub={`${agg.perGame.scores} scores/game`} />
         </div>
       </Section>
 
-      {/* Dangermen — threat broken out by type */}
-      <Section title="Dangermen" hint="scored / shots · type">
+      {/* Dangermen — scores by type x play/free */}
+      <Section title="Dangermen" hint="scores by type · play vs free">
         {agg.shooters.slice(0, 8).map(s => <ThreatRow key={s.player} s={s} max={maxShooter} />)}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: 10, color: 'var(--text3)', marginTop: 6 }}>
-          <span><b style={{ color: 'var(--blue)' }}>play</b> from open play</span>
-          <span><b style={{ color: 'var(--teal)' }}>free</b> frees/45s</span>
-          <span><b style={{ color: 'var(--gold)' }}>2pt</b> two-pointers</span>
-          <span><b style={{ color: 'var(--red)' }}>goal</b> goal attempts</span>
+        <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 2 }}>
+          Each shooter's scores split into 1-point / 2-point / goal, and how many came from open play vs frees. Wides are shown separately (a miss can't be typed). Sorted by shot volume.
         </div>
       </Section>
 
@@ -178,14 +267,26 @@ function Profile({ agg, totalGames }) {
         <Bar label="Turnover" value={agg.shot_sources.turnover.total} max={maxSrc} accent="var(--teal)" right={`${agg.shot_sources.turnover.perGame}/g`} />
       </Section>
 
+      {/* Scoring heatmap (hot/cold zones from the shot chart) */}
+      {agg.shot_zones && (
+        <Section title="Where they shoot from" hint="shot location · hot = high score %">
+          <ZoneHeatPitch zones={agg.shot_zones.zones} games={agg.shot_zones.games} />
+          <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 6 }}>
+            Where shots are actually taken (not where they win the ball). Green = boxes they convert from, red = where you can force them into low-percentage shots. <b>{'\u00B7'} Nf</b> = how many of a box's shots were frees (◆ on the chart) rather than from play — a box that's hot mostly off frees is a discipline problem, not an open-play one.
+          </div>
+        </Section>
+      )}
+
       {/* Where they win the ball before shooting (by third) */}
       {agg.shot_origins && (
-        <Section title="Where they win the ball before shooting" hint={`by third · ${agg.shot_origins.games} game${agg.shot_origins.games > 1 ? 's' : ''}`}>
-          <Bar label="Attacking 3rd" value={agg.shot_origins.att} max={agg.shot_origins.total} accent="var(--gold)" right={`${agg.shot_origins.att_pct}%`} />
-          <Bar label="Middle 3rd" value={agg.shot_origins.mid} max={agg.shot_origins.total} accent="var(--gold)" right={`${agg.shot_origins.mid_pct}%`} />
-          <Bar label="Defensive 3rd" value={agg.shot_origins.def} max={agg.shot_origins.total} accent="var(--gold)" right={`${agg.shot_origins.def_pct}%`} />
+        <Section title="Where they win the ball before shooting" hint={`possession origin · ${agg.shot_origins.games} game${agg.shot_origins.games > 1 ? 's' : ''}`}>
+          <PitchBands accent="var(--gold)" topTag="they attack ↑" bands={[
+            { label: 'Attacking', value: agg.shot_origins.att, pct: agg.shot_origins.att_pct },
+            { label: 'Middle', value: agg.shot_origins.mid, pct: agg.shot_origins.mid_pct },
+            { label: 'Defensive', value: agg.shot_origins.def, pct: agg.shot_origins.def_pct },
+          ]} />
           <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 4 }}>
-            Third where they won possession that led to a shot — high defensive-3rd = they punish deep turnovers and break.
+            Which third they <b>win possession</b> in before a shot — different from where the shot is taken. High defensive-3rd = they punish deep turnovers and break.
           </div>
         </Section>
       )}
@@ -243,7 +344,7 @@ function Profile({ agg, totalGames }) {
 
 // Game list with per-game include/exclude. Excluded games stay stored and
 // listed (greyed) but don't feed the aggregate above.
-function GamesList({ games, canLoad, onToggle }) {
+function GamesList({ games, canLoad, onToggle, onDelete }) {
   const sorted = [...games].sort((a, b) =>
     String(b.match_date || '').localeCompare(String(a.match_date || '')))
   return (
@@ -264,14 +365,22 @@ function GamesList({ games, canLoad, onToggle }) {
                 <div style={{ fontSize: 10, color: 'var(--text3)' }}>{r.match_date || ''}{r.competition ? ` · ${r.competition}` : ''}</div>
               </div>
               <div style={{ textAlign: 'right', fontSize: 11, color: 'var(--text2)', whiteSpace: 'nowrap', padding: '0 8px' }}>
-                <div style={{ color: 'var(--gold)', fontWeight: 700 }}>{t.goals}-{t.pts} ({t.score_pts})</div>
+                <div style={{ color: 'var(--gold)', fontWeight: 700 }}>{scoreline(t.goals, t.twopt, t.pts)} ({t.score_pts})</div>
                 <div style={{ color: 'var(--text3)' }}>{t.shots} sh</div>
               </div>
               {canLoad && (
-                <button onClick={() => onToggle(r)}
-                  style={{ border: `1px solid ${inc ? 'var(--teal)' : 'var(--border2)'}`, background: inc ? 'rgba(62,207,142,0.12)' : 'transparent', color: inc ? 'var(--teal)' : 'var(--text3)', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'Barlow, sans-serif', minWidth: 64 }}>
-                  {inc ? '✓ In' : 'Out'}
-                </button>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button onClick={() => onToggle(r)}
+                    style={{ border: `1px solid ${inc ? 'var(--teal)' : 'var(--border2)'}`, background: inc ? 'rgba(62,207,142,0.12)' : 'transparent', color: inc ? 'var(--teal)' : 'var(--text3)', borderRadius: 6, padding: '4px 9px', fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'Barlow, sans-serif', minWidth: 64 }}>
+                    {inc ? '✓ In' : 'Out'}
+                  </button>
+                  <button onClick={() => onDelete(r)} title="Delete game"
+                    style={{ border: '1px solid var(--border2)', background: 'transparent', color: 'var(--text3)', borderRadius: 6, padding: '4px 8px', fontSize: 13, lineHeight: 1, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}
+                    onMouseEnter={e => { e.currentTarget.style.color = 'var(--red)'; e.currentTarget.style.borderColor = 'var(--red)' }}
+                    onMouseLeave={e => { e.currentTarget.style.color = 'var(--text3)'; e.currentTarget.style.borderColor = 'var(--border2)' }}>
+                    🗑
+                  </button>
+                </div>
               )}
             </div>
           )

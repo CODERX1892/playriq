@@ -63,6 +63,13 @@ export function aggregateOpponent(rows) {
 
   // ---- per-player shooters across games ----
   const sh = {}
+  const addBd = (e, s) => {
+    for (const k of ['pt', 'tp', 'gl', 'miss']) {
+      e[k] ||= { play: 0, free: 0 }
+      e[k].play += s[k]?.play || 0
+      e[k].free += s[k]?.free || 0
+    }
+  }
   rows.forEach(r => {
     (r.profile?.shooters || []).forEach(s => {
       const e = (sh[s.player] ||= { player: s.player, games: 0, shots: 0, score_pts: 0, frees: 0, goals: 0, twopt: 0, pts: 0, wides: 0, play: 0, scored: 0 })
@@ -76,6 +83,7 @@ export function aggregateOpponent(rows) {
       e.wides += s.wides || 0
       e.play += (s.play != null ? s.play : Math.max(0, (s.shots || 0) - (s.frees || 0)))
       e.scored += (s.scored != null ? s.scored : (s.goals || 0) + (s.twopt || 0) + (s.pts || 0))
+      addBd(e, s)
     })
   })
   const shooters = Object.values(sh).map(e => ({
@@ -128,6 +136,25 @@ export function aggregateOpponent(rows) {
     }
   }
 
+  // ---- shot zones (scoring heatmap; from PDF chart, may be missing) ----
+  const zGames = rows.filter(r => r.profile?.shot_zones)
+  let shot_zones = null
+  if (zGames.length) {
+    const acc = {}
+    zGames.forEach(r => {
+      Object.entries(r.profile.shot_zones).forEach(([k, v]) => {
+        const e = (acc[k] ||= { sc: 0, ms: 0, fr: 0 })
+        e.sc += v.sc || 0; e.ms += v.ms || 0; e.fr += v.fr || 0
+      })
+    })
+    Object.values(acc).forEach(e => {
+      const t = e.sc + e.ms
+      e.total = t
+      e.pct = t > 0 ? Math.round((e.sc / t) * 100) : null
+    })
+    shot_zones = { zones: acc, games: zGames.length }
+  }
+
   // ---- their kickouts (overall + by length), volume-weighted ----
   const their_kickouts = finishKO(rows.reduce((a, r) => addKO(a, r.profile?.their_kickouts), blankKO()))
   const lengths = ['Short', 'Mid-Range', 'Long']
@@ -171,6 +198,7 @@ export function aggregateOpponent(rows) {
     perGame,
     shot_sources,
     shot_origins,
+    shot_zones,
     shooters,
     kickout_targets,
     their_kickouts,

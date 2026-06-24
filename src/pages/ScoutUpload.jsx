@@ -23,6 +23,7 @@ export default function ScoutUpload({ onSaved }) {
   const [soAtt, setSoAtt] = useState('')
   const [soMid, setSoMid] = useState('')
   const [soDef, setSoDef] = useState('')
+  const [shotZones, setShotZones] = useState(null) // { 'near-L': {sc,ms}, ... }
   const [pdfStatus, setPdfStatus] = useState(null)
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState(null)
@@ -61,17 +62,28 @@ export default function ScoutUpload({ onSaved }) {
     setPdfStatus('Reading PDF…')
     try {
       const buf = await file.arrayBuffer()
-      const { shot_origins } = await parseScoutPDF(buf)
+      const { shot_origins, shot_zones, shot_zones_error } = await parseScoutPDF(buf)
       if (shot_origins) {
         setSoAtt(String(shot_origins.att))
         setSoMid(String(shot_origins.mid))
         setSoDef(String(shot_origins.def))
         setPdfStatus(`✓ Ball won by third: ${shot_origins.att} att · ${shot_origins.mid} mid · ${shot_origins.def} def`)
       } else {
-        setPdfStatus("Couldn't find the shot-origin table — enter the three numbers below from PDF p22.")
+        setPdfStatus("Couldn't auto-read the 'where they win the ball' numbers (the 'Oppositions perspective' table) — enter the three below by hand.")
+      }
+      if (shot_zones && Object.keys(shot_zones).length) {
+        const tot = Object.values(shot_zones).reduce((a, z) => a + (z.sc || 0) + (z.ms || 0), 0)
+        setShotZones(shot_zones)
+        setPdfStatus(s => (s || '') + ` · read ${tot} shots off the Conceding shot chart — check the boxes below`)
+      } else {
+        // auto-read found nothing — show an empty grid so the boxes can still be
+        // entered by hand from the Conceding shot chart.
+        setShotZones({})
+        setPdfStatus(s => (s || '') + ` · couldn\u2019t read the Conceding chart${shot_zones_error ? ` (${shot_zones_error})` : ''} — fill the boxes below from it`)
       }
     } catch (err) {
-      setPdfStatus("Couldn't read that PDF — enter the three numbers below manually.")
+      setShotZones({})
+      setPdfStatus("Couldn't read that PDF — enter the three numbers and the shot boxes below manually.")
     }
   }
 
@@ -85,15 +97,25 @@ export default function ScoutUpload({ onSaved }) {
     const shot_origins = hasOrigins
       ? { att: att || 0, mid: mid || 0, def: def || 0 }
       : null
+    // normalise verified zones to {sc,ms,total,pct}
+    let shot_zones = null
+    if (shotZones && Object.values(shotZones).some(z => (z.sc || 0) + (z.ms || 0) > 0)) {
+      shot_zones = {}
+      Object.entries(shotZones).forEach(([k, z]) => {
+        const sc = +z.sc || 0, ms = +z.ms || 0, t = sc + ms
+        const fr = Math.min(t, +z.fr || 0)
+        if (t > 0) shot_zones[k] = { sc, ms, fr, total: t, pct: Math.round((sc / t) * 100) }
+      })
+    }
     const { error: err } = await supabase.from('scout_matches').upsert({
       opponent,
       match_label: matchLabel,
       match_date: date || null,
       competition,
       season: season || null,
-      source: hasOrigins ? 'xml+pdf' : 'xml',
+      source: (hasOrigins || shot_zones) ? 'xml+pdf' : 'xml',
       ...h,
-      profile: { ...parsed, opponent, shot_origins },
+      profile: { ...parsed, opponent, shot_origins, shot_zones },
       updated_at: new Date().toISOString(),
     }, { onConflict: 'opponent,match_label' })
     setSaving(false)
@@ -102,6 +124,7 @@ export default function ScoutUpload({ onSaved }) {
       setStatus(`✓ Saved ${opponent} — ${matchLabel}`)
       setParsed(null); setLabel(''); setDate('')
       setSoAtt(''); setSoMid(''); setSoDef('')
+      setShotZones(null)
       setPdfStatus(null)
       onSaved?.()
     }
@@ -131,7 +154,7 @@ export default function ScoutUpload({ onSaved }) {
             <div style={{ fontWeight: 700, color: 'var(--teal)', marginBottom: 6 }}>✓ Parsed — {parsed.opponent}</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, color: 'var(--text3)' }}>
               <span>Shots: <b style={{ color: 'var(--text)' }}>{parsed.totals.shots}</b></span>
-              <span>Score: <b style={{ color: 'var(--gold)' }}>{parsed.totals.goals}-{parsed.totals.pts} ({parsed.totals.score_pts})</b></span>
+              <span>Score: <b style={{ color: 'var(--gold)' }}>{parsed.totals.goals}-{parsed.totals.twopt > 0 ? `${parsed.totals.twopt}-` : ''}{parsed.totals.pts} ({parsed.totals.score_pts})</b></span>
               <span>Their KO kept: <b style={{ color: 'var(--teal)' }}>{parsed.their_kickouts.retained_pct}%</b></span>
               <span>Top shooter: <b style={{ color: 'var(--text)' }}>{parsed.shooters[0]?.player || '—'}</b></span>
             </div>
@@ -164,6 +187,37 @@ export default function ScoutUpload({ onSaved }) {
             <input type="number" min="0" value={soMid} onChange={e => setSoMid(e.target.value)} placeholder="Middle" style={fieldBox} />
             <input type="number" min="0" value={soDef} onChange={e => setSoDef(e.target.value)} placeholder="Defensive" style={fieldBox} />
           </div>
+
+          {shotZones && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ ...lbl, marginBottom: 5 }}>Verify shot boxes — from the <b>Conceding</b> shot chart (score / miss · ◆ = frees)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
+                {[[15, 14, 13], [12, 11, 10], [9, 0, 8]].flatMap((line, li) => line.map(boxNo => {
+                  const k = String(boxNo)
+                  const z = shotZones[k] || { sc: 0, ms: 0, fr: 0 }
+                  const set = (field, v) => setShotZones(s => ({ ...s, [k]: { sc: s[k]?.sc || 0, ms: s[k]?.ms || 0, fr: s[k]?.fr || 0, [field]: Math.max(0, parseInt(v, 10) || 0) } }))
+                  const lineName = ['Full-fwd', 'Half-fwd', 'Midfield'][li]
+                  return (
+                    <div key={k} style={{ background: 'var(--bg3)', borderRadius: 6, padding: '5px 6px' }}>
+                      <div style={{ fontSize: 8, color: 'var(--text3)', marginBottom: 3, display: 'flex', justifyContent: 'space-between' }}>
+                        <span>box {boxNo} · {lineName}</span>
+                        {z.fr > 0 && <span style={{ color: 'var(--gold)' }}>◆{z.fr}</span>}
+                      </div>
+                      <div style={{ display: 'flex', gap: 3 }}>
+                        <input type="number" min="0" value={z.sc || 0} onChange={e => set('sc', e.target.value)}
+                          style={{ width: '50%', background: 'var(--bg2)', border: '1px solid var(--teal)', borderRadius: 4, padding: '3px 4px', color: 'var(--teal)', fontSize: 11, fontFamily: 'Barlow, sans-serif', boxSizing: 'border-box' }} />
+                        <input type="number" min="0" value={z.ms || 0} onChange={e => set('ms', e.target.value)}
+                          style={{ width: '50%', background: 'var(--bg2)', border: '1px solid var(--red)', borderRadius: 4, padding: '3px 4px', color: 'var(--red)', fontSize: 11, fontFamily: 'Barlow, sans-serif', boxSizing: 'border-box' }} />
+                      </div>
+                    </div>
+                  )
+                }))}
+              </div>
+              <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 5 }}>
+                Top row = full-forward line (nearest goal). Left box = scores, right = misses. Adjust to match the PDF shot chart, then save.
+              </div>
+            </div>
+          )}
         </>
       )}
 
