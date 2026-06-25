@@ -4,6 +4,22 @@
 // every report. SELF-CONTAINED: no imports outside this file (so the serverless
 // bundle can't break on a missing module).
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs'
+import { createRequire } from 'node:module'
+import { pathToFileURL } from 'node:url'
+
+// Vercel's bundler can't follow pdf.js's *dynamic* worker import, so it drops
+// pdf.worker.mjs from the deployed function. pdf.js then fails to set up its
+// main-thread "fake worker" and getDocument throws — the endpoint 500s on the
+// Lambda ("Cannot find module .../pdf.worker.mjs") even though it runs fine
+// locally. Pin workerSrc to the resolved file: the load succeeds, and the
+// require.resolve() call is statically analysable so @vercel/nft bundles the
+// file too. (vercel.json `includeFiles` belt-and-suspenders the same path.)
+try {
+  const require = createRequire(import.meta.url)
+  pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(
+    require.resolve('pdfjs-dist/legacy/build/pdf.worker.mjs'),
+  ).href
+} catch { /* leave pdf.js to its default resolution */ }
 
 /* ---------- shot-chart pixel detection (inlined from scoutShotChart.js) ---------- */
 const BOX_GRID = [[15, 14, 13], [12, 11, 10], [9, 0, 8]]

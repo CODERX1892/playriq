@@ -179,9 +179,16 @@ export function readBoxesByCluster(data, width, height) {
   // frame has collapsed and one box holds most of the dots, this is the unreliable
   // fallback misfiring (browser can't give us the real chart image) — return null
   // so the UI leaves the boxes blank for manual entry rather than dumping garbage.
+  // Confidence gate: distinguish a genuinely concentrated opponent (dots spread
+  // across several boxes, one busiest — legitimate) from a collapsed frame (a
+  // couple of stray dots stretch the grid so the bulk lands in a single cell).
+  // Only the latter is a misfire. Reject only when degenerate: almost everything
+  // in ONE box AND fewer than 3 boxes occupied. A concentrated-but-real read
+  // (e.g. 54% in box 14 across 4 boxes — St Marys) is kept for the coach to verify.
+  const occupied = Object.values(zones).filter(z => (z.sc + z.ms) > 0).length
   const maxBox = Math.max(0, ...Object.values(zones).map(z => z.sc + z.ms))
-  if (total < 3 || maxBox / total > 0.5) {
-    return { zones: null, debug: { collapsed: true, max: maxBox, total } }
+  if (total < 3 || (maxBox / total > 0.8 && occupied < 3)) {
+    return { zones: null, debug: { collapsed: true, max: maxBox, total, occupied } }
   }
   return { zones, dots: total, totals: { sc: SC, ms: MS } }
 }
