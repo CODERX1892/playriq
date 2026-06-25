@@ -140,7 +140,7 @@ function getImageObj(page, name) {
     try { page.objs.get(name, done) } catch {
       try { page.commonObjs.get(name, done) } catch { done(null) }
     }
-    setTimeout(() => done(null), 3000) // safety timeout
+    setTimeout(() => done(null), 12000) // safety timeout (callback fires during render)
   })
 }
 
@@ -179,8 +179,12 @@ async function readShotZonesFromPage(pdf, pageNum, pdfjsLib) {
     }
   }
 
-  // --- RENDER the page once: this both populates pdf.js' image cache (so the
-  // embedded bitmap becomes fetchable) and gives us pixels for the fallback. ---
+  // Register the image-capture callback BEFORE rendering. pdf.js only decodes
+  // the bitmap *during* render and (for large images) doesn't retain it after,
+  // so we must be listening when it resolves — not ask for it afterwards.
+  const imgPromise = best ? getImageObj(page, best.name) : Promise.resolve(null)
+
+  // --- RENDER the page once (fires the callback above; also gives fallback px) ---
   let rendered = null
   try {
     const viewport = page.getViewport({ scale: 2.0 })
@@ -194,11 +198,10 @@ async function readShotZonesFromPage(pdf, pageNum, pdfjsLib) {
     rendered = { data: im.data, width: canvas.width, height: canvas.height }
   } catch (e) { /* fall through */ }
 
-  // --- PRIMARY: read the embedded chart bitmap directly (correct pitch frame).
-  // Now resolvable because the render above populated the object store. ---
+  // --- PRIMARY: the embedded chart bitmap captured during render (correct frame) ---
   if (best) {
     try {
-      const img = await getImageObj(page, best.name)
+      const img = await imgPromise
       if (img && img.data && img.width > 50) {
         const data = toRGBA(img)
         const W = img.width, H = img.height
@@ -215,7 +218,7 @@ async function readShotZonesFromPage(pdf, pageNum, pdfjsLib) {
     try {
       const r = readBoxesByCluster(rendered.data, rendered.width, rendered.height)
       if (r && r.zones) return { zones: r.zones, dots: r.dots }
-      return { zones: null, error: `0 dots [cluster; ${r?.debug?.n ?? '?'} blobs]` }
+      return { zones: null, error: r?.debug?.collapsed ? 'chart read unreliable for this report' : 'couldn\u2019t read the chart' }
     } catch (e) {
       return { zones: null, error: 'cluster failed: ' + (e?.message || e) }
     }

@@ -174,7 +174,16 @@ export function readBoxesByCluster(data, width, height) {
   const zones = dotsToBoxes(sc, ms, frame, med)
   const SC = Object.values(zones).reduce((a, z) => a + z.sc, 0)
   const MS = Object.values(zones).reduce((a, z) => a + z.ms, 0)
-  return { zones, dots: SC + MS, totals: { sc: SC, ms: MS } }
+  const total = SC + MS
+  // Confidence gate: a trustworthy read spreads across several boxes. If the
+  // frame has collapsed and one box holds most of the dots, this is the unreliable
+  // fallback misfiring (browser can't give us the real chart image) — return null
+  // so the UI leaves the boxes blank for manual entry rather than dumping garbage.
+  const maxBox = Math.max(0, ...Object.values(zones).map(z => z.sc + z.ms))
+  if (total < 3 || maxBox / total > 0.5) {
+    return { zones: null, debug: { collapsed: true, max: maxBox, total } }
+  }
+  return { zones, dots: total, totals: { sc: SC, ms: MS } }
 }
 
 // Count raw colour pixels in the full image vs the kept (left) region — lets a

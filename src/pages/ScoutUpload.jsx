@@ -56,31 +56,54 @@ export default function ScoutUpload({ onSaved }) {
     reader.readAsText(file)
   }
 
+  // Apply a parsed PDF result (from either the server or the in-browser reader).
+  const applyPdfResult = ({ shot_origins, shot_zones, shot_zones_error }) => {
+    if (shot_origins) {
+      setSoAtt(String(shot_origins.att))
+      setSoMid(String(shot_origins.mid))
+      setSoDef(String(shot_origins.def))
+      setPdfStatus(`✓ Ball won by third: ${shot_origins.att} att · ${shot_origins.mid} mid · ${shot_origins.def} def`)
+    } else {
+      setPdfStatus("Couldn't auto-read the 'where they win the ball' numbers (the 'Oppositions perspective' table) — enter the three below by hand.")
+    }
+    if (shot_zones && Object.keys(shot_zones).length) {
+      const tot = Object.values(shot_zones).reduce((a, z) => a + (z.sc || 0) + (z.ms || 0), 0)
+      setShotZones(shot_zones)
+      setPdfStatus(s => (s || '') + ` · read ${tot} shots off the Conceding shot chart — check the boxes below`)
+    } else {
+      // nothing read — show an empty grid so boxes can be entered from the chart.
+      setShotZones({})
+      setPdfStatus(s => (s || '') + ` · couldn\u2019t read the Conceding chart${shot_zones_error ? ` (${shot_zones_error})` : ''} — fill the boxes below from it`)
+    }
+  }
+
   const handlePDF = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     setPdfStatus('Reading PDF…')
+    const buf = await file.arrayBuffer()
+
+    // Server reader first — reliable on Vercel/playriq.io (Node can read the
+    // embedded chart image, which the browser can't).
     try {
-      const buf = await file.arrayBuffer()
-      const { shot_origins, shot_zones, shot_zones_error } = await parseScoutPDF(buf)
-      if (shot_origins) {
-        setSoAtt(String(shot_origins.att))
-        setSoMid(String(shot_origins.mid))
-        setSoDef(String(shot_origins.def))
-        setPdfStatus(`✓ Ball won by third: ${shot_origins.att} att · ${shot_origins.mid} mid · ${shot_origins.def} def`)
-      } else {
-        setPdfStatus("Couldn't auto-read the 'where they win the ball' numbers (the 'Oppositions perspective' table) — enter the three below by hand.")
+      const bytes = new Uint8Array(buf)
+      let bin = ''; const CH = 0x8000
+      for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH))
+      const pdfBase64 = btoa(bin)
+      const resp = await fetch('/api/scout-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pdfBase64 }),
+      })
+      if (resp.ok) {
+        const j = await resp.json()
+        if (j && (j.shot_zones || j.shot_origins)) { applyPdfResult(j); return }
       }
-      if (shot_zones && Object.keys(shot_zones).length) {
-        const tot = Object.values(shot_zones).reduce((a, z) => a + (z.sc || 0) + (z.ms || 0), 0)
-        setShotZones(shot_zones)
-        setPdfStatus(s => (s || '') + ` · read ${tot} shots off the Conceding shot chart — check the boxes below`)
-      } else {
-        // auto-read found nothing — show an empty grid so the boxes can still be
-        // entered by hand from the Conceding shot chart.
-        setShotZones({})
-        setPdfStatus(s => (s || '') + ` · couldn\u2019t read the Conceding chart${shot_zones_error ? ` (${shot_zones_error})` : ''} — fill the boxes below from it`)
-      }
+    } catch { /* endpoint not reachable (e.g. plain `npm run dev`) — fall back */ }
+
+    // Fallback: in-browser reader (gated; won't run api/ functions locally).
+    try {
+      applyPdfResult(await parseScoutPDF(buf))
     } catch (err) {
       setShotZones({})
       setPdfStatus("Couldn't read that PDF — enter the three numbers and the shot boxes below manually.")
