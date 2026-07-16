@@ -135,9 +135,10 @@ export function computeEntry(metric, x, mode) {
     const v = att > 0 ? Math.round((scored / att) * 100) : 0
     return { name: x.name, position: x.position, mins: x.mins, scored, att, value: v, display: att > 0 ? `${v}%` : '—' }
   }
-  // ratio (PER)
+  // ratio (PER) — value keeps the raw ratio (for sorting + bar scaling);
+  // display is the ×100 whole-number index (0.87 → 87).
   const v = metric.ratio(x.rows)
-  return { name: x.name, position: x.position, mins: x.mins, value: v, display: v.toFixed(2) }
+  return { name: x.name, position: x.position, mins: x.mins, value: v, display: String(Math.round(v * 100)) }
 }
 
 // Does this player entry qualify to be RANKED on the board? (The viewer is not

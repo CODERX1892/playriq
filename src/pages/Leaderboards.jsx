@@ -60,6 +60,9 @@ function Board({ metric, pool, mode, viewerName }) {
         ? `min ${MIN_RANK_MINS} min`
         : mode === 'p60' ? `min ${MIN_RANK_MINS} min` : 'season total'
 
+  // Top value on this board — used to scale the PER bars (ratio boards only).
+  const maxVal = metric.type === 'ratio' ? Math.max(...entries.map((e) => e.value), 0.0001) : 0
+
   const Row = ({ e, rank }) => {
     const me = e.name === viewerName
     const posColor = POS_COLORS[e.position] || 'var(--text3)'
@@ -76,6 +79,11 @@ function Board({ metric, pool, mode, viewerName }) {
           {e.name}{me && <span style={{ fontSize: 9, color: 'var(--blue)', marginLeft: 6 }}>YOU</span>}
         </div>
         {metric.type === 'pct' && <div style={{ fontSize: 10, color: 'var(--text3)' }}>{e.scored}/{e.att}</div>}
+        {metric.type === 'ratio' && (
+          <div style={{ width: 56, height: 6, borderRadius: 3, background: 'rgba(26,51,86,0.5)', overflow: 'hidden', flexShrink: 0 }}>
+            <div style={{ width: `${Math.max(5, Math.round((e.value / maxVal) * 100))}%`, height: '100%', background: metric.color, borderRadius: 3 }} />
+          </div>
+        )}
         <div style={{ fontFamily: 'Barlow Condensed, sans-serif', fontSize: 17, fontWeight: 800, color: metric.color, minWidth: 44, textAlign: 'right' }}>
           {e.display}{unit && <span style={{ fontSize: 9, color: 'var(--text3)', fontWeight: 600 }}>{unit}</span>}
         </div>
