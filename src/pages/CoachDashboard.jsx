@@ -206,7 +206,7 @@ export default function CoachDashboard() {
       {/* Tabs — two rows of 5 so nothing is hidden */}
       {(() => {
         const COACH_TABS = ['squad', 'compare', 'leaderboards', 'form', 'reviews', 'match', 'team', 'analytics', 'scout', 'kickouts', 'breach', 'turnovers', 'goals', 'entry', 'publish', 'admin', 'glossary']
-        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'breach' ? 'Breach' : t === 'goals' ? 'Goals' : t === 'analytics' ? 'Analytics' : t === 'team' ? 'Team' : t === 'form' ? 'Form' : t === 'reviews' ? 'Reviews' : t === 'leaderboards' ? 'Boards' : t.charAt(0).toUpperCase() + t.slice(1)
+        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'breach' ? 'Breach' : t === 'goals' ? 'Goals' : t === 'analytics' ? 'Analytics' : t === 'team' ? 'Team' : t === 'form' ? 'Form' : t === 'reviews' ? 'Reviews' : t === 'leaderboards' ? 'Leaderboards' : t.charAt(0).toUpperCase() + t.slice(1)
         return (
           <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>

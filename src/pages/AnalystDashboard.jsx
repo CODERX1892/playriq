@@ -175,7 +175,7 @@ export default function AnalystDashboard() {
       <div className="tabs" style={{ top: 61 }}>
         {['squad', 'matrix', 'form', 'match', 'leaderboards', 'team', 'analytics', 'scout', 'entry'].map(t => (
           <button key={t} className={`tab${tab === t ? ' coach-active' : ''}`} onClick={() => setTab(t)}>
-            {t === 'entry' ? 'Enter Data' : t === 'matrix' ? 'Matrix' : t === 'analytics' ? 'Analytics' : t === 'form' ? 'Form' : t === 'leaderboards' ? 'Boards' : t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'entry' ? 'Enter Data' : t === 'matrix' ? 'Matrix' : t === 'analytics' ? 'Analytics' : t === 'form' ? 'Form' : t === 'leaderboards' ? 'Leaderboards' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
