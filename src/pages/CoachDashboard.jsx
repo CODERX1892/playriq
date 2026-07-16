@@ -15,6 +15,7 @@ import TeamAnalytics from './TeamAnalytics'
 import TeamStatsTab from './TeamStats'
 import Scout from './Scout'
 import Leaderboards from './Leaderboards'
+import { HomeTab } from './PlayerPortal'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts'
 
 // p60Key = per/60 field, rawKey = total field, null = already a ratio
@@ -38,6 +39,8 @@ export default function CoachDashboard() {
   const { logout, appUser } = useAuth()
   const [tab, setTab] = useState('squad')
   const [selectedPlayer, setSelectedPlayer] = useState(null)
+  const [pView, setPView] = useState('home') // 'home' = player's own homepage | 'detail' = coach detail
+  const [homePlayer, setHomePlayer] = useState('') // dropdown selection on the Player tab
   const [changingPin, setChangingPin] = useState(false)
   const [newPin, setNewPin] = useState('')
   const [pinStatus, setPinStatus] = useState(null)
@@ -205,8 +208,8 @@ export default function CoachDashboard() {
 
       {/* Tabs — two rows of 5 so nothing is hidden */}
       {(() => {
-        const COACH_TABS = ['squad', 'compare', 'leaderboards', 'form', 'reviews', 'match', 'team', 'analytics', 'scout', 'kickouts', 'breach', 'turnovers', 'goals', 'entry', 'publish', 'admin', 'glossary']
-        const label = t => t === 'entry' ? 'Data' : t === 'kickouts' ? 'Kickouts' : t === 'turnovers' ? 'TOs' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'breach' ? 'Breach' : t === 'goals' ? 'Goals' : t === 'analytics' ? 'Analytics' : t === 'team' ? 'Team' : t === 'form' ? 'Form' : t === 'reviews' ? 'Reviews' : t === 'leaderboards' ? 'Leaderboards' : t.charAt(0).toUpperCase() + t.slice(1)
+        const COACH_TABS = ['squad', 'player', 'compare', 'leaderboards', 'form', 'reviews', 'match', 'team', 'analytics', 'scout', 'breakdown', 'goals', 'entry', 'publish', 'admin', 'glossary']
+        const label = t => t === 'entry' ? 'Data' : t === 'breakdown' ? 'Breakdown' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'goals' ? 'Goals' : t === 'analytics' ? 'Analytics' : t === 'team' ? 'Team' : t === 'form' ? 'Form' : t === 'reviews' ? 'Reviews' : t === 'leaderboards' ? 'Leaderboards' : t.charAt(0).toUpperCase() + t.slice(1)
         return (
           <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
@@ -231,17 +234,53 @@ export default function CoachDashboard() {
       <div style={{ padding: 14 }}>
         {tab === 'squad' && (
           selectedPlayer
-            ? <PlayerDetailView
-                name={selectedPlayer}
-                allStats={allStats}
-                players={players}
-                onBack={() => setSelectedPlayer(null)}
-                onCompare={(name) => { setCompareP1(name); setCompareP2(null); setTab('compare') }}
-              />
+            ? (
+              <div className="fade-in">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <button onClick={() => setSelectedPlayer(null)}
+                    style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 6, padding: '5px 10px', color: 'var(--text3)', fontSize: 12, cursor: 'pointer', fontFamily: 'Barlow, sans-serif' }}>← Squad</button>
+                  <div style={{ display: 'flex', gap: 6, marginLeft: 'auto' }}>
+                    {[['home', 'Player Home'], ['detail', 'Coach Detail']].map(([k, l]) => (
+                      <button key={k} onClick={() => setPView(k)}
+                        style={{ padding: '5px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Barlow, sans-serif',
+                          border: `1px solid ${pView === k ? 'var(--blue)' : 'var(--border)'}`,
+                          background: pView === k ? 'rgba(74,158,255,0.14)' : 'var(--bg3)',
+                          color: pView === k ? 'var(--blue)' : 'var(--text3)' }}>{l}</button>
+                    ))}
+                  </div>
+                </div>
+                {pView === 'home'
+                  ? <CoachPlayerHome name={selectedPlayer} allStats={allStats} players={players} />
+                  : <PlayerDetailView
+                      name={selectedPlayer}
+                      allStats={allStats}
+                      players={players}
+                      onBack={() => setSelectedPlayer(null)}
+                      onCompare={(name) => { setCompareP1(name); setCompareP2(null); setTab('compare') }}
+                    />}
+              </div>
+            )
             : <SquadTab squadStats={squadStats} matchFilter={matchFilter} setMatchFilter={setMatchFilter}
                 posFilter={posFilter} setPosFilter={setPosFilter} metric={metric} setMetric={setMetric}
                 viewMode={viewMode} setViewMode={setViewMode}
                 onPickPlayer={(name) => setSelectedPlayer(name)} />
+        )}
+        {tab === 'player' && (
+          <div className="fade-in">
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 5 }}>Player</div>
+              <select value={homePlayer} onChange={e => setHomePlayer(e.target.value)}
+                style={{ width: '100%', padding: '9px 11px', background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text)', fontSize: 14, fontFamily: 'Barlow, sans-serif', outline: 'none' }}>
+                <option value="">— select a player —</option>
+                {[...players].sort((a, b) => a.name.localeCompare(b.name)).map(p => (
+                  <option key={p.name} value={p.name}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            {homePlayer
+              ? <CoachPlayerHome name={homePlayer} allStats={allStats} players={players} />
+              : <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 12, padding: '30px 0' }}>Pick a player to see their home page.</div>}
+          </div>
         )}
         {tab === 'compare' && (
           <CompareTab squadStats={squadStats} compareP1={compareP1} compareP2={compareP2}
@@ -255,12 +294,18 @@ export default function CoachDashboard() {
         {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
         {tab === 'leaderboards' && <Leaderboards />}
         {tab === 'scout' && <Scout canLoad={true} />}
-        {tab === 'kickouts' && <KickoutsTab allStats={allStats} players={players} />}
-        {tab === 'turnovers' && <TurnoversTab allStats={allStats} players={players} />}
+        {tab === 'breakdown' && (
+          <div className="fade-in">
+            <KickoutsTab allStats={allStats} players={players} />
+            <div style={{ height: 1, background: 'var(--border)', margin: '20px 0' }} />
+            <BreachTab squadStats={squadStats} allStats={allStats} players={players} />
+            <div style={{ height: 1, background: 'var(--border)', margin: '20px 0' }} />
+            <TurnoversTab allStats={allStats} players={players} />
+          </div>
+        )}
         {tab === 'entry' && <div><AddMatch onMatchAdded={() => window.location.reload()} /><DataEntry /></div>}
         {tab === 'publish' && <PublishTab matchStatuses={matchStatuses} setMatchStatuses={setMatchStatuses} appUser={appUser} allStats={allStats} />}
         {tab === 'admin' && <AdminPanel />}
-        {tab === 'breach' && <BreachTab squadStats={squadStats} allStats={allStats} players={players} />}
         {tab === 'analytics' && <TeamAnalytics allStats={allStats} matchView={matchView} setMatchView={setMatchView} />}
         {tab === 'goals' && <CoachReflectionView appUser={appUser} isAdmin={appUser.role === 'admin'} />}
         {tab === 'glossary' && <Glossary />}
@@ -386,6 +431,21 @@ function SquadTab({ squadStats, matchFilter, setMatchFilter, posFilter, setPosFi
 }
 
 // ─── PLAYER DETAIL VIEW ──────────────────────────────────────────────────────
+// Renders a player's own home page (the exact view the player sees) for a coach.
+function CoachPlayerHome({ name, allStats, players }) {
+  const [mf, setMf] = useState('all')
+  const player = players.find(p => p.name === name) || { name, position: '' }
+  const stats = allStats.filter(r => r.player_name === name)
+  const rows = mf === 'all' ? stats : stats.filter(r => r.match_id === mf)
+  const mc = [...new Set(rows.filter(r => n(r.total_minutes) > 0).map(r => r.match_id))].length || 1
+  const allMc = [...new Set(stats.filter(r => n(r.total_minutes) > 0).map(r => r.match_id))].length
+  const posColor = POS_COLORS[player.position] || 'var(--text2)'
+  return (
+    <HomeTab rows={rows} stats={stats} player={player} mc={mc} allMc={allMc} posColor={posColor}
+      allStats={allStats} allPlayers={players} matchFilter={mf} setMatchFilter={setMf} />
+  )
+}
+
 function PlayerDetailView({ name, allStats, players, onBack, onCompare }) {
   const [selectedMatch, setSelectedMatch] = useState(null)
   const [expandedStat, setExpandedStat] = useState(null)

@@ -252,7 +252,7 @@ function ImpactCard({ label, color, impactField, rows, seasonRows, player, allSt
   )
 }
 
-function HomeTab({ rows, stats, player, mc, allMc, posColor, allStats, allPlayers, matchFilter, setMatchFilter }) {
+export function HomeTab({ rows, stats, player, mc, allMc, posColor, allStats, allPlayers, matchFilter, setMatchFilter }) {
   const [chipView, setChipView] = useState('p60')
   const [openInfo, setOpenInfo] = useState(null)   // which ⓘ popover is open: 'total'|'attack'|'transition'|'defence'|null
 
