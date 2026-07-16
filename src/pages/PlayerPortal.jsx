@@ -14,6 +14,8 @@ import TeamStatsTab from './TeamStats'
 import Scout from './Scout'
 import TeamAnalytics from './TeamAnalytics'
 import ChallengeTab from './ChallengeTab'
+import PlayerDashboard from './PlayerDashboard'
+import Leaderboards from './Leaderboards'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 const TEAM_AVGS = {
@@ -39,8 +41,9 @@ export default function PlayerPortal() {
   const [teamStats, setTeamStats] = useState([])
   const [allStats, setAllStats] = useState([])
   const [allPlayers, setAllPlayers] = useState([])
+  const [matches, setMatches] = useState([])
   const [matchView, setMatchView] = useState('AFL 1')
-  const TABS = ['home', 'attack', 'transition', 'defence', 'matches', 'challenge', 'team', 'analytics', 'scout', 'goals', 'review', 'edge', 'glossary']
+  const TABS = ['home', 'dashboard', 'leaderboards', 'matches', 'challenge', 'team', 'analytics', 'scout', 'goals', 'review', 'edge', 'glossary']
 
   useEffect(() => {
     Promise.all([
@@ -49,12 +52,14 @@ export default function PlayerPortal() {
       supabase.from('team_stats').select('*'),
       supabase.from('player_stats').select('*'),
       supabase.from('players').select('name, position'),
-    ]).then(([{ data: statsData }, { data: consentData }, { data: ts }, { data: allStatsData }, { data: ap }]) => {
+      supabase.from('matches').select('match_id, competition, match_type, opposition'),
+    ]).then(([{ data: statsData }, { data: consentData }, { data: ts }, { data: allStatsData }, { data: ap }, { data: ms }]) => {
       setStats(statsData || [])
       setConsent(consentData && consentData.privacy_agreed ? consentData : false)
       setTeamStats(ts || [])
       setAllStats(allStatsData || [])
       setAllPlayers(ap || [])
+      setMatches(ms || [])
       setLoading(false)
     })
   }, [player.name])
@@ -122,9 +127,8 @@ export default function PlayerPortal() {
       {/* Content */}
       <div style={{ padding: 14 }}>
         {tab === 'home' && <HomeTab rows={rows} stats={stats} player={player} mc={mc} allMc={allMc} posColor={posColor} allStats={allStats} allPlayers={allPlayers} />}
-        {tab === 'attack' && <AttackTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} player={player} allStats={allStats} allPlayers={allPlayers} />}
-        {tab === 'transition' && <TransitionTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} player={player} allStats={allStats} allPlayers={allPlayers} />}
-        {tab === 'defence' && <DefenceTab rows={rows} mc={mc} matchFilter={matchFilter} setMatchFilter={setMatchFilter} stats={stats} player={player} allStats={allStats} allPlayers={allPlayers} />}
+        {tab === 'dashboard' && <PlayerDashboard rows={rows} stats={stats} player={player} matchFilter={matchFilter} setMatchFilter={setMatchFilter} allStats={allStats} allPlayers={allPlayers} />}
+        {tab === 'leaderboards' && <Leaderboards player={player} allStats={allStats} allPlayers={allPlayers} matches={matches} />}
         {tab === 'matches' && <MatchesTab stats={stats} />}
         {tab === 'challenge' && <ChallengeTab player={player} />}
         {tab === 'team' && <TeamStatsTab teamStats={teamStats} />}
