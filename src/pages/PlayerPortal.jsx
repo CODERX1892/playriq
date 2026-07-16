@@ -43,7 +43,7 @@ export default function PlayerPortal() {
   const [allPlayers, setAllPlayers] = useState([])
   const [matches, setMatches] = useState([])
   const [matchView, setMatchView] = useState('AFL 1')
-  const TABS = ['home', 'dashboard', 'leaderboards', 'matches', 'challenge', 'team', 'analytics', 'scout', 'goals', 'review', 'edge', 'glossary']
+  const TABS = ['home', 'leaderboards', 'matches', 'challenge', 'team', 'analytics', 'scout', 'goals', 'review', 'edge', 'glossary']
 
   useEffect(() => {
     Promise.all([
@@ -126,8 +126,7 @@ export default function PlayerPortal() {
 
       {/* Content */}
       <div style={{ padding: 14 }}>
-        {tab === 'home' && <HomeTab rows={rows} stats={stats} player={player} mc={mc} allMc={allMc} posColor={posColor} allStats={allStats} allPlayers={allPlayers} />}
-        {tab === 'dashboard' && <PlayerDashboard rows={rows} stats={stats} player={player} matchFilter={matchFilter} setMatchFilter={setMatchFilter} allStats={allStats} allPlayers={allPlayers} />}
+        {tab === 'home' && <HomeTab rows={rows} stats={stats} player={player} mc={mc} allMc={allMc} posColor={posColor} allStats={allStats} allPlayers={allPlayers} matchFilter={matchFilter} setMatchFilter={setMatchFilter} />}
         {tab === 'leaderboards' && <Leaderboards player={player} allStats={allStats} allPlayers={allPlayers} matches={matches} />}
         {tab === 'matches' && <MatchesTab stats={stats} />}
         {tab === 'challenge' && <ChallengeTab player={player} />}
@@ -253,7 +252,7 @@ function ImpactCard({ label, color, impactField, rows, seasonRows, player, allSt
   )
 }
 
-function HomeTab({ rows, stats, player, mc, allMc, posColor, allStats, allPlayers }) {
+function HomeTab({ rows, stats, player, mc, allMc, posColor, allStats, allPlayers, matchFilter, setMatchFilter }) {
   const [chipView, setChipView] = useState('p60')
   const [openInfo, setOpenInfo] = useState(null)   // which ⓘ popover is open: 'total'|'attack'|'transition'|'defence'|null
 
@@ -261,6 +260,7 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor, allStats, allPlayer
   const p2s = sf(rows, 'two_pointer_scored'), f2s = sf(rows, 'two_pointer_scored_f')
   const gs = sf(rows, 'goals_scored'), fgs = sf(rows, 'goals_scored_f')
   const tPl = p1s + p2s * 2 + gs * 3, tFr = f1s + f2s * 2 + fgs * 3, tot = tPl + tFr
+  const assists = sf(rows, 'assists_shots')
 
   // /60 rates for the 4 impact metrics (≥60min games only)
   const ti  = per60(rows, 'total_impact')
@@ -324,7 +324,10 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor, allStats, allPlayer
         </div>
       </div>
 
-      {/* Impact + Points */}
+      {/* Key dashboard — merged in from the old Dashboard tab (sits up top) */}
+      <PlayerDashboard rows={rows} stats={stats} player={player} matchFilter={matchFilter} setMatchFilter={setMatchFilter} allStats={allStats} allPlayers={allPlayers} />
+
+      {/* Impact + Points — now below the key dashboard */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 13 }}>
         <div className="card" style={{ padding: 13, textAlign: 'center' }}>
           <div style={{ fontSize: 9, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 4 }}>
@@ -363,6 +366,7 @@ function HomeTab({ rows, stats, player, mc, allMc, posColor, allStats, allPlayer
           <div style={{ display: 'flex', justifyContent: 'center', gap: 9, marginTop: 6 }}>
             <span style={{ fontSize: 10, color: 'var(--blue)' }}>Play:{tPl}</span>
             <span style={{ fontSize: 10, color: 'var(--purple)' }}>Frees:{tFr}</span>
+            <span style={{ fontSize: 10, color: 'var(--teal)' }}>Assists:{assists}</span>
           </div>
         </div>
       </div>

@@ -20,8 +20,9 @@ export const MIN_RANK_MINS = 120
 // (100%) can't top a leaderboard. Tuned for a GAA season's sample sizes — adjust
 // here if you want them tighter/looser.
 export const MIN_ATT = {
-  pct_1: 8, pct_2: 4, pct_goal: 3,
-  pct_1f: 5, pct_2f: 3, pct_goalf: 2,
+  pct_1: 5, pct_2: 3, pct_goal: 2,
+  // Frees are ranked regardless of attempts (see qualifies()), so these are unused.
+  pct_1f: 1, pct_2f: 1, pct_goalf: 1,
 }
 
 export const minutesOf = (rows) => rows.reduce((s, r) => s + n(r.total_minutes), 0)
@@ -60,11 +61,14 @@ export const perRating = (r) => {
 export const METRICS = [
   { key: 'own_ko',   group: 'Kickouts', color: 'var(--teal)', type: 'count', label: 'Own Kickout Won',        short: 'Own KO Won',      agg: ownKo },
   { key: 'opp_ko',   group: 'Kickouts', color: 'var(--blue)', type: 'count', label: 'Opposition Kickout Won', short: 'Opp KO Won',      agg: oppKo },
-  { key: 'tackles',  group: 'Defence',  color: 'var(--blue)', type: 'count', label: 'Tackles Made',           short: 'Tackles',         agg: (r) => sf(r, 'tackles') },
-  { key: 'lost_1v1', group: 'Defence',  color: 'var(--red)',  type: 'count', label: '1v1 Lost — Opp Shot',    short: '1v1 Lost',        agg: lost1v1, inverted: true },
-  { key: 'pos_to',   group: 'Defence',  color: 'var(--teal)', type: 'count', label: 'Positive Turnover Made', short: 'Positive TO',     agg: posTo },
+  // showZeros: true → every 120+ min player is ranked, even on zero (effort stats
+  // everyone racks up). Without it, only players with at least one are listed
+  // (opportunity/skill stats — a zero is just "didn't get one", not worth listing).
+  { key: 'tackles',  group: 'Defence',  color: 'var(--blue)', type: 'count', label: 'Tackles Made',           short: 'Tackles',         agg: (r) => sf(r, 'tackles'), showZeros: true },
+  { key: 'lost_1v1', group: 'Defence',  color: 'var(--red)',  type: 'count', label: '1v1 Lost — Opp Shot',    short: '1v1 Lost',        agg: lost1v1, inverted: true, showZeros: true },
+  { key: 'pos_to',   group: 'Defence',  color: 'var(--teal)', type: 'count', label: 'Positive Turnover Made', short: 'Positive TO',     agg: posTo, showZeros: true },
   { key: 'assists',  group: 'Attack',   color: 'var(--purple)', type: 'count', label: 'Assists',              short: 'Assists',         agg: (r) => sf(r, 'assists_shots') },
-  { key: 'neg_to',   group: 'Attack',   color: 'var(--red)',  type: 'count', label: 'Negative Turnover Made', short: 'Negative TO',     agg: negTo, inverted: true },
+  { key: 'neg_to',   group: 'Attack',   color: 'var(--red)',  type: 'count', label: 'Negative Turnover Made', short: 'Negative TO',     agg: negTo, inverted: true, showZeros: true, invertedNote: 'Highest ranked (1st) has fewest turnovers (min 120 mins)' },
 
   { key: 'pct_1',    group: 'Shooting', color: 'var(--gold)', type: 'pct', label: '1-Pointer %',   short: '1-Pointer', minAtt: MIN_ATT.pct_1,    pct: (r) => playPct(r, 'one_pointer_scored', 'one_pointer_wide', 'one_pointer_drop_short_block') },
   { key: 'pct_2',    group: 'Shooting', color: 'var(--gold)', type: 'pct', label: '2-Pointer %',   short: '2-Pointer', minAtt: MIN_ATT.pct_2,    pct: (r) => playPct(r, 'two_pointer_scored', 'two_pointer_wide', 'two_pointer_drop_short_block') },
@@ -74,7 +78,8 @@ export const METRICS = [
   { key: 'pct_2f',   group: 'Frees', color: 'var(--purple)', type: 'pct', free: true, label: '2-Pt Free %',           short: '2-Pt Free', minAtt: MIN_ATT.pct_2f,    pct: (r) => freePct(r, 'two_pointer_scored_f', 'two_pointer_attempts_f') },
   { key: 'pct_goalf',group: 'Frees', color: 'var(--purple)', type: 'pct', free: true, label: 'Goal Free %',           short: 'Goal Free', minAtt: MIN_ATT.pct_goalf, pct: (r) => freePct(r, 'goals_scored_f', 'goal_attempts_f') },
 
-  { key: 'per',      group: 'Efficiency', color: 'var(--blue)', type: 'ratio', label: 'Pass Efficiency (PER)', short: 'Pass Efficiency', ratio: perRating },
+  { key: 'per',      group: 'Efficiency', color: 'var(--blue)', type: 'ratio', label: 'Pass Efficiency (PER)', short: 'Pass Efficiency', ratio: perRating,
+    note: 'A measure of how many possessions you\'ve had and what you did with them. Having more of the ball brings the potential for more turnovers, so it\'s scored as a ratio — the possessions you\'ve had against what you did with them afterwards. Advancing the ball forward is worth more than a simple pass and is rewarded, while giving it away is not.' },
 ]
 
 export const metricByKey = Object.fromEntries(METRICS.map((m) => [m.key, m]))
@@ -140,12 +145,20 @@ export function computeEntry(metric, x, mode) {
 // can never top a percentage board.)
 function qualifies(metric, e, mode) {
   if (e.mins <= 0) return false
+  // Counting boards: always past the 120-min floor. showZeros metrics then rank
+  // everyone; the rest only list players with at least one of the stat.
   if (metric.type === 'count') {
-    if (mode === 'p60' && e.mins < MIN_RANK_MINS) return false
-    if (!metric.inverted && e.raw <= 0) return false // drop the zero tail (inverted keeps zeros — zero is best)
+    if (e.mins < MIN_RANK_MINS) return false
+    if (!metric.showZeros && e.raw <= 0) return false
     return true
   }
-  if (metric.type === 'pct') return e.att >= metric.minAtt
+  if (metric.type === 'pct') {
+    // Frees: rank everyone who took one, no attempts minimum.
+    if (metric.free) return e.att >= 1
+    // Play shots: per-type attempts minimum, AND a 0% only shows once a player
+    // has taken more than 4 shots (so the odd 1-of-2 miss doesn't post a 0%).
+    return e.att >= metric.minAtt && (e.scored > 0 || e.att > 4)
+  }
   return e.mins >= MIN_RANK_MINS // ratio
 }
 
@@ -161,10 +174,14 @@ export function buildBoard(metric, pool, mode) {
 function unqualifiedReason(metric, entry, mode) {
   if (!entry || entry.mins <= 0) return 'no minutes yet'
   if (metric.type === 'count') {
-    if (mode === 'p60' && entry.mins < MIN_RANK_MINS) return `min ${MIN_RANK_MINS} min to rank`
+    if (entry.mins < MIN_RANK_MINS) return `min ${MIN_RANK_MINS} min to rank`
     return `no ${metric.short.toLowerCase()} yet`
   }
-  if (metric.type === 'pct') return entry.att > 0 ? `${metric.minAtt}+ attempts to rank` : 'no attempts yet'
+  if (metric.type === 'pct') {
+    if (entry.att === 0) return metric.free ? 'no frees taken' : 'no attempts yet'
+    if (!metric.free && entry.att < metric.minAtt) return `${metric.minAtt}+ attempts to rank`
+    return '5+ shots to rank at 0%'
+  }
   return `min ${MIN_RANK_MINS} min to rank`
 }
 

@@ -1,9 +1,10 @@
-// Squad leaderboards for the player portal. One board per key metric, scoped to
-// League / Challenge / Championship, with a per-60 ⇄ total toggle for the
-// counting stats. The viewing player's row is always highlighted (and pinned in
-// if they fall outside the visible top slice).
+// Squad leaderboards. One board per key metric, scoped to League / Challenge /
+// Championship, with a per-60 ⇄ total toggle for the counting stats. Used on the
+// player portal (where `player` highlights the viewer) AND on the coach/analyst
+// dashboards (no viewer — pass no props and it fetches its own data).
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
 import { POS_COLORS } from '../lib/utils'
 import { metricByKey, buildPool, buildBoard, computeEntry, matchMapOf, compOf, MIN_RANK_MINS } from '../lib/playerMetrics'
 
@@ -12,7 +13,7 @@ const SCOPES = [['league', 'League'], ['challenge', 'Challenge'], ['championship
 // Boards in the order requested, grouped for readability.
 const GROUPS = [
   { title: 'Kickouts', keys: ['own_ko', 'opp_ko'] },
-  { title: 'Defence', keys: ['tackles', 'lost_1v1', 'pos_to'] },
+  { title: 'Defence', keys: ['tackles', 'pos_to'] },
   { title: 'Shooting', keys: ['pct_1', 'pct_2', 'pct_goal'] },
   { title: 'From Frees', keys: ['pct_1f', 'pct_2f', 'pct_goalf'] },
   { title: 'Efficiency', keys: ['per'] },
@@ -88,6 +89,11 @@ function Board({ metric, pool, mode, viewerName }) {
         <span style={{ color: metric.color }}>{metric.label}</span>
         <span style={{ fontSize: 10, color: 'var(--text3)', background: 'var(--bg4)', borderRadius: 4, padding: '2px 7px' }}>{badge}</span>
       </div>
+      {metric.note && (
+        <div style={{ padding: '8px 13px', fontSize: 10, color: 'var(--text3)', lineHeight: 1.4, borderBottom: '1px solid rgba(26,51,86,0.25)', background: 'rgba(26,51,86,0.12)' }}>
+          {metric.note}
+        </div>
+      )}
       {entries.length === 0 ? (
         <div style={{ padding: '18px 14px', textAlign: 'center', color: 'var(--text3)', fontSize: 11 }}>No qualifying players yet.</div>
       ) : (
@@ -117,9 +123,29 @@ function Board({ metric, pool, mode, viewerName }) {
   )
 }
 
-export default function Leaderboards({ player, allStats, allPlayers, matches }) {
+export default function Leaderboards({ player, allStats: pStats, allPlayers: pPlayers, matches: pMatches }) {
   const [scope, setScope] = useState('league')
   const [mode, setMode] = useState('p60') // 'p60' | 'total' — counting boards only
+
+  // Use data passed from the player portal, or fetch our own when dropped into a
+  // coach/analyst dashboard with no props.
+  const hasProps = !!(pStats && pPlayers && pMatches)
+  const [fetched, setFetched] = useState(hasProps ? { allStats: pStats, allPlayers: pPlayers, matches: pMatches } : null)
+  useEffect(() => {
+    if (hasProps) return
+    Promise.all([
+      supabase.from('player_stats').select('*'),
+      supabase.from('players').select('name, position'),
+      supabase.from('matches').select('match_id, competition, match_type, opposition'),
+    ]).then(([{ data: s }, { data: pl }, { data: ms }]) => {
+      setFetched({ allStats: s || [], allPlayers: pl || [], matches: ms || [] })
+    })
+  }, [])
+
+  if (!fetched) return <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><div className="spinner" /></div>
+
+  const { allStats, allPlayers, matches } = fetched
+  const viewerName = player ? player.name : null
 
   const matchMap = matchMapOf(matches)
   const scopeIds = new Set((matches || []).filter((m) => compOf(m.match_id, matchMap) === scope).map((m) => m.match_id))
@@ -155,7 +181,7 @@ export default function Leaderboards({ player, allStats, allPlayers, matches }) 
           <div key={g.title} style={{ marginBottom: 6 }}>
             <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase', margin: '4px 0 8px' }}>{g.title}</div>
             {g.keys.map((k) => (
-              <Board key={k} metric={metricByKey[k]} pool={pool} mode={mode} viewerName={player.name} />
+              <Board key={k} metric={metricByKey[k]} pool={pool} mode={mode} viewerName={viewerName} />
             ))}
           </div>
         ))

@@ -64,7 +64,7 @@ function StatTile({ metricKey, rows, seasonPool, viewerName, compact }) {
         {v.big}
       </div>
       {v.sub && <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 3 }}>{v.sub}</div>}
-      {metric.inverted && <div style={{ fontSize: 8, color: 'var(--text3)', marginTop: 2, fontStyle: 'italic' }}>fewer is better</div>}
+      {metric.inverted && <div style={{ fontSize: 8, color: 'var(--text3)', marginTop: 2, fontStyle: 'italic', lineHeight: 1.3 }}>{metric.invertedNote || 'fewer is better'}</div>}
       <RankLine metric={metric} standing={standing} />
     </div>
   )
@@ -100,6 +100,8 @@ export default function PlayerDashboard({ rows, stats, player, matchFilter, setM
       <div style={{ fontSize: 10, color: 'var(--text3)', lineHeight: 1.4, marginBottom: 13 }}>
         Your key numbers{matchFilter === 'all' ? ' across the season' : ` for ${matchFilter}`}. The small figure under each is
         where you rank <b style={{ color: 'var(--text2)' }}>per 60 minutes</b> against the squad this season.
+        Tiles marked <i>fewer is better</i> (1v1s lost, turnovers given away) are ranked the other way — being
+        <b style={{ color: 'var(--text2)' }}> 1st</b> there means you've conceded the fewest.
       </div>
 
       {/* Kickouts */}
@@ -140,6 +142,9 @@ export default function PlayerDashboard({ rows, stats, player, matchFilter, setM
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 9, marginBottom: 6 }}>
         <StatTile metricKey="assists" {...tileProps} />
         <StatTile metricKey="neg_to" {...tileProps} />
+      </div>
+      <div style={{ fontSize: 9, color: 'var(--text3)', fontStyle: 'italic', marginTop: 6, lineHeight: 1.4 }}>
+        Assists include bullet runs — a selfless run made to drag defenders and create a scoring chance counts as an assist.
       </div>
     </div>
   )
