@@ -15,6 +15,7 @@ import TeamAnalytics from './TeamAnalytics'
 import TeamStatsTab from './TeamStats'
 import Scout from './Scout'
 import Leaderboards from './Leaderboards'
+import GroupGoals from './GroupGoals'
 import { HomeTab } from './PlayerPortal'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts'
 
@@ -208,7 +209,7 @@ export default function CoachDashboard() {
 
       {/* Tabs — two rows of 5 so nothing is hidden */}
       {(() => {
-        const COACH_TABS = ['squad', 'player', 'compare', 'leaderboards', 'form', 'reviews', 'match', 'team', 'analytics', 'scout', 'breakdown', 'goals', 'entry', 'publish', 'admin', 'glossary']
+        const COACH_TABS = ['squad', 'player', 'compare', 'leaderboards', 'form', 'reviews', 'match', 'team', 'analytics', 'scout', 'breakdown', 'goals', 'groups', 'entry', 'publish', 'admin', 'glossary']
         const label = t => t === 'entry' ? 'Data' : t === 'breakdown' ? 'Breakdown' : t === 'publish' ? 'Publish' : t === 'admin' ? 'Admin' : t === 'glossary' ? 'Guide' : t === 'goals' ? 'Goals' : t === 'analytics' ? 'Analytics' : t === 'team' ? 'Team' : t === 'form' ? 'Form' : t === 'reviews' ? 'Reviews' : t === 'leaderboards' ? 'Leaderboards' : t.charAt(0).toUpperCase() + t.slice(1)
         return (
           <div style={{ position: 'sticky', top: 61, zIndex: 39, background: 'var(--bg2)', borderBottom: '1px solid var(--border)' }}>
@@ -308,6 +309,7 @@ export default function CoachDashboard() {
         {tab === 'admin' && <AdminPanel />}
         {tab === 'analytics' && <TeamAnalytics allStats={allStats} matchView={matchView} setMatchView={setMatchView} />}
         {tab === 'goals' && <CoachReflectionView appUser={appUser} isAdmin={appUser.role === 'admin'} />}
+        {tab === 'groups' && <CoachGroupsTab appUser={appUser} />}
         {tab === 'glossary' && <Glossary />}
         {tab === 'privacy' && <div style={{padding:14}}><PrivacyPolicy /></div>}
         {/* Privacy footer link */}
@@ -443,6 +445,51 @@ function CoachPlayerHome({ name, allStats, players }) {
   return (
     <HomeTab rows={rows} stats={stats} player={player} mc={mc} allMc={allMc} posColor={posColor}
       allStats={allStats} allPlayers={players} matchFilter={mf} setMatchFilter={setMf} />
+  )
+}
+
+// Coach view of accountability groups they're assigned to (admins see all),
+// plus a manual trigger to (re)generate & email the AI goal reports for a game.
+function CoachGroupsTab({ appUser }) {
+  const isAdmin = appUser.role === 'admin'
+  const [genMatch, setGenMatch] = useState(MATCHES[MATCHES.length - 1] || '')
+  const [gening, setGening] = useState(false)
+  const [genStatus, setGenStatus] = useState(null)
+
+  const generate = async () => {
+    if (!genMatch) return
+    setGening(true); setGenStatus(null)
+    try {
+      const r = await fetch('/api/generate-game-reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId: genMatch, force: true }) })
+      const d = await r.json()
+      setGenStatus(r.ok ? { ok: true, msg: `Generated ${d.generated || 0} · emailed ${d.sent || 0}${d.note ? ` — ${d.note}` : ''}` } : { ok: false, msg: d.error || 'Failed' })
+    } catch (e) { setGenStatus({ ok: false, msg: 'Could not reach server' }) }
+    setGening(false)
+  }
+
+  const sel = { flex: 1, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 11px', color: 'var(--text)', fontSize: 13, fontFamily: 'Barlow, sans-serif' }
+
+  return (
+    <div className="fade-in">
+      <div className="card" style={{ padding: 14, marginBottom: 14 }}>
+        <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>AI Goal Reports</div>
+        <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 10, lineHeight: 1.5 }}>
+          Each player who set goals gets an emailed report of goals vs actual, the squad best on the day, and their season form. Runs automatically on publish — use this to re-send.
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <select value={genMatch} onChange={e => setGenMatch(e.target.value)} style={sel}>
+            {MATCHES.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <button onClick={generate} disabled={gening}
+            style={{ padding: '9px 16px', borderRadius: 8, background: 'var(--gold-dim)', border: '1px solid var(--gold)', color: 'var(--gold)', fontSize: 12, fontWeight: 700, cursor: gening ? 'wait' : 'pointer', fontFamily: 'Barlow, sans-serif' }}>
+            {gening ? 'Sending…' : 'Generate & Send'}
+          </button>
+        </div>
+        {genStatus && <div style={{ fontSize: 12, marginTop: 8, color: genStatus.ok ? 'var(--teal)' : 'var(--red)' }}>{genStatus.msg}</div>}
+      </div>
+
+      <GroupGoals coachId={isAdmin ? undefined : appUser.id} all={isAdmin} />
+    </div>
   )
 }
 
@@ -1411,6 +1458,8 @@ function PublishTab({ matchStatuses, setMatchStatuses, appUser, allStats }) {
       setMatchStatuses(prev => ({ ...prev, [matchId]: { ...prev[matchId], status: 'published' } }))
       setStatus({ type: 'success', message: `✓ ${matchId} published — notifying players...` })
       try { await fetch('/api/notify-publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId }) }) } catch(e) {}
+      // Fire-and-forget: generate + email each player's AI goal report for this game.
+      try { fetch('/api/generate-game-reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId }) }) } catch(e) {}
     } else setStatus({ type: 'error', message: error.message })
     setPublishing(null)
   }

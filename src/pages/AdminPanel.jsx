@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { MATCHES } from '../lib/utils'
 import SquadPicker from '../components/SquadPicker'
 import PlayerForm from './PlayerForm'
+import GroupsAdmin from './GroupsAdmin'
 
 
 const POSITIONS = ['Forward', 'Defender', 'Midfield', 'Goalkeeper']
@@ -264,13 +265,16 @@ export default function AdminPanel() {
 
       {/* Sub tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
-      {['players','matches','squad','form','comms','users','challenges'].map(t => (
+      {['players','matches','squad','groups','form','comms','users','challenges'].map(t => (
           <button key={t} onClick={() => setTab(t)}
             style={{ padding: '7px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${t === tab ? 'var(--gold)' : 'var(--border)'}`, background: t === tab ? 'var(--gold-dim)' : 'var(--bg2)', color: t === tab ? 'var(--gold)' : 'var(--text3)', fontFamily: 'Barlow, sans-serif' }}>
             {t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
+
+      {/* GROUPS */}
+      {tab === 'groups' && <GroupsAdmin players={players} appUsers={appUsers} />}
 
       {/* PLAYERS */}
       {tab === 'players' && (

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { MATCHES, OPP, MATCH_DATA } from '../lib/utils'
+import { MATCHES, OPP, MATCH_DATA, matchRound } from '../lib/utils'
+import GroupGoals from './GroupGoals'
 
 const METRIC_OPTIONS = [
   { key: 'tackles', label: 'Tackles' },
@@ -31,6 +32,8 @@ export default function PlayerReflection({ player, stats }) {
   const [comments, setComments] = useState([])
   const [assignedCoach, setAssignedCoach] = useState(null)
   const [coaches, setCoaches] = useState([])
+  const [reports, setReports] = useState([])
+  const [section, setSection] = useState('goals') // 'goals' | 'group' | 'reports'
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -40,7 +43,8 @@ export default function PlayerReflection({ player, stats }) {
       supabase.from('coach_comments').select('*').eq('player_name', player.name),
       supabase.from('player_coach_assignments').select('*, app_users(name, role)').eq('player_name', player.name).maybeSingle(),
       supabase.from('app_users').select('id, name, role').in('role', ['coach', 'admin']),
-    ]).then(([{ data: refs }, { data: tgts }, { data: cmts }, { data: asgn }, { data: chs }]) => {
+      supabase.from('game_reports').select('*').eq('player_name', player.name),
+    ]).then(([{ data: refs }, { data: tgts }, { data: cmts }, { data: asgn }, { data: chs }, { data: reps }]) => {
       const refMap = {}
       refs?.forEach(r => { refMap[r.match_id] = r })
       setReflections(refMap)
@@ -50,6 +54,7 @@ export default function PlayerReflection({ player, stats }) {
       setComments(cmts || [])
       setAssignedCoach(asgn?.app_users || null)
       setCoaches(chs || [])
+      setReports(reps || [])
       setLoading(false)
     })
   }, [player.name])
@@ -90,8 +95,24 @@ export default function PlayerReflection({ player, stats }) {
       onBack={() => setView('list')} />
   }
 
+  const sectionTabs = (
+    <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+      {[['goals', 'My Goals'], ['group', 'My Group'], ['reports', 'My Reports']].map(([k, l]) => (
+        <button key={k} onClick={() => setSection(k)}
+          style={{ flex: 1, padding: '8px 6px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Barlow, sans-serif',
+            border: `1px solid ${section === k ? 'var(--blue)' : 'var(--border)'}`,
+            background: section === k ? 'rgba(74,158,255,0.14)' : 'var(--bg3)',
+            color: section === k ? 'var(--blue)' : 'var(--text3)' }}>{l}</button>
+      ))}
+    </div>
+  )
+
+  if (section === 'group') return <div className="fade-in">{sectionTabs}<GroupGoals playerName={player.name} highlightName={player.name} /></div>
+  if (section === 'reports') return <div className="fade-in">{sectionTabs}<ReportsList reports={reports} /></div>
+
   return (
     <div className="fade-in">
+      {sectionTabs}
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, textTransform: 'uppercase', color: 'var(--blue)', marginBottom: 4 }}>
@@ -276,6 +297,43 @@ function ReflectionForm({ player, match, existing, comments, onSave, onBack }) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── AI GAME REPORTS ──────────────────────────────────────────────────────────
+function ReportsList({ reports }) {
+  const sorted = [...(reports || [])].sort((a, b) => matchRound(b.match_id) - matchRound(a.match_id))
+  if (!sorted.length) return (
+    <div style={{ textAlign: 'center', color: 'var(--text3)', fontSize: 12, padding: '24px 0', lineHeight: 1.5 }}>
+      No game reports yet.<br />You'll get a PlayrIQ report by email after each game you set goals for.
+    </div>
+  )
+  return (
+    <div>
+      {sorted.map(r => (
+        <div key={r.id || r.match_id} className="card" style={{ padding: 14, marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ fontSize: 14, fontWeight: 700 }}>{r.match_id} <span style={{ fontSize: 11, color: 'var(--text3)', fontWeight: 400 }}>vs {OPP[r.match_id] || ''}</span></div>
+            <div style={{ fontSize: 10, color: 'var(--gold)', letterSpacing: 1, textTransform: 'uppercase' }}>PlayrIQ Report</div>
+          </div>
+          {Array.isArray(r.targets) && r.targets.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+              {r.targets.map((g, i) => {
+                const c = g.met == null ? 'var(--text3)' : g.met ? 'var(--teal)' : 'var(--red)'
+                return (
+                  <span key={i} style={{ fontSize: 11, background: 'var(--bg3)', border: `1px solid ${c}`, borderRadius: 6, padding: '3px 8px', color: 'var(--text2)' }}>
+                    {g.label} {g.lower ? '≤' : '≥'}{g.target} <b style={{ color: c }}>{g.actual} {g.met ? '✓' : '✗'}</b>
+                  </span>
+                )
+              })}
+            </div>
+          )}
+          {String(r.report || '').split(/\n\s*\n/).map((p, i) => (
+            <p key={i} style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text2)', margin: '0 0 10px' }}>{p}</p>
+          ))}
+        </div>
+      ))}
     </div>
   )
 }
