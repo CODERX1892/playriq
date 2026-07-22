@@ -16,6 +16,7 @@ import TeamStatsTab from './TeamStats'
 import Scout from './Scout'
 import Leaderboards from './Leaderboards'
 import GroupGoals from './GroupGoals'
+import GroupsAdmin from './GroupsAdmin'
 import { HomeTab } from './PlayerPortal'
 import { RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip } from 'recharts'
 
@@ -487,6 +488,13 @@ function CoachGroupsTab({ appUser }) {
         </div>
         {genStatus && <div style={{ fontSize: 12, marginTop: 8, color: genStatus.ok ? 'var(--teal)' : 'var(--red)' }}>{genStatus.msg}</div>}
       </div>
+
+      {isAdmin && (
+        <div style={{ marginBottom: 18 }}>
+          <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Manage Groups</div>
+          <GroupsAdmin />
+        </div>
+      )}
 
       <GroupGoals coachId={isAdmin ? undefined : appUser.id} all={isAdmin} />
     </div>

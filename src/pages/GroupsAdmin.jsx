@@ -5,12 +5,15 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
-export default function GroupsAdmin({ players, appUsers }) {
+export default function GroupsAdmin({ players: playersProp, appUsers: appUsersProp }) {
   const [groups, setGroups] = useState([])
   const [members, setMembers] = useState({}) // groupId -> [player_name]
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
   const [busy, setBusy] = useState(false)
+  // Accept players/coaches from a parent (AdminPanel) or fetch our own (Groups tab).
+  const [players, setPlayers] = useState(playersProp || [])
+  const [appUsers, setAppUsers] = useState(appUsersProp || [])
 
   const coaches = (appUsers || []).filter(u => u.role === 'coach' || u.role === 'admin')
 
@@ -25,7 +28,11 @@ export default function GroupsAdmin({ players, appUsers }) {
     setMembers(map)
     setLoading(false)
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    if (!playersProp) supabase.from('players').select('name, position').order('name').then(({ data }) => setPlayers(data || []))
+    if (!appUsersProp) supabase.from('app_users').select('id, name, role').then(({ data }) => setAppUsers(data || []))
+  }, [])
 
   const createGroup = async () => {
     const name = newName.trim()
