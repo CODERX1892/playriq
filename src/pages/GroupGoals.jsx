@@ -17,6 +17,21 @@ const METRIC_LABELS = {
 const LOWER_IS_BETTER = new Set(['dne', 'breach_1v1', 'drop_shorts', 'turnovers_in_contact', 'turnovers_kicked_away'])
 const num = (v) => (typeof v === 'number' ? v : parseFloat(v) || 0)
 
+// Percentage goal metrics — actual% = sum(num) / sum(den) * 100. Mirrors
+// src/lib/playerMetrics.js and api/generate-game-reports.js.
+const PCT_METRICS = {
+  pct_1:         { label: '1-Pt Shot %', num: ['one_pointer_scored'], den: ['one_pointer_scored', 'one_pointer_wide', 'one_pointer_drop_short_block'] },
+  pct_2:         { label: '2-Pt Shot %', num: ['two_pointer_scored'], den: ['two_pointer_scored', 'two_pointer_wide', 'two_pointer_drop_short_block'] },
+  pct_goal:      { label: 'Goal Shot %', num: ['goals_scored'],       den: ['goals_scored', 'goals_wide', 'goal_drop_short_block'] },
+  pct_ko_target: { label: 'KO Win %',    num: ['ko_target_won_clean', 'ko_target_won_break'], den: ['ko_target_won_clean', 'ko_target_won_break', 'ko_target_lost_clean', 'ko_target_lost_contest'] },
+  pct_1f:        { label: '1-Pt Free %', num: ['one_pointer_scored_f'], den: ['one_pointer_attempts_f'] },
+  pct_2f:        { label: '2-Pt Free %', num: ['two_pointer_scored_f'], den: ['two_pointer_attempts_f'] },
+  pct_goalf:     { label: 'Goal Free %', num: ['goals_scored_f'],      den: ['goal_attempts_f'] },
+}
+const sumc = (row, cols) => cols.reduce((a, c) => a + num(row[c]), 0)
+const pctFromRow = (row, cfg) => { const d = sumc(row, cfg.den); return d > 0 ? Math.round(sumc(row, cfg.num) / d * 100) : null }
+const labelOf = (metric) => METRIC_LABELS[metric] || (PCT_METRICS[metric] && PCT_METRICS[metric].label) || metric
+
 export default function GroupGoals({ playerName, coachId, all, highlightName }) {
   const [state, setState] = useState(null)
   const [matchId, setMatchId] = useState(null)
@@ -80,13 +95,15 @@ export default function GroupGoals({ playerName, coachId, all, highlightName }) 
     for (let i = 1; i <= 3; i++) {
       const metric = t[`metric_${i}`], target = t[`target_${i}`]
       if (!metric || target == null) continue
+      const cfg = PCT_METRICS[metric]
+      const isPctM = !!cfg
       const lower = LOWER_IS_BETTER.has(metric)
       const rawTarget = num(target)
-      const scaled = isSub && !lower && mins > 0 && mins < 60
+      const scaled = isSub && !lower && !isPctM && mins > 0 && mins < 60
       const effTarget = scaled ? Math.max(1, Math.round(rawTarget * mins / 60)) : rawTarget
-      const actual = played ? num(s[metric]) : null
+      const actual = !played ? null : (isPctM ? pctFromRow(s, cfg) : num(s[metric]))
       const met = actual == null ? null : (lower ? actual <= effTarget : actual >= effTarget)
-      goals.push({ label: METRIC_LABELS[metric] || metric, target: effTarget, rawTarget, scaled, actual, met, lower })
+      goals.push({ label: labelOf(metric), target: effTarget, rawTarget, scaled, pct: isPctM, actual, met, lower })
     }
     return { set: true, played, goals }
   }
@@ -132,8 +149,8 @@ export default function GroupGoals({ playerName, coachId, all, highlightName }) 
                         const color = x.met == null ? 'var(--text3)' : x.met ? 'var(--teal)' : 'var(--red)'
                         return (
                           <span key={i} style={{ fontSize: 11, background: 'var(--bg3)', border: `1px solid ${x.met == null ? 'var(--border)' : color}`, borderRadius: 6, padding: '3px 8px', color: 'var(--text2)' }}>
-                            {x.label} {x.lower ? '≤' : '≥'}{x.target}
-                            {x.actual != null && <b style={{ color, marginLeft: 5 }}>{x.actual} {x.met ? '✓' : '✗'}</b>}
+                            {x.label} {x.lower ? '≤' : '≥'}{x.target}{x.pct ? '%' : ''}
+                            {x.actual != null && <b style={{ color, marginLeft: 5 }}>{x.actual}{x.pct ? '%' : ''} {x.met ? '✓' : '✗'}</b>}
                           </span>
                         )
                       })}

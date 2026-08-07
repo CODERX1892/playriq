@@ -47,6 +47,10 @@ export default function GroupsAdmin({ players: playersProp, appUsers: appUsersPr
     await supabase.from('groups').update({ coach_id: coachId || null }).eq('id', groupId)
     setGroups(gs => gs.map(g => g.id === groupId ? { ...g, coach_id: coachId || null } : g))
   }
+  const setLeader = async (groupId, leaderName) => {
+    await supabase.from('groups').update({ leader_name: leaderName || null }).eq('id', groupId)
+    setGroups(gs => gs.map(g => g.id === groupId ? { ...g, leader_name: leaderName || null } : g))
+  }
   const addPlayer = async (groupId, name) => {
     if (!name) return
     await supabase.from('group_members').insert({ group_id: groupId, player_name: name })
@@ -102,6 +106,20 @@ export default function GroupsAdmin({ players: playersProp, appUsers: appUsersPr
               <select value={g.coach_id || ''} onChange={e => setCoach(g.id, e.target.value)} style={{ ...sel, width: '100%' }}>
                 <option value="">— none —</option>
                 {coaches.map(c => <option key={c.id} value={c.id}>{c.name} ({c.role})</option>)}
+              </select>
+            </div>
+
+            {/* Group leader — gets the weekly AAR goals-vs-actual summary email */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 5 }}>Group Leader (gets AAR summary)</div>
+              <select value={g.leader_name || ''} onChange={e => setLeader(g.id, e.target.value)} style={{ ...sel, width: '100%' }}>
+                <option value="">— coach gets it —</option>
+                <optgroup label="Coaches / Staff">
+                  {coaches.map(c => <option key={'c-' + c.id} value={c.name}>{c.name}</option>)}
+                </optgroup>
+                <optgroup label="Players">
+                  {(players || []).map(p => <option key={'p-' + p.name} value={p.name}>{p.name}</option>)}
+                </optgroup>
               </select>
             </div>
 

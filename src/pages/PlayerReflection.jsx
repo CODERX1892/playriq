@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase'
 import { MATCHES, OPP, MATCH_DATA, matchRound } from '../lib/utils'
 import GroupGoals from './GroupGoals'
 
-const METRIC_OPTIONS = [
+// Counting targets — a number to hit.
+const COUNT_OPTIONS = [
   { key: 'tackles', label: 'Tackles' },
   { key: 'forced_to_win', label: 'Forced TO Won' },
   { key: 'advance_pass', label: 'Advance Passes' },
@@ -23,6 +24,19 @@ const METRIC_OPTIONS = [
   { key: 'won_break_opp', label: 'Opp KO Break Ball' },
   { key: 'assists_shots', label: 'Shot Assists' },
 ]
+// Percentage targets — a % to hit, scored from the game's shots/kickouts.
+// Formulas mirror src/lib/playerMetrics.js so a goal % matches the leaderboards.
+const PCT_OPTIONS = [
+  { key: 'pct_1', label: '1-Pointer Shot %' },
+  { key: 'pct_2', label: '2-Pointer Shot %' },
+  { key: 'pct_goal', label: 'Goal Shot %' },
+  { key: 'pct_ko_target', label: 'Kickout Win % (when targeted)' },
+  { key: 'pct_1f', label: '1-Pt Free % (incl 45s)' },
+  { key: 'pct_2f', label: '2-Pt Free %' },
+  { key: 'pct_goalf', label: 'Goal Free %' },
+]
+const ALL_OPTIONS = [...COUNT_OPTIONS, ...PCT_OPTIONS]
+const PCT_KEYS = new Set(PCT_OPTIONS.map(o => o.key))
 
 export default function PlayerReflection({ player, stats }) {
   const [view, setView] = useState('list') // 'list' | 'reflection' | 'targets'
@@ -399,21 +413,27 @@ function TargetsForm({ player, match, existing, comments, onSave, onBack }) {
               onChange={e => setSlots(s => s.map((sl, j) => j === i ? { ...sl, metric: e.target.value } : sl))}
               style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', color: slot.metric ? 'var(--text)' : 'var(--text3)', fontSize: 12, fontFamily: 'Barlow, sans-serif' }}>
               <option value="">Select metric…</option>
-              {METRIC_OPTIONS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+              <optgroup label="Numbers">
+                {COUNT_OPTIONS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+              </optgroup>
+              <optgroup label="Percentages">
+                {PCT_OPTIONS.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+              </optgroup>
             </select>
             <input
               type="number"
               value={slot.target}
               onChange={e => setSlots(s => s.map((sl, j) => j === i ? { ...sl, target: e.target.value } : sl))}
-              placeholder="Target"
+              placeholder={PCT_KEYS.has(slot.metric) ? '%' : 'Target'}
               min="0"
+              max={PCT_KEYS.has(slot.metric) ? '100' : undefined}
               step="1"
               style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 12px', color: 'var(--text)', fontSize: 13, fontFamily: 'Barlow Condensed, sans-serif', fontWeight: 700, textAlign: 'center' }}
             />
           </div>
           {slot.metric && slot.target && (
             <div style={{ fontSize: 11, color: 'var(--teal)', marginTop: 4 }}>
-              Target: {METRIC_OPTIONS.find(m => m.key === slot.metric)?.label} ≥ {slot.target}
+              Target: {ALL_OPTIONS.find(m => m.key === slot.metric)?.label} {PCT_KEYS.has(slot.metric) ? `${slot.target}%` : `≥ ${slot.target}`}
             </div>
           )}
         </div>

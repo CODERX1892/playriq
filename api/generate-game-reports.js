@@ -24,6 +24,21 @@ const LOWER_IS_BETTER = new Set(['dne', 'breach_1v1', 'drop_shorts', 'turnovers_
 
 const num = (v) => (typeof v === 'number' ? v : parseFloat(v) || 0)
 
+// Percentage goal metrics. actual% = sum(num cols) / sum(den cols) * 100.
+// Formulas mirror src/lib/playerMetrics.js so a goal % matches the leaderboards.
+const PCT_METRICS = {
+  pct_1:         { label: '1-Pointer Shot %', num: ['one_pointer_scored'], den: ['one_pointer_scored', 'one_pointer_wide', 'one_pointer_drop_short_block'] },
+  pct_2:         { label: '2-Pointer Shot %', num: ['two_pointer_scored'], den: ['two_pointer_scored', 'two_pointer_wide', 'two_pointer_drop_short_block'] },
+  pct_goal:      { label: 'Goal Shot %',      num: ['goals_scored'],       den: ['goals_scored', 'goals_wide', 'goal_drop_short_block'] },
+  pct_ko_target: { label: 'Kickout Win %',    num: ['ko_target_won_clean', 'ko_target_won_break'], den: ['ko_target_won_clean', 'ko_target_won_break', 'ko_target_lost_clean', 'ko_target_lost_contest'] },
+  pct_1f:        { label: '1-Pt Free %',      num: ['one_pointer_scored_f'], den: ['one_pointer_attempts_f'] },
+  pct_2f:        { label: '2-Pt Free %',      num: ['two_pointer_scored_f'], den: ['two_pointer_attempts_f'] },
+  pct_goalf:     { label: 'Goal Free %',      num: ['goals_scored_f'],      den: ['goal_attempts_f'] },
+}
+const sumc = (row, cols) => cols.reduce((a, c) => a + num(row[c]), 0)
+const pctFromRow = (row, cfg) => { const d = sumc(row, cfg.den); return d > 0 ? Math.round(sumc(row, cfg.num) / d * 100) : null }
+const labelOf = (metric) => METRIC_LABELS[metric] || (PCT_METRICS[metric] && PCT_METRICS[metric].label) || metric
+
 // Competition bucket: championship vs league (challenge counts as league),
 // matching how the app groups seasons.
 const bucketOf = (m) => {
@@ -75,14 +90,27 @@ export default async function handler(req, res) {
 
   // Best value ON THE DAY for a metric (across everyone who played this match).
   const bestOnDay = (metric) => {
+    const cfg = PCT_METRICS[metric]
+    if (cfg) {
+      const vals = (matchStats || []).map(s => pctFromRow(s, cfg)).filter(v => v != null)
+      return vals.length ? Math.max(...vals) : null
+    }
     const vals = (matchStats || []).map(s => num(s[metric]))
     if (!vals.length) return null
     return LOWER_IS_BETTER.has(metric) ? Math.min(...vals) : Math.max(...vals)
   }
-  // A player's season per-game average for a metric, within this competition bucket.
+  // A player's season figure for a metric, within this competition bucket.
+  // Counts → per-game average; percentages → aggregate rate (sum num / sum den).
   const seasonAvg = (name, metric) => {
     const rows = (allStats || []).filter(s => s.player_name === name && bucketIds.has(s.match_id) && num(s.total_minutes) > 0)
     if (!rows.length) return null
+    const cfg = PCT_METRICS[metric]
+    if (cfg) {
+      const d = rows.reduce((a, s) => a + sumc(s, cfg.den), 0)
+      if (d <= 0) return null
+      const nu = rows.reduce((a, s) => a + sumc(s, cfg.num), 0)
+      return { avg: Math.round(nu / d * 100), games: rows.length, total: nu }
+    }
     const total = rows.reduce((a, s) => a + num(s[metric]), 0)
     return { avg: Math.round((total / rows.length) * 10) / 10, games: rows.length, total }
   }
@@ -104,16 +132,18 @@ export default async function handler(req, res) {
       const metric = t[`metric_${i}`]
       const target = t[`target_${i}`]
       if (!metric || target == null) continue
+      const cfg = PCT_METRICS[metric]
+      const isPctM = !!cfg
       const lower = LOWER_IS_BETTER.has(metric)
       const rawTarget = num(target)
-      // Pro-rate a sub's counting target to minutes played (never below 1).
-      const scaled = isSub && !lower && mins > 0 && mins < 60
+      // Pro-rate a sub's counting target to minutes played (never below 1). Percentages don't scale.
+      const scaled = isSub && !lower && !isPctM && mins > 0 && mins < 60
       const effTarget = scaled ? Math.max(1, Math.round(rawTarget * mins / 60)) : rawTarget
-      const actual = num(statRow[metric])
-      const met = lower ? actual <= effTarget : actual >= effTarget
+      const actual = isPctM ? pctFromRow(statRow, cfg) : num(statRow[metric])
+      const met = actual == null ? false : (lower ? actual <= effTarget : actual >= effTarget)
       const season = seasonAvg(name, metric)
       goals.push({
-        metric, label: METRIC_LABELS[metric] || metric, target: effTarget, rawTarget, scaled, minutes: mins,
+        metric, label: labelOf(metric), target: effTarget, rawTarget, scaled, minutes: mins, pct: isPctM,
         actual, met, lower,
         bestOnDay: bestOnDay(metric), seasonAvg: season?.avg ?? null, seasonGames: season?.games ?? 0,
       })
@@ -122,10 +152,11 @@ export default async function handler(req, res) {
 
     const compLabel = thisBucket === 'championship' ? 'Championship' : 'League'
     const anyScaled = goals.some(g => g.scaled)
-    const goalLines = goals.map(g =>
-      `- ${g.label}: goal ${g.lower ? '≤' : '≥'} ${g.target}${g.scaled ? ` (pro-rated from ${g.rawTarget}, as he played ${g.minutes} mins off the bench)` : ''}, achieved ${g.actual} → ${g.met ? 'HIT' : 'MISSED'}. ` +
-      `Best in the squad that day: ${g.bestOnDay}. His ${compLabel} season average per game: ${g.seasonAvg ?? 'n/a'} (over ${g.seasonGames} games).`
-    ).join('\n')
+    const goalLines = goals.map(g => {
+      const u = g.pct ? '%' : ''
+      return `- ${g.label}: goal ${g.lower ? '≤' : '≥'} ${g.target}${u}${g.scaled ? ` (pro-rated from ${g.rawTarget}, as he played ${g.minutes} mins off the bench)` : ''}, achieved ${g.actual == null ? 'n/a (no attempts)' : g.actual + u} → ${g.met ? 'HIT' : 'MISSED'}. ` +
+        `Best in the squad that day: ${g.bestOnDay == null ? 'n/a' : g.bestOnDay + u}. His ${compLabel} ${g.pct ? 'season rate' : 'season average per game'}: ${g.seasonAvg == null ? 'n/a' : g.seasonAvg + u}${g.pct ? '' : ` (over ${g.seasonGames} games)`}.`
+    }).join('\n')
 
     const prompt = `You are writing a short, personal post-match note to a Gaelic football player about the goals he set himself for this game.
 
@@ -174,8 +205,8 @@ Write a warm, honest, motivating note (about 140-180 words), addressed to him di
       const rows = goals.map(g => `
         <tr>
           <td style="padding:6px 10px;font-size:13px;color:#e8edf5">${g.label}</td>
-          <td style="padding:6px 10px;font-size:13px;color:#8ba8c8;text-align:center">${g.lower ? '≤' : '≥'} ${g.target}${g.scaled ? `<div style="font-size:10px;color:#3d5a7a">pro-rated from ${g.rawTarget} · ${g.minutes} mins</div>` : ''}</td>
-          <td style="padding:6px 10px;font-size:13px;color:#e8edf5;text-align:center;font-weight:700">${g.actual}</td>
+          <td style="padding:6px 10px;font-size:13px;color:#8ba8c8;text-align:center">${g.lower ? '≤' : '≥'} ${g.target}${g.pct ? '%' : ''}${g.scaled ? `<div style="font-size:10px;color:#3d5a7a">pro-rated from ${g.rawTarget} · ${g.minutes} mins</div>` : ''}</td>
+          <td style="padding:6px 10px;font-size:13px;color:#e8edf5;text-align:center;font-weight:700">${g.actual == null ? '—' : g.actual}${g.pct ? '%' : ''}</td>
           <td style="padding:6px 10px;font-size:13px;text-align:center;color:${g.met ? '#3ecf8e' : '#f06060'};font-weight:700">${g.met ? '✓' : '✗'}</td>
         </tr>`).join('')
       const body = reportText.split(/\n\s*\n/).map(p => `<p style="font-size:14px;line-height:1.6;color:#e8edf5;margin:0 0 12px">${p.replace(/\n/g, '<br>')}</p>`).join('')

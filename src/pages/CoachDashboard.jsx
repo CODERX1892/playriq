@@ -463,6 +463,8 @@ function CoachGroupsTab({ appUser }) {
   const [genMatch, setGenMatch] = useState(MATCHES[MATCHES.length - 1] || '')
   const [gening, setGening] = useState(false)
   const [genStatus, setGenStatus] = useState(null)
+  const [grpSending, setGrpSending] = useState(false)
+  const [grpStatus, setGrpStatus] = useState(null)
 
   const generate = async () => {
     if (!genMatch) return
@@ -473,6 +475,17 @@ function CoachGroupsTab({ appUser }) {
       setGenStatus(r.ok ? { ok: true, msg: `Generated ${d.generated || 0} · emailed ${d.sent || 0}${d.note ? ` — ${d.note}` : ''}` } : { ok: false, msg: d.error || 'Failed' })
     } catch (e) { setGenStatus({ ok: false, msg: 'Could not reach server' }) }
     setGening(false)
+  }
+
+  const sendGroupSummaries = async () => {
+    if (!genMatch) return
+    setGrpSending(true); setGrpStatus(null)
+    try {
+      const r = await fetch('/api/generate-group-reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId: genMatch }) })
+      const d = await r.json()
+      setGrpStatus(r.ok ? { ok: true, msg: `Sent ${d.sent || 0} leader summar${d.sent === 1 ? 'y' : 'ies'}${d.admins ? ` · ${d.admins} admin digest` : ''}` } : { ok: false, msg: d.error || 'Failed' })
+    } catch (e) { setGrpStatus({ ok: false, msg: 'Could not reach server' }) }
+    setGrpSending(false)
   }
 
   const sel = { flex: 1, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 8, padding: '9px 11px', color: 'var(--text)', fontSize: 13, fontFamily: 'Barlow, sans-serif' }
@@ -494,6 +507,23 @@ function CoachGroupsTab({ appUser }) {
           </button>
         </div>
         {genStatus && <div style={{ fontSize: 12, marginTop: 8, color: genStatus.ok ? 'var(--teal)' : 'var(--red)' }}>{genStatus.msg}</div>}
+      </div>
+
+      <div className="card" style={{ padding: 14, marginBottom: 14 }}>
+        <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 }}>Group AAR Summaries</div>
+        <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 10, lineHeight: 1.5 }}>
+          Emails each group's leader a goals-vs-actual summary for the selected game (and admin a combined digest of every group). Runs automatically on publish — use this to re-send before your AAR.
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <select value={genMatch} onChange={e => setGenMatch(e.target.value)} style={sel}>
+            {MATCHES.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+          <button onClick={sendGroupSummaries} disabled={grpSending}
+            style={{ padding: '9px 16px', borderRadius: 8, background: 'rgba(74,158,255,0.14)', border: '1px solid var(--blue)', color: 'var(--blue)', fontSize: 12, fontWeight: 700, cursor: grpSending ? 'wait' : 'pointer', fontFamily: 'Barlow, sans-serif' }}>
+            {grpSending ? 'Sending…' : 'Email Group Summaries'}
+          </button>
+        </div>
+        {grpStatus && <div style={{ fontSize: 12, marginTop: 8, color: grpStatus.ok ? 'var(--teal)' : 'var(--red)' }}>{grpStatus.msg}</div>}
       </div>
 
       {isAdmin && (
@@ -1475,6 +1505,8 @@ function PublishTab({ matchStatuses, setMatchStatuses, appUser, allStats }) {
       try { await fetch('/api/notify-publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId }) }) } catch(e) {}
       // Fire-and-forget: generate + email each player's AI goal report for this game.
       try { fetch('/api/generate-game-reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId }) }) } catch(e) {}
+      // Fire-and-forget: email each group leader (and admin) the goals-vs-actual AAR summary.
+      try { fetch('/api/generate-group-reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId }) }) } catch(e) {}
     } else setStatus({ type: 'error', message: error.message })
     setPublishing(null)
   }
