@@ -140,11 +140,22 @@ export default function AdminPanel() {
 
   const addMatch = async () => {
     if (!newMatch.match_id || !newMatch.opposition) { showStatus('error', 'Match ID and opposition required'); return }
-    const { error } = await supabase.from('matches').insert(newMatch)
+    // Write the canonical columns the rest of the app reads (match_date + competition),
+    // keeping the legacy date/match_type in sync so nothing else breaks. Without
+    // match_date the emails show 1 Jan 1970 and the pre-match crons skip the game.
+    const row = {
+      match_id: newMatch.match_id,
+      opposition: newMatch.opposition,
+      match_date: newMatch.date || null,
+      date: newMatch.date || null,
+      competition: newMatch.match_type,
+      match_type: newMatch.match_type,
+    }
+    const { error } = await supabase.from('matches').insert(row)
     if (!error) {
       await supabase.from('match_status').insert({ match_id: newMatch.match_id, status: 'draft' })
       showStatus('success', `✓ ${newMatch.match_id} added`)
-      setMatches(prev => [...prev, newMatch])
+      setMatches(prev => [...prev, row])
       setNewMatch({ match_id: '', match_type: 'League', date: '', opposition: '' })
     } else showStatus('error', error.message)
   }
