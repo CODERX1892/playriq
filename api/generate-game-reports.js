@@ -44,7 +44,7 @@ export default async function handler(req, res) {
   if (!ANTHROPIC_KEY) return res.status(500).json({ error: 'Anthropic key not configured' })
 
   // Load everything we need.
-  const [{ data: match }, { data: matchStats }, { data: targetsRows }, { data: allMatches }, { data: allStats }, { data: existing }] =
+  const [{ data: match }, { data: matchStats }, { data: targetsRows }, { data: allMatches }, { data: allStats }, { data: existing }, { data: squadRows }] =
     await Promise.all([
       supabase.from('matches').select('*').eq('match_id', matchId).single(),
       supabase.from('player_stats').select('*').eq('match_id', matchId),
@@ -52,6 +52,7 @@ export default async function handler(req, res) {
       supabase.from('matches').select('match_id, competition, match_type'),
       supabase.from('player_stats').select('*'),
       supabase.from('game_reports').select('player_name').eq('match_id', matchId),
+      supabase.from('matchday_squad').select('player_name, is_starter').eq('match_id', matchId),
     ])
   if (!match) return res.status(404).json({ error: 'Match not found' })
   if (!targetsRows?.length) return res.json({ generated: 0, note: 'No player targets set for this match' })
@@ -61,6 +62,10 @@ export default async function handler(req, res) {
   const statsByName = {}
   ;(matchStats || []).forEach(s => { statsByName[s.player_name] = s })
   const done = new Set((existing || []).map(r => r.player_name))
+  // Subs set goals on a 60-min basis; their counting-stat targets are pro-rated
+  // to the minutes they actually played (lower-is-better/zero targets stay as-is).
+  const isSubByName = {}
+  ;(squadRows || []).forEach(r => { isSubByName[r.player_name] = r.is_starter === false })
 
   // Player emails
   const names = targetsRows.map(t => t.player_name)
@@ -92,25 +97,33 @@ export default async function handler(req, res) {
     if (!statRow || num(statRow.total_minutes) === 0) continue // didn't play — skip
 
     // Build the 3 goals with actual + met/missed.
+    const isSub = isSubByName[name] === true
+    const mins = num(statRow.total_minutes)
     const goals = []
     for (let i = 1; i <= 3; i++) {
       const metric = t[`metric_${i}`]
       const target = t[`target_${i}`]
       if (!metric || target == null) continue
       const lower = LOWER_IS_BETTER.has(metric)
+      const rawTarget = num(target)
+      // Pro-rate a sub's counting target to minutes played (never below 1).
+      const scaled = isSub && !lower && mins > 0 && mins < 60
+      const effTarget = scaled ? Math.max(1, Math.round(rawTarget * mins / 60)) : rawTarget
       const actual = num(statRow[metric])
-      const met = lower ? actual <= num(target) : actual >= num(target)
+      const met = lower ? actual <= effTarget : actual >= effTarget
       const season = seasonAvg(name, metric)
       goals.push({
-        metric, label: METRIC_LABELS[metric] || metric, target: num(target), actual, met, lower,
+        metric, label: METRIC_LABELS[metric] || metric, target: effTarget, rawTarget, scaled, minutes: mins,
+        actual, met, lower,
         bestOnDay: bestOnDay(metric), seasonAvg: season?.avg ?? null, seasonGames: season?.games ?? 0,
       })
     }
     if (!goals.length) continue
 
     const compLabel = thisBucket === 'championship' ? 'Championship' : 'League'
+    const anyScaled = goals.some(g => g.scaled)
     const goalLines = goals.map(g =>
-      `- ${g.label}: goal ${g.lower ? '≤' : '≥'} ${g.target}, achieved ${g.actual} → ${g.met ? 'HIT' : 'MISSED'}. ` +
+      `- ${g.label}: goal ${g.lower ? '≤' : '≥'} ${g.target}${g.scaled ? ` (pro-rated from ${g.rawTarget}, as he played ${g.minutes} mins off the bench)` : ''}, achieved ${g.actual} → ${g.met ? 'HIT' : 'MISSED'}. ` +
       `Best in the squad that day: ${g.bestOnDay}. His ${compLabel} season average per game: ${g.seasonAvg ?? 'n/a'} (over ${g.seasonGames} games).`
     ).join('\n')
 
@@ -122,7 +135,7 @@ Match: vs ${match.opposition} (${compLabel})
 His goals for this game, with how he did, the best any teammate managed that day, and his own season form so far:
 ${goalLines}
 
-Write a warm, honest, motivating note (about 140-180 words), addressed to him directly ("you"). Cover: which goals he hit and which he missed (use the actual numbers); how he stacked up against the best in the squad on the day; and put it in the context of his ${compLabel} season form so far so it feels relatable (e.g. above/below his usual level). Finish with one clear focus for the next game. Plain sentences and short paragraphs only — no headings, no bullet points, no markdown. Encouraging but truthful; this is a teammate-style nudge, not a lecture.`
+Write a warm, honest, motivating note (about 140-180 words), addressed to him directly ("you"). Cover: which goals he hit and which he missed (use the actual numbers); how he stacked up against the best in the squad on the day; and put it in the context of his ${compLabel} season form so far so it feels relatable (e.g. above/below his usual level). Finish with one clear focus for the next game. Plain sentences and short paragraphs only — no headings, no bullet points, no markdown. Encouraging but truthful; this is a teammate-style nudge, not a lecture.${anyScaled ? ' Note: he came off the bench, so his counting-stat goals were pro-rated to the minutes he played — weave in naturally that the targets were adjusted for his game time so he is judged fairly on his cameo.' : ''}`
 
     let reportText = ''
     try {
@@ -161,7 +174,7 @@ Write a warm, honest, motivating note (about 140-180 words), addressed to him di
       const rows = goals.map(g => `
         <tr>
           <td style="padding:6px 10px;font-size:13px;color:#e8edf5">${g.label}</td>
-          <td style="padding:6px 10px;font-size:13px;color:#8ba8c8;text-align:center">${g.lower ? '≤' : '≥'} ${g.target}</td>
+          <td style="padding:6px 10px;font-size:13px;color:#8ba8c8;text-align:center">${g.lower ? '≤' : '≥'} ${g.target}${g.scaled ? `<div style="font-size:10px;color:#3d5a7a">pro-rated from ${g.rawTarget} · ${g.minutes} mins</div>` : ''}</td>
           <td style="padding:6px 10px;font-size:13px;color:#e8edf5;text-align:center;font-weight:700">${g.actual}</td>
           <td style="padding:6px 10px;font-size:13px;text-align:center;color:${g.met ? '#3ecf8e' : '#f06060'};font-weight:700">${g.met ? '✓' : '✗'}</td>
         </tr>`).join('')

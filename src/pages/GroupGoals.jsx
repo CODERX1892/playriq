@@ -36,17 +36,18 @@ export default function GroupGoals({ playerName, coachId, all, highlightName }) 
 
       const memberNames = [...new Set(groups.flatMap(g => membersByGroup[g.id] || []))]
       const namesFilter = memberNames.length ? memberNames : ['__none__']
-      const [{ data: tg }, { data: st }, { data: ms }] = await Promise.all([
+      const [{ data: tg }, { data: st }, { data: ms }, { data: sq }] = await Promise.all([
         supabase.from('player_targets').select('*').in('player_name', namesFilter),
         supabase.from('player_stats').select('*').in('player_name', namesFilter),
         supabase.from('matches').select('*'),
+        supabase.from('matchday_squad').select('match_id, player_name, is_starter'),
       ])
       // Matches that have at least one target set among these members.
       const matchesWithGoals = [...new Set((tg || []).map(t => t.match_id))]
         .map(id => (ms || []).find(m => m.match_id === id) || { match_id: id })
         .sort((a, b) => matchRound(b.match_id) - matchRound(a.match_id))
 
-      setState({ groups, membersByGroup, targets: tg || [], stats: st || [], matches: ms || [], matchesWithGoals })
+      setState({ groups, membersByGroup, targets: tg || [], stats: st || [], matches: ms || [], squad: sq || [], matchesWithGoals })
       setMatchId(prev => prev || matchesWithGoals[0]?.match_id || null)
     })()
   }, [playerName, coachId, all])
@@ -65,20 +66,27 @@ export default function GroupGoals({ playerName, coachId, all, highlightName }) 
 
   const targetFor = (name) => targets.find(t => t.player_name === name && t.match_id === matchId)
   const statFor = (name) => stats.find(s => s.player_name === name && s.match_id === matchId)
+  // Subs (is_starter === false) have their counting targets pro-rated to minutes played.
+  const subSet = new Set((state.squad || []).filter(r => r.is_starter === false).map(r => `${r.match_id}|${r.player_name}`))
 
   const evalGoals = (name) => {
     const t = targetFor(name)
     if (!t) return { set: false, goals: [] }
     const s = statFor(name)
     const played = s && num(s.total_minutes) > 0
+    const mins = played ? num(s.total_minutes) : 0
+    const isSub = subSet.has(`${matchId}|${name}`)
     const goals = []
     for (let i = 1; i <= 3; i++) {
       const metric = t[`metric_${i}`], target = t[`target_${i}`]
       if (!metric || target == null) continue
       const lower = LOWER_IS_BETTER.has(metric)
+      const rawTarget = num(target)
+      const scaled = isSub && !lower && mins > 0 && mins < 60
+      const effTarget = scaled ? Math.max(1, Math.round(rawTarget * mins / 60)) : rawTarget
       const actual = played ? num(s[metric]) : null
-      const met = actual == null ? null : (lower ? actual <= num(target) : actual >= num(target))
-      goals.push({ label: METRIC_LABELS[metric] || metric, target: num(target), actual, met, lower })
+      const met = actual == null ? null : (lower ? actual <= effTarget : actual >= effTarget)
+      goals.push({ label: METRIC_LABELS[metric] || metric, target: effTarget, rawTarget, scaled, actual, met, lower })
     }
     return { set: true, played, goals }
   }

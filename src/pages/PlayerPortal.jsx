@@ -45,6 +45,12 @@ export default function PlayerPortal() {
   const [matchView, setMatchView] = useState('AFL 1')
   const TABS = ['home', 'leaderboards', 'matches', 'challenge', 'team', 'analytics', 'scout', 'goals', 'review', 'edge', 'glossary']
 
+  // Deep-link: e.g. an email CTA linking to playriq.io/?goto=goals opens that tab.
+  useEffect(() => {
+    const goto = new URLSearchParams(window.location.search).get('goto')
+    if (goto && TABS.includes(goto)) setTab(goto)
+  }, [])
+
   useEffect(() => {
     Promise.all([
       supabase.from('player_stats').select('*').eq('player_name', player.name),

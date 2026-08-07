@@ -5,6 +5,10 @@
       "schedule": "0 19 * * *"
     },
     {
+      "path": "/api/notify-goals-reminder",
+      "schedule": "0 8 * * *"
+    },
+    {
       "path": "/api/notify-reflection",
       "schedule": "0 9 * * *"
     }

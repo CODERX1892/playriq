@@ -62,6 +62,13 @@ export default function CoachDashboard() {
   const [teamStats, setTeamStats] = useState([])
   const [newReviews, setNewReviews] = useState(0)
 
+  // Deep-link: e.g. the coach heads-up email links to playriq.io/?goto=groups.
+  useEffect(() => {
+    const goto = new URLSearchParams(window.location.search).get('goto')
+    const valid = ['squad', 'player', 'compare', 'leaderboards', 'form', 'reviews', 'match', 'team', 'analytics', 'scout', 'breakdown', 'goals', 'groups', 'entry', 'publish', 'admin', 'glossary']
+    if (goto && valid.includes(goto)) setTab(goto)
+  }, [])
+
   // Count unseen performance reviews for the "new" dot on the Reviews tab
   useEffect(() => {
     supabase.from('performance_reviews').select('id', { count: 'exact', head: true }).eq('seen_by_coach', false)
