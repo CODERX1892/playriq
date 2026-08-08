@@ -85,9 +85,10 @@ export default function PlayerReflection({ player, stats }) {
   // Get published matches that player has stats for
   const publishedMatches = MATCHES.filter(m => stats.some(s => s.match_id === m))
 
-  // Get next upcoming match (has date in future)
-  const today = new Date()
-  const upcomingMatch = MATCH_DATA.find(m => m.match_date && new Date(m.match_date) > today)
+  // Next match today or later — compare by calendar day (slice to YYYY-MM-DD) so
+  // the Set Targets card still shows ON match day, not only the day before.
+  const todayStr = new Date().toISOString().slice(0, 10)
+  const upcomingMatch = MATCH_DATA.find(m => m.match_date && String(m.match_date).slice(0, 10) >= todayStr)
 
   const unreadCount = comments.filter(c => !c.read_by_player).length
 
