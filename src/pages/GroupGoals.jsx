@@ -11,7 +11,7 @@ const METRIC_LABELS = {
   simple_pass: 'Simple Passes', carries: 'Carries', dne: 'DNE', breach_1v1: '1v1 Breach',
   defensive_duels_won: 'Duels Won', one_pointer_scored: '1-Point Scores', two_pointer_scored: '2-Point Scores',
   goals_scored: 'Goals', drop_shorts: 'Drop Shorts', turnovers_in_contact: 'Contact TOs',
-  turnovers_kicked_away: 'Kickaway TOs', ko_target_won_clean: 'KO Won Clean',
+  turnovers_kicked_away: 'Kickaway TOs', ko_target_won_clean: 'KO Won Clean (for+against)',
   won_break_our: 'Our KO Break', won_break_opp: 'Opp KO Break', assists_shots: 'Shot Assists',
 }
 const LOWER_IS_BETTER = new Set(['dne', 'breach_1v1', 'drop_shorts', 'turnovers_in_contact', 'turnovers_kicked_away'])
@@ -24,11 +24,19 @@ const PCT_METRICS = {
   pct_2:         { label: '2-Pt Shot %', num: ['two_pointer_scored'], den: ['two_pointer_scored', 'two_pointer_wide', 'two_pointer_drop_short_block'] },
   pct_goal:      { label: 'Goal Shot %', num: ['goals_scored'],       den: ['goals_scored', 'goals_wide', 'goal_drop_short_block'] },
   pct_ko_target: { label: 'KO Win %',    num: ['ko_target_won_clean', 'ko_target_won_break'], den: ['ko_target_won_clean', 'ko_target_won_break', 'ko_target_lost_clean', 'ko_target_lost_contest'] },
+  pct_gk_ko_clean: { label: 'GK KO Clean %', num: ['goalie_ko_clean_wins'], den: ['goalie_ko_taken'] },
+  pct_gk_ko_break: { label: 'GK KO Break %', num: ['goalie_ko_break_wins'], den: ['goalie_ko_taken'] },
   pct_1f:        { label: '1-Pt Free %', num: ['one_pointer_scored_f'], den: ['one_pointer_attempts_f'] },
   pct_2f:        { label: '2-Pt Free %', num: ['two_pointer_scored_f'], den: ['two_pointer_attempts_f'] },
   pct_goalf:     { label: 'Goal Free %', num: ['goals_scored_f'],      den: ['goal_attempts_f'] },
 }
 const sumc = (row, cols) => cols.reduce((a, c) => a + num(row[c]), 0)
+// Count goals that aggregate several columns — e.g. clean kickouts won on BOTH
+// our own restarts and the opposition's. Falls back to the raw column.
+const SUM_METRICS = {
+  ko_target_won_clean: ['won_clean_p1_our', 'won_clean_p2_our', 'won_clean_p3_our', 'won_clean_p1_opp', 'won_clean_p2_opp', 'won_clean_p3_opp'],
+}
+const countVal = (row, metric) => (SUM_METRICS[metric] ? sumc(row, SUM_METRICS[metric]) : num(row[metric]))
 const pctFromRow = (row, cfg) => { const d = sumc(row, cfg.den); return d > 0 ? Math.round(sumc(row, cfg.num) / d * 100) : null }
 const labelOf = (metric) => METRIC_LABELS[metric] || (PCT_METRICS[metric] && PCT_METRICS[metric].label) || metric
 
@@ -101,7 +109,7 @@ export default function GroupGoals({ playerName, coachId, all, highlightName }) 
       const rawTarget = num(target)
       const scaled = isSub && !lower && !isPctM && mins > 0 && mins < 60
       const effTarget = scaled ? Math.max(1, Math.round(rawTarget * mins / 60)) : rawTarget
-      const actual = !played ? null : (isPctM ? pctFromRow(s, cfg) : num(s[metric]))
+      const actual = !played ? null : (isPctM ? pctFromRow(s, cfg) : countVal(s, metric))
       const met = actual == null ? null : (lower ? actual <= effTarget : actual >= effTarget)
       goals.push({ label: labelOf(metric), target: effTarget, rawTarget, scaled, pct: isPctM, actual, met, lower })
     }

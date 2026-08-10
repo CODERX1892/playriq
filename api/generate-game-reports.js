@@ -16,7 +16,7 @@ const METRIC_LABELS = {
   breach_1v1: '1v1 Breaches', defensive_duels_won: 'Duels Won', one_pointer_scored: '1-Point Scores',
   two_pointer_scored: '2-Point Scores', goals_scored: 'Goals', drop_shorts: 'Drop Shorts',
   turnovers_in_contact: 'Contact Turnovers', turnovers_kicked_away: 'Kickaway Turnovers',
-  ko_target_won_clean: 'Kickouts Won Clean', won_break_our: 'Own KO Break Balls',
+  ko_target_won_clean: 'Kickouts Won Clean (for + against)', won_break_our: 'Own KO Break Balls',
   won_break_opp: 'Opp KO Break Balls', assists_shots: 'Shot Assists',
 }
 // Metrics where a LOWER number is better (target is usually 0).
@@ -31,11 +31,19 @@ const PCT_METRICS = {
   pct_2:         { label: '2-Pointer Shot %', num: ['two_pointer_scored'], den: ['two_pointer_scored', 'two_pointer_wide', 'two_pointer_drop_short_block'] },
   pct_goal:      { label: 'Goal Shot %',      num: ['goals_scored'],       den: ['goals_scored', 'goals_wide', 'goal_drop_short_block'] },
   pct_ko_target: { label: 'Kickout Win %',    num: ['ko_target_won_clean', 'ko_target_won_break'], den: ['ko_target_won_clean', 'ko_target_won_break', 'ko_target_lost_clean', 'ko_target_lost_contest'] },
+  pct_gk_ko_clean: { label: 'GK Kickout Clean %', num: ['goalie_ko_clean_wins'], den: ['goalie_ko_taken'] },
+  pct_gk_ko_break: { label: 'GK Kickout Break %', num: ['goalie_ko_break_wins'], den: ['goalie_ko_taken'] },
   pct_1f:        { label: '1-Pt Free %',      num: ['one_pointer_scored_f'], den: ['one_pointer_attempts_f'] },
   pct_2f:        { label: '2-Pt Free %',      num: ['two_pointer_scored_f'], den: ['two_pointer_attempts_f'] },
   pct_goalf:     { label: 'Goal Free %',      num: ['goals_scored_f'],      den: ['goal_attempts_f'] },
 }
 const sumc = (row, cols) => cols.reduce((a, c) => a + num(row[c]), 0)
+// Count goals that aggregate several columns — e.g. clean kickouts won on BOTH
+// our own restarts and the opposition's. Falls back to the raw column.
+const SUM_METRICS = {
+  ko_target_won_clean: ['won_clean_p1_our', 'won_clean_p2_our', 'won_clean_p3_our', 'won_clean_p1_opp', 'won_clean_p2_opp', 'won_clean_p3_opp'],
+}
+const countVal = (row, metric) => (SUM_METRICS[metric] ? sumc(row, SUM_METRICS[metric]) : num(row[metric]))
 const pctFromRow = (row, cfg) => { const d = sumc(row, cfg.den); return d > 0 ? Math.round(sumc(row, cfg.num) / d * 100) : null }
 const labelOf = (metric) => METRIC_LABELS[metric] || (PCT_METRICS[metric] && PCT_METRICS[metric].label) || metric
 
@@ -95,7 +103,7 @@ export default async function handler(req, res) {
       const vals = (matchStats || []).map(s => pctFromRow(s, cfg)).filter(v => v != null)
       return vals.length ? Math.max(...vals) : null
     }
-    const vals = (matchStats || []).map(s => num(s[metric]))
+    const vals = (matchStats || []).map(s => countVal(s, metric))
     if (!vals.length) return null
     return LOWER_IS_BETTER.has(metric) ? Math.min(...vals) : Math.max(...vals)
   }
@@ -111,7 +119,7 @@ export default async function handler(req, res) {
       const nu = rows.reduce((a, s) => a + sumc(s, cfg.num), 0)
       return { avg: Math.round(nu / d * 100), games: rows.length, total: nu }
     }
-    const total = rows.reduce((a, s) => a + num(s[metric]), 0)
+    const total = rows.reduce((a, s) => a + countVal(s, metric), 0)
     return { avg: Math.round((total / rows.length) * 10) / 10, games: rows.length, total }
   }
 
@@ -139,7 +147,7 @@ export default async function handler(req, res) {
       // Pro-rate a sub's counting target to minutes played (never below 1). Percentages don't scale.
       const scaled = isSub && !lower && !isPctM && mins > 0 && mins < 60
       const effTarget = scaled ? Math.max(1, Math.round(rawTarget * mins / 60)) : rawTarget
-      const actual = isPctM ? pctFromRow(statRow, cfg) : num(statRow[metric])
+      const actual = isPctM ? pctFromRow(statRow, cfg) : countVal(statRow, metric)
       const met = actual == null ? false : (lower ? actual <= effTarget : actual >= effTarget)
       const season = seasonAvg(name, metric)
       goals.push({
