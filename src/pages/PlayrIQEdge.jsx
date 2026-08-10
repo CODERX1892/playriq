@@ -420,7 +420,7 @@ Keep it under 350 words. Be direct. This is a performance review not a pep talk.
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 1000,
           system: 'You are a stateless performance analysis engine. Treat all data as transient and confidential. Do not reference, store, or infer any information beyond what is provided in this single request. Each request is fully independent.',
           messages: [{ role: 'user', content: prompt }]

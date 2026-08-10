@@ -186,7 +186,7 @@ Write a warm, honest, motivating note (about 140-180 words), addressed to him di
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-6',
           max_tokens: 700,
           system: 'You are a stateless writing assistant for a GAA analytics app. Treat all data as transient and confidential; each request is independent.',
           messages: [{ role: 'user', content: prompt }],
