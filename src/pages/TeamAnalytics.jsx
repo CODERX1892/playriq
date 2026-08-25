@@ -179,15 +179,12 @@ export default function TeamAnalytics({ allStats, matchView, setMatchView }) {
   const ourContact   = n(tsUs?.contact_tackles)
   const ourForcedTO  = matchPlayerStats.reduce((s, r) => s + n(r.forced_to_win), 0)
   const ourDuelsWon  = matchPlayerStats.reduce((s, r) => s + n(r.defensive_duels_won), 0)
-  const ourBreaks    = matchPlayerStats.reduce((s, r) => s + n(r.won_break_our), 0)
+  const ourBreaks    = n(tsUs?.ko_breaks_won) + n(tsUs?.opp_ko_breaks_won)
 
   const themContact  = n(tsThem?.contact_tackles)
   const themForcedTO = n(tsThem?.turnovers_forced)
   const themDuelsWon = matchPlayerStats.reduce((s, r) => s + n(r.duels_lost), 0)
-  // their KO breaks: their breaks on own KO + their breaks defending our KO
-  const themBreakOwnKO = Math.round(oppKOTaken * n(d?.opp_ko_lost_break_pct) / 100)
-  const themBreakOppKO = Math.round(ourKOTaken * n(d?.our_ko_lost_break_pct) / 100)
-  const themBreaks     = themBreakOwnKO + themBreakOppKO
+  const themBreaks   = n(tsThem?.ko_breaks_won) + n(tsThem?.opp_ko_breaks_won)
 
   const ourIntTotal  = ourContact + ourForcedTO + ourDuelsWon + ourBreaks
   const themIntTotal = themContact + themForcedTO + themDuelsWon + themBreaks
