@@ -25,6 +25,23 @@ export const MIN_ATT = {
   pct_1f: 1, pct_2f: 1, pct_goalf: 1,
 }
 
+// Per-scope overrides. Championship has far fewer games than the league, so
+// the floors are lower there: 90 mins to rank on per-60 / PER boards, and
+// 2 / 1 / 1 attempts for 1-pt / 2-pt / goal shot %. Any scope not listed
+// (league, challenge, season-wide) uses the defaults above.
+export const SCOPE_RULES = {
+  championship: { mins: 90, att: { pct_1: 2, pct_2: 1, pct_goal: 1 } },
+}
+
+// Resolve the thresholds in force for a scope → { mins, minAtt(metric) }.
+export const rulesFor = (scope) => {
+  const o = SCOPE_RULES[scope] || {}
+  return {
+    mins: o.mins ?? MIN_RANK_MINS,
+    minAtt: (metric) => (o.att && o.att[metric.key] != null ? o.att[metric.key] : metric.minAtt),
+  }
+}
+
 export const minutesOf = (rows) => rows.reduce((s, r) => s + n(r.total_minutes), 0)
 
 // ─── Raw aggregators over a set of rows ──────────────────────────────────────
@@ -144,57 +161,67 @@ export function computeEntry(metric, x, mode) {
 // Does this player entry qualify to be RANKED on the board? (The viewer is not
 // special-cased here — an unqualified viewer is surfaced separately so a 1/1
 // can never top a percentage board.)
-function qualifies(metric, e, mode) {
+//   scope: 'league' | 'challenge' | 'championship' | undefined (season-wide)
+//   — picks the minutes / attempts floors via rulesFor().
+function qualifies(metric, e, mode, scope) {
+  const rules = rulesFor(scope)
   if (e.mins <= 0) return false
-  // Counting boards: always past the 120-min floor. showZeros metrics then rank
+  // Counting boards: always past the minutes floor. showZeros metrics then rank
   // everyone; the rest only list players with at least one of the stat.
   if (metric.type === 'count') {
-    if (e.mins < MIN_RANK_MINS) return false
+    if (e.mins < rules.mins) return false
     if (!metric.showZeros && e.raw <= 0) return false
     return true
   }
   if (metric.type === 'pct') {
     // Frees: rank everyone who took one, no attempts minimum.
     if (metric.free) return e.att >= 1
+    const minAtt = rules.minAtt(metric)
     // Play shots: per-type attempts minimum, AND a 0% only shows once a player
     // has taken more than 4 shots (so the odd 1-of-2 miss doesn't post a 0%).
-    return e.att >= metric.minAtt && (e.scored > 0 || e.att > 4)
+    // The 0% guard never sits above the scope's own attempts floor, so in
+    // championship anyone past the floor is ranked, scored or not.
+    const zeroFloor = Math.min(4, minAtt - 1)
+    return e.att >= minAtt && (e.scored > 0 || e.att > zeroFloor)
   }
-  return e.mins >= MIN_RANK_MINS // ratio
+  return e.mins >= rules.mins // ratio
 }
 
 // Turn a pool into a ranked, ordered list of QUALIFIED players for one metric.
 //   mode : 'p60' | 'total' (only affects count metrics)
-export function buildBoard(metric, pool, mode) {
-  const entries = pool.map((x) => computeEntry(metric, x, mode)).filter((e) => qualifies(metric, e, mode))
+//   scope: competition scope for the thresholds (omit for season-wide defaults)
+export function buildBoard(metric, pool, mode, scope) {
+  const entries = pool.map((x) => computeEntry(metric, x, mode)).filter((e) => qualifies(metric, e, mode, scope))
   entries.sort((a, b) => (metric.inverted ? a.value - b.value : b.value - a.value))
   return entries
 }
 
 // Why a player doesn't qualify to be ranked — a short human hint.
-function unqualifiedReason(metric, entry, mode) {
+function unqualifiedReason(metric, entry, mode, scope) {
+  const rules = rulesFor(scope)
   if (!entry || entry.mins <= 0) return 'no minutes yet'
   if (metric.type === 'count') {
-    if (entry.mins < MIN_RANK_MINS) return `min ${MIN_RANK_MINS} min to rank`
+    if (entry.mins < rules.mins) return `min ${rules.mins} min to rank`
     return `no ${metric.short.toLowerCase()} yet`
   }
   if (metric.type === 'pct') {
     if (entry.att === 0) return metric.free ? 'no frees taken' : 'no attempts yet'
-    if (!metric.free && entry.att < metric.minAtt) return `${metric.minAtt}+ attempts to rank`
-    return '5+ shots to rank at 0%'
+    const minAtt = rules.minAtt(metric)
+    if (!metric.free && entry.att < minAtt) return `${minAtt}+ attempts to rank`
+    return `${Math.min(5, minAtt)}+ shots to rank at 0%`
   }
-  return `min ${MIN_RANK_MINS} min to rank`
+  return `min ${rules.mins} min to rank`
 }
 
 // A player's standing on one metric — used for the small rank line under each
 // dashboard tile. season-wide (all competitions), per-60 basis for counts.
 // Returns { qualified, rank, of, entry, reason }.
-export function standingFor(metric, pool, viewerName) {
+export function standingFor(metric, pool, viewerName, scope) {
   const mode = metric.type === 'count' ? 'p60' : null
-  const board = buildBoard(metric, pool, mode)
+  const board = buildBoard(metric, pool, mode, scope)
   const idx = board.findIndex((e) => e.name === viewerName)
   if (idx >= 0) return { qualified: true, rank: idx + 1, of: board.length, entry: board[idx] }
   const me = pool.find((p) => p.name === viewerName)
   const entry = me ? computeEntry(metric, me, mode) : null
-  return { qualified: false, of: board.length, entry, reason: unqualifiedReason(metric, entry, mode) }
+  return { qualified: false, of: board.length, entry, reason: unqualifiedReason(metric, entry, mode, scope) }
 }

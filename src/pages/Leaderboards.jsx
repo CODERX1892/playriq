@@ -6,7 +6,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { POS_COLORS } from '../lib/utils'
-import { metricByKey, buildPool, buildBoard, computeEntry, matchMapOf, compOf, MIN_RANK_MINS } from '../lib/playerMetrics'
+import { metricByKey, buildPool, buildBoard, computeEntry, matchMapOf, compOf, rulesFor } from '../lib/playerMetrics'
 
 const SCOPES = [['league', 'League'], ['challenge', 'Challenge'], ['championship', 'Championship']]
 
@@ -37,8 +37,9 @@ function Pill({ active, onClick, children, color }) {
 }
 
 // Render one metric's board.
-function Board({ metric, pool, mode, viewerName }) {
-  const entries = buildBoard(metric, pool, mode)
+function Board({ metric, pool, mode, viewerName, scope }) {
+  const rules = rulesFor(scope)
+  const entries = buildBoard(metric, pool, mode, scope)
   const isCount = metric.type === 'count'
   const unit = isCount && mode === 'p60' ? '/60' : ''
 
@@ -55,10 +56,10 @@ function Board({ metric, pool, mode, viewerName }) {
   const badge = metric.inverted
     ? 'fewer = better'
     : metric.type === 'pct'
-      ? `min ${metric.minAtt} att`
+      ? `min ${rules.minAtt(metric)} att`
       : metric.type === 'ratio'
-        ? `min ${MIN_RANK_MINS} min`
-        : mode === 'p60' ? `min ${MIN_RANK_MINS} min` : 'season total'
+        ? `min ${rules.mins} min`
+        : mode === 'p60' ? `min ${rules.mins} min` : 'season total'
 
   // Top value on this board — used to scale the PER bars (ratio boards only).
   const maxVal = metric.type === 'ratio' ? Math.max(...entries.map((e) => e.value), 0.0001) : 0
@@ -189,7 +190,7 @@ export default function Leaderboards({ player, allStats: pStats, allPlayers: pPl
           <div key={g.title} style={{ marginBottom: 6 }}>
             <div style={{ fontSize: 10, color: 'var(--text3)', letterSpacing: 2, textTransform: 'uppercase', margin: '4px 0 8px' }}>{g.title}</div>
             {g.keys.map((k) => (
-              <Board key={k} metric={metricByKey[k]} pool={pool} mode={mode} viewerName={viewerName} />
+              <Board key={k} metric={metricByKey[k]} pool={pool} mode={mode} viewerName={viewerName} scope={scope} />
             ))}
           </div>
         ))
