@@ -29,15 +29,19 @@ export const MIN_ATT = {
 // the floors are lower there: 90 mins to rank on per-60 / PER boards, and
 // 2 / 1 / 1 attempts for 1-pt / 2-pt / goal shot %. Any scope not listed
 // (league, challenge, season-wide) uses the defaults above.
+// zeroAtt = attempts needed before a 0% is shown on the board (a lone miss is
+// hidden; 0-from-zeroAtt is ranked at the bottom). Default is 5.
+export const ZERO_PCT_ATT = 5
 export const SCOPE_RULES = {
-  championship: { mins: 90, att: { pct_1: 2, pct_2: 1, pct_goal: 1 } },
+  championship: { mins: 90, att: { pct_1: 2, pct_2: 1, pct_goal: 1 }, zeroAtt: 2 },
 }
 
-// Resolve the thresholds in force for a scope → { mins, minAtt(metric) }.
+// Resolve the thresholds in force for a scope → { mins, zeroAtt, minAtt(metric) }.
 export const rulesFor = (scope) => {
   const o = SCOPE_RULES[scope] || {}
   return {
     mins: o.mins ?? MIN_RANK_MINS,
+    zeroAtt: o.zeroAtt ?? ZERO_PCT_ATT,
     minAtt: (metric) => (o.att && o.att[metric.key] != null ? o.att[metric.key] : metric.minAtt),
   }
 }
@@ -178,11 +182,9 @@ function qualifies(metric, e, mode, scope) {
     if (metric.free) return e.att >= 1
     const minAtt = rules.minAtt(metric)
     // Play shots: per-type attempts minimum, AND a 0% only shows once a player
-    // has taken more than 4 shots (so the odd 1-of-2 miss doesn't post a 0%).
-    // The 0% guard never sits above the scope's own attempts floor, so in
-    // championship anyone past the floor is ranked, scored or not.
-    const zeroFloor = Math.min(4, minAtt - 1)
-    return e.att >= minAtt && (e.scored > 0 || e.att > zeroFloor)
+    // has taken zeroAtt shots (5 by default, 2 in championship) so a lone miss
+    // doesn't post a 0%.
+    return e.att >= minAtt && (e.scored > 0 || e.att >= rules.zeroAtt)
   }
   return e.mins >= rules.mins // ratio
 }
@@ -208,7 +210,7 @@ function unqualifiedReason(metric, entry, mode, scope) {
     if (entry.att === 0) return metric.free ? 'no frees taken' : 'no attempts yet'
     const minAtt = rules.minAtt(metric)
     if (!metric.free && entry.att < minAtt) return `${minAtt}+ attempts to rank`
-    return `${Math.min(5, minAtt)}+ shots to rank at 0%`
+    return `${rules.zeroAtt}+ shots to rank at 0%`
   }
   return `min ${rules.mins} min to rank`
 }
