@@ -1,21 +1,17 @@
 {
   "crons": [
-    {
-      "path": "/api/notify-prematch",
-      "schedule": "0 19 * * *"
-    },
-    {
-      "path": "/api/notify-goals-reminder",
-      "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/notify-reflection",
-      "schedule": "0 9 * * *"
-    }
+    { "path": "/api/notify-prematch", "schedule": "0 19 * * *" },
+    { "path": "/api/notify-goals-reminder", "schedule": "0 8 * * *" },
+    { "path": "/api/notify-reflection", "schedule": "0 9 * * *" }
   ],
   "functions": {
     "api/scout-pdf.js": {
       "includeFiles": "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"
     }
-  }
+  },
+  "headers": [
+    { "source": "/", "headers": [{ "key": "Cache-Control", "value": "no-store, must-revalidate" }] },
+    { "source": "/index.html", "headers": [{ "key": "Cache-Control", "value": "no-store, must-revalidate" }] },
+    { "source": "/assets/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }
+  ]
 }

@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
 import { loadMatches } from './lib/utils'
+import { startUpdateCheck } from './lib/updateCheck'
 
 // Load match data from database before rendering
 loadMatches().finally(() => {
@@ -11,4 +12,5 @@ loadMatches().finally(() => {
       <App />
     </React.StrictMode>
   )
+  startUpdateCheck()
 })
